@@ -31,7 +31,7 @@ npm run dev        # http://localhost:3000
 | `npm run typecheck`               | `next typegen && tsc --noEmit` (strict)                                                                      |
 | `npm run test:unit`               | Vitest (jsdom + Testing Library)                                                                             |
 | `npm run test:coverage`           | Vitest with v8 coverage                                                                                      |
-| `npm run test:db`                 | pgTAP database tests (placeholder until SIT-197)                                                             |
+| `npm run test:db`                 | pgTAP tests in `supabase/tests` against the local database (run `npm run db:start` first)                    |
 | `npm run test:e2e`                | Playwright end-to-end tests (placeholder until the E2E issues)                                               |
 | `npm test`                        | Unit tests, plus `test:db` and `test:e2e` once their files exist                                             |
 | `npm run check`                   | `lint`, `format:check`, `typecheck`, `check:env`, tests, `build`, `check:bundle`; stops at the first failure |
@@ -48,7 +48,7 @@ Placeholder scripts print "not implemented yet" and exit 0 on their own. `npm ru
 
 ## Local Supabase
 
-Requires Docker (or Podman) running (on macOS, Docker Desktop's `docker` is in `~/.docker/bin`; add it to your PATH if `docker` is not found), plus the project's pinned Supabase CLI (installed by `npm ci`).
+Requires Docker (or Podman) running (on macOS the npm scripts find Docker Desktop's `docker` in `~/.docker/bin` automatically; add it to your PATH to use the `supabase` CLI directly), plus the project's pinned Supabase CLI (installed by `npm ci`).
 
 ```bash
 npm run db:start     # Postgres, Auth, Studio. Prints local URLs and keys.
@@ -60,7 +60,7 @@ npm run db:stop
 - Studio: http://127.0.0.1:54323, API: http://127.0.0.1:54321, Postgres: `127.0.0.1:54322`.
 - `db:reset` refuses to run if `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_DB_URL`, `DATABASE_URL` or `POSTGRES_URL` point at a non-local host, or if `--linked` / `--db-url` is passed.
 - Migrations are forward-only files in `supabase/migrations/` named `<timestamp>_<name>.sql`; create one with `npx supabase migration new <name>`. Conventions are at the top of the baseline migration (uuid PKs, `timestamptz`, `bigint` cents, named constraints, RLS on every tenant table).
-- pgTAP tests go in `supabase/tests/` (harness arrives with SIT-197).
+- pgTAP tests go in `supabase/tests/*.sql` and run with `npm run test:db`. `npm test` and `npm run check` include them once a `.sql` file exists, so the local stack must be running.
 - Generated types live in `src/lib/supabase/database.types.ts`; regenerate after every migration.
 
 ## Environment variables

@@ -167,7 +167,17 @@ Run on commit `HEAD` of this entry in a fresh clone with an empty environment (`
 
 ## M1 — Authentication, Organizations & Public Demo
 
-Not started. No checks run.
+In progress. Per-issue results are below; milestone-level checks are not yet run.
+
+### SIT-167 — profiles table, auth-user trigger, RLS (done)
+
+- `supabase/migrations/20261101000100_profiles.sql`: `public.profiles` (named constraints, `timestamptz`, `avatar_url` must be https), `private` schema (no API role usage), reusable `private.set_updated_at()`, `private.handle_new_user()` (SECURITY DEFINER, `search_path = ''`, EXECUTE revoked from public, anon, authenticated) wired to `on_auth_user_created` on `auth.users`, grants reset then `select` and column-level `update (display_name, avatar_url)` to `authenticated`, RLS with `profiles_select_own` and `profiles_update_own`.
+- `npm run db:reset` applied both migrations; `npm run test:db` (new real script, runs `supabase test db`): `supabase/tests/profiles.test.sql` **29 of 29 pass**, covering: exactly the expected columns (no email), RLS enabled, one profile for each of a real user, an anonymous user, and a real user with no email (`alice.smith`, `Demo User`, `New user`), no display name contains `@`, definer hardening (security definer, empty search_path, no EXECUTE for anon/authenticated/public, `private` schema unusable), user A sees only their own row, cannot select or update B (0 rows), can update their own `display_name` and `avatar_url`, cannot write `id`, `created_at`, `updated_at` (`42501`), `javascript:` avatar rejected (`23514`), cannot insert or delete, the `anon` role cannot read (`42501`), deleting the auth user deletes the profile.
+- The test was written first and failed without the migration (4 of 30 ran, "Bad plan"). Two mistakes in my first test run were fixed: the plan count, and `updated_at` (`now()` is constant inside a transaction, so the trigger is proved by overwriting a deliberately old value).
+- Mutations applied to the live local database, each made the named tests fail, then `db:reset` restored it (`Result: PASS`): select policy `using (true)`; select granted to `anon` with a policy; `update` granted on all columns; `handle_new_user` without a pinned search_path and with public EXECUTE.
+- `npm run db:types` generated `src/lib/supabase/database.types.ts` from the local schema (includes `profiles`); formatted with Prettier. Docker's CLI is now found automatically by `db:start`, `db:stop`, `db:reset`, `db:types`, and `test:db` (`scripts/lib/docker-path.mjs`, 3 unit tests).
+- `docs/SECURITY.md` created with the database conventions and the profiles policy table.
+- `npm run lint`, `format:check`, `typecheck` pass; `npm run test:unit` 23 files, 304 tests pass.
 
 ## M2 — Core CRM, Pipeline & Task Management
 
