@@ -260,6 +260,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Found while testing: Next prerendered the callback route handler at build and failed without env; it now reads the request before touching env. A second sign-up for one address within `max_frequency` returns 429, so the integration test waits 1.5 s.
 - Not done here (see DECISIONS): the no-organization redirect (SIT-193/209).
 
+### SIT-180 — Route protection (done)
+
+- `src/lib/auth/route-guard.ts` (`decideRoute`), `workspace-state.ts` (`resolveWorkspaceState`), wired into `src/proxy.ts` with session cookies carried onto redirects; `safeNextPath` from SIT-179 is the shared validator. Rules and the caveat about SIT-194 are in `docs/SECURITY.md`.
+- **Real HTTP (`next start` :3100, local Supabase):** `/app`, `/app/customers?stage=won&page=2`, `/app/settings/members` all 307 to `/login?next=<encoded path>`; `/login` and `/demo` 200; `/application` 404. Browser: signed-out `/app/customers` lands on login, signing in returns to `/app/customers`; signed-in `/login`, `/signup` go to `/app`; `?next=/app/tasks` goes to `/app/tasks`; `//evil.com`, `%2F%2Fevil.com`, `https://evil.com` go to `/app`; after sign out `/app` redirects to login again.
+- `npm run check`: all 9 steps passed (unit: 39 files, 674 tests; integration: 5 files, 36 tests). New tests: `route-guard.test.ts` (22: every rule, 9 open-redirect payloads raw and encoded, fixpoint over 3 users x 4 states x 8 paths, resolver cases) and `workspace-state.integration.test.ts` (5, real schema with a temporary policy that is removed afterwards; verified no `zz_` policies remain).
+- Mutations caught and reverted: signed-out not redirected (4 failed), guest with no workspace (1), setup loop (2), expired demo passes (1), guest bounced from login (1), expiry ignored (2).
+- Not verifiable end to end yet: the org-setup and expired-demo redirects need SIT-194's policies (see DECISIONS). The proxy's cookie carry-over on redirects is exercised only by the real browser run (sign-in then redirect worked), not by a unit test.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

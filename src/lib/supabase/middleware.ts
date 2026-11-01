@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { getPublicEnv } from "@/lib/env/public";
 import { authCookieOptions } from "./cookie-options";
@@ -25,9 +26,11 @@ export function needsSession(pathname: string): boolean {
  * sees the refreshed session. The library also returns cache headers that must accompany
  * auth cookies; they are copied onto the response so a CDN never caches a Set-Cookie.
  */
-export async function updateSession(
-  request: NextRequest,
-): Promise<{ response: NextResponse; user: CurrentUser | null }> {
+export async function updateSession(request: NextRequest): Promise<{
+  response: NextResponse;
+  user: CurrentUser | null;
+  supabase: SupabaseClient<Database>;
+}> {
   let response = NextResponse.next({ request });
   const env = getPublicEnv();
 
@@ -52,5 +55,5 @@ export async function updateSession(
 
   // Do not run code between creating the client and this call: it performs the refresh.
   const user = await resolveUser(supabase);
-  return { response, user };
+  return { response, user, supabase };
 }

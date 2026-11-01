@@ -11,22 +11,10 @@ import { getCurrentUser } from "@/lib/supabase/current-user";
 async function DynamicShell({ children }: { children: ReactNode }) {
   await connection();
   const user = await getCurrentUser();
-  // TODO(SIT-180): call the auth guard here. Until sign-in ships this layout cannot know who
-  // is viewing, so it says so instead of pretending the page is protected.
+  // The proxy (src/proxy.ts) redirects signed-out visitors before this renders; handlers and RLS
+  // still authorize every request.
   return (
-    <AppShell
-      items={getNavItems(getFeatureFlags())}
-      user={user ? { email: user.email } : null}
-      banner={
-        <div
-          role="note"
-          className="border-b border-warning/40 bg-warning-subtle px-4 py-2 text-sm text-foreground"
-        >
-          <strong className="font-semibold">Development build.</strong> Sign-in is not enforced yet;
-          this notice goes away when authentication ships.
-        </div>
-      }
-    >
+    <AppShell items={getNavItems(getFeatureFlags())} user={user ? { email: user.email } : null}>
       {children}
     </AppShell>
   );

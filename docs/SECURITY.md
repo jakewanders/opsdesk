@@ -80,6 +80,23 @@ Applied by `withApi` (`src/lib/api/handler.ts`, `request-guard.ts`) to every rou
 - **Sign out** is a server action behind the account menu (clears the session cookies, returns to `/login`).
 - Supabase throttles repeated confirmation emails for one address (`max_frequency`); the form surfaces that as "Too many attempts. Wait a minute, then try again."
 
+## Route protection (SIT-180)
+
+`src/proxy.ts` runs `decideRoute` (`src/lib/auth/route-guard.ts`) after refreshing the session, and answers with a 307 whose cookies and cache headers are the refreshed session's. It only routes; handlers and RLS still authorize every request.
+
+| Visitor                             | Path                | Result                                                                              |
+| ----------------------------------- | ------------------- | ----------------------------------------------------------------------------------- |
+| Signed out                          | `/app`, `/app/*`    | `/login?next=<encoded, validated path and query>`                                   |
+| Signed-in member                    | `/login`, `/signup` | validated `next`, else `/app`                                                       |
+| Demo guest                          | `/login`, `/signup` | allowed (to create a real account)                                                  |
+| Member, no organization             | `/app/*`            | `/app/setup` (the page ships with SIT-209; the setup path itself is not redirected) |
+| Guest, no workspace or expired demo | `/app/*`            | `/demo`                                                                             |
+| Anyone                              | `/demo`             | never redirected away (prevents loops)                                              |
+
+- `next` goes through `safeNextPath` (only `/app` or below; `//`, backslashes, absolute URLs, encoded and dot-segment tricks fall back to `/app`).
+- The workspace state is read with the caller's own session (`resolveWorkspaceState`). If it cannot be determined (query refused or failing) the result is `unknown` and nothing redirects. **Until the tenancy policies of SIT-194 exist, `memberships` is closed to clients, so the state is `unknown` in practice and the org-setup and expired-demo redirects are inert.** They are covered by unit tests with every state and by an integration test that installs a temporary policy.
+- A fixpoint test walks every user kind, workspace state and start path and fails if any chain takes more than two redirects.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.
