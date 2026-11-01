@@ -200,6 +200,16 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - A first integration run failed 3 tests: anonymous users have `email: ""`, which `resolveUser` returned instead of `null`; fixed (`email || null`).
 - `npm run lint`, `format:check`, `typecheck`, `check:bundle` pass. Documented in `docs/ARCHITECTURE.md` and `docs/SECURITY.md`.
 
+### SIT-170 — API envelope, request IDs, central error handler (done)
+
+- `src/lib/api/`: `types`, `errors` (`ApiError` + 400, 401, 403, 404, 409, 413, 415, 422, 429, 500 subclasses), `envelope` (`okItem`, `okList`, `created`, `noContent`, response builders), `request-id`, `json-body`, `postgres-errors`, `to-api-error`, `log`, `handler` (`withApi`). `ErrorAlert` now uses the shared `ApiErrorBody` type. Contract written up in `docs/API.md`.
+- Unit tests: 4 files, 85 tests (`npm run test:unit`: 31 files, 429 tests pass). One contract test per status through the real wrapper: 200 item, 200 list, 201, 204, 400 (invalid JSON and explicit), 401, 403, 404 (same message for missing and cross-tenant), 409, 413, 415, 422 (Zod with field errors, nested paths, business rule), 429 (`Retry-After`), 500 (generic message, request ID, nothing from the error or stack in the body, cause logged against the same ID, non-Error throws, and failure inside error conversion itself). Plus request-ID safety (unsafe IDs replaced), the data-shape guard (`okItem` rejects arrays, `okList` rejects objects), Postgres mapping with leak checks, params awaiting, and Response passthrough with base headers.
+- Integration (`npm run test:integration`: 3 files, 24 tests against the local stack; 0 users and no probe function left behind): real Postgres/PostgREST errors mapped: unique 23505 to 409 `DUPLICATE`, FK 23503 to 422, check 23514 to 422, bad uuid 22P02 to 400, a signed-in user's insert without a grant 42501 to 403, `.single()` with no row PGRST116 to 404, a custom `OD429` raised in SQL keeps its message, `DEMO_QUOTA` code and `Retry-After: 60`, `OD403` keeps `DEMO_EXPIRED`, and a plain `RAISE EXCEPTION` (P0001, text containing `secret_table`) is NOT mapped.
+- Mutations: letting the 500 echo the original message failed 2 tests; reverting the body-presence check failed the empty-stream regression test; both reverted.
+- Real HTTP against `next start` with a temporary route (removed): every status above returned the documented envelope with `X-Request-Id` and `Cache-Control: no-store`; the 500 response contained only the generic message and the client-chosen request ID `trace-me-12345678` while the server log held the real cause under the same ID; a 429 carried `Retry-After: 30`; `23505` came back as 409 `DUPLICATE` with no constraint name.
+- Real bug found by that run and fixed: a body-less `POST` returned 415 because in the Next.js runtime `request.body` is an empty stream, not `null`. Body presence is now decided from the actual bytes; the unit test now reproduces the empty-stream shape (the first version of the test used a `null` body and missed it).
+- `npm run lint`, `format:check`, `typecheck`, `check:bundle` pass.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

@@ -5,7 +5,7 @@ import { withDockerPath } from "../../scripts/lib/docker-path.mjs";
  * Helpers for integration tests against the LOCAL Supabase stack. They refuse to run against
  * anything but 127.0.0.1 / localhost and read the local keys from the CLI at run time.
  */
-export type LocalSupabase = { apiUrl: string; publishableKey: string };
+export type LocalSupabase = { apiUrl: string; publishableKey: string; secretKey: string };
 
 const DB_CONTAINER = "supabase_db_opsdesk";
 
@@ -26,7 +26,7 @@ export function localSupabase(): LocalSupabase {
   if (host !== "127.0.0.1" && host !== "localhost") {
     throw new Error(`Refusing to run integration tests against non-local host "${host}".`);
   }
-  return { apiUrl, publishableKey: status.PUBLISHABLE_KEY };
+  return { apiUrl, publishableKey: status.PUBLISHABLE_KEY, secretKey: status.SECRET_KEY };
 }
 
 /** Runs SQL as the postgres superuser inside the local database container; returns rows as text. */

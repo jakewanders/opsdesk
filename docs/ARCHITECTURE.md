@@ -101,3 +101,7 @@ Files in `src/lib/supabase/`:
 **Cookies** (`cookie-options.ts`): host-scoped (no `Domain`, so `sitelaunch.dev` and other subdomains never get them), `Path=/`, `SameSite=Lax`, `Secure` whenever `NEXT_PUBLIC_APP_URL` is https (off only for http://localhost). They are **not** `HttpOnly`, deliberately: the browser client signs in anonymously and refreshes tokens, so it must read the session. This is why server code never trusts the cookie payload and always verifies with `resolveUser`. A content security policy and short token lifetimes are the compensating controls (not yet configured).
 
 **Session refresh:** `src/proxy.ts` runs `updateSession` before rendering protected and auth routes. Server Components cannot write cookies, so the proxy is the only place a refreshed session is persisted; it also updates the request cookies so the page that renders next sees the new session.
+
+## API layer (SIT-170)
+
+`src/lib/api/` holds the one contract every `/api/v1` handler uses: `types.ts` (envelope types shared with the future typed client and with `ErrorAlert`), `errors.ts` (`ApiError` and its subclasses), `envelope.ts` (`okItem`, `okList`, `created`, `noContent`, and the response builders), `request-id.ts`, `json-body.ts` (content-type check, `readJson`), `postgres-errors.ts` (database error mapping and the `OD` SQLSTATE convention), `to-api-error.ts` (Zod and database conversion), `log.ts` (interim server error log until SIT-185), and `handler.ts` (`withApi`). The full contract, the status table, and how to write a handler are in `docs/API.md`.

@@ -1,14 +1,8 @@
 import { OctagonAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import type { ApiErrorBody } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
-
-/** The `error` object of the API error envelope (PRD 7.3). Built by SIT-170. */
-export type ApiErrorBody = {
-  code?: string;
-  message: string;
-  requestId?: string;
-};
 
 type ErrorAlertProps = {
   /** Short heading. Default "Something went wrong". */
@@ -16,7 +10,7 @@ type ErrorAlertProps = {
   /** What happened and what to do next. Use this or `error`. */
   message?: ReactNode;
   /** An API error envelope body; supplies the message and request ID. */
-  error?: ApiErrorBody;
+  error?: Pick<ApiErrorBody, "message"> & Partial<Omit<ApiErrorBody, "message">>;
   /** Request ID to quote to support. Overrides the one in `error`. */
   requestId?: string;
   /** Shows a "Try again" button. */

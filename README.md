@@ -7,6 +7,7 @@ Multi-tenant business operations SaaS (customers, pipeline, tasks, quotes) built
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md): every P0 and P1 feature mapped to files, migrations, tests, and Linear issues.
 - [`docs/PROGRESS.md`](docs/PROGRESS.md): real check results per issue and milestone, and what is waiting on the owner.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation from the PRD and why.
+- [`docs/API.md`](docs/API.md): the /api/v1 envelope, status codes, request IDs, database error mapping.
 - [`docs/DEMO.md`](docs/DEMO.md): demo sign-in, Turnstile keys, hosted-project checklist.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): Netlify setup, `noindex` behavior, verification commands (not deployed yet).
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): design tokens, app shell, route map.

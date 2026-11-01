@@ -32,3 +32,11 @@ Living document. The threat model and the full role table are finalized by the d
 | Auth cookies              | Host-scoped, `SameSite=Lax`, `Secure` over https, not `HttpOnly` (the browser client needs them). Responses that set them carry `Cache-Control: private, no-cache, no-store` so a CDN cannot serve one user's session to another.                         |
 | Static pages              | The proxy skips the session refresh for `/`, `/privacy`, `/terms`, so they never receive a Set-Cookie and stay cacheable.                                                                                                                                 |
 | Admin (secret key) client | `src/lib/supabase/admin.ts`, server-only, bypasses RLS. Import allowed only from `src/features/demo/cleanup`, `src/app/api/v1/demo`, `netlify/functions`, `scripts`; lint fails elsewhere (tested). Constructing it without `SUPABASE_SECRET_KEY` throws. |
+
+## API error handling (SIT-170)
+
+- An unexpected failure always returns the same generic 500 message plus a request ID. The cause (name, database code, truncated message) is logged server-side against that ID; the request body, headers, and cookies are never logged.
+- Database errors are mapped to fixed messages, so constraint names, table names, and values from Postgres cannot leak. A plain `RAISE EXCEPTION` (P0001) is deliberately not mapped, so its text can never be shown; only the custom `OD` SQLSTATEs carry an author-written message.
+- A record that does not exist and a record in another tenant return the same 404 with the same message.
+- A caller-supplied `X-Request-Id` is accepted only in a safe format; otherwise it is replaced, so it cannot forge or break log lines.
+- API responses are `Cache-Control: no-store`.
