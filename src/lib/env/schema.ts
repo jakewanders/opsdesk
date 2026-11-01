@@ -85,6 +85,8 @@ export const serverEnvSchema = z.object({
   AI_API_KEY: optionalString,
   // Provided by Netlify; "production" enforces the production origin below.
   CONTEXT: optionalString,
+  // Provided by Netlify: the deploy's own URL, trusted for mutations in preview contexts only.
+  DEPLOY_PRIME_URL: optionalString,
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;

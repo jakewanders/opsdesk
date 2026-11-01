@@ -17,6 +17,7 @@ export function getServerEnv(): ServerEnv {
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     AI_API_KEY: process.env.AI_API_KEY,
     CONTEXT: process.env.CONTEXT,
+    DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL,
   });
   return cached;
 }

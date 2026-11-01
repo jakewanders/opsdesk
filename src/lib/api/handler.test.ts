@@ -12,17 +12,21 @@ import {
   ValidationError,
 } from "./errors";
 import { created, noContent, okItem, okList } from "./envelope";
-import { withApi } from "./handler";
+import { withApi as withApiRaw, type ApiHandler, type ApiOptions } from "./handler";
 import { readJson } from "./json-body";
 import { isApiErrorResponse } from "./types";
 
 const URL_ = "http://localhost:3000/api/v1/things";
+const ORIGIN = "http://localhost:3000";
+/** The contract tests are about envelopes, so the guards (own tests below) are set to the test origin and auth is off. */
+const withApi = <P = Record<string, never>>(handler: ApiHandler<P>, options: ApiOptions = {}) =>
+  withApiRaw(handler, { auth: "none", trustedOrigins: () => [ORIGIN], ...options });
 type Init = ConstructorParameters<typeof NextRequest>[1];
 const get = (init?: Init) => new NextRequest(URL_, init);
 const post = (
   body: string | null,
   headers: Record<string, string> = { "content-type": "application/json" },
-) => new NextRequest(URL_, { method: "POST", body, headers });
+) => new NextRequest(URL_, { method: "POST", body, headers: { origin: ORIGIN, ...headers } });
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -325,6 +329,7 @@ describe("handler plumbing", () => {
     const emptyStream = new ReadableStream({ start: (controller) => controller.close() });
     const request = new NextRequest(URL_, {
       method: "POST",
+      headers: { origin: ORIGIN },
       body: emptyStream,
       duplex: "half",
     });
@@ -343,7 +348,7 @@ describe("handler plumbing", () => {
     const request = new NextRequest(URL_, {
       method: "POST",
       body: stream,
-      headers: { "content-type": "application/x-www-form-urlencoded" },
+      headers: { origin: ORIGIN, "content-type": "application/x-www-form-urlencoded" },
       duplex: "half",
     });
     expect((await withApi(() => okItem({}))(request)).status).toBe(415);

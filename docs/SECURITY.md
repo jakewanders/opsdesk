@@ -59,6 +59,16 @@ All in the `private` schema (PostgREST serves only `public`): `current_user_id()
 - Recursion: helpers read `memberships`/`organizations` as the function owner, which bypasses RLS (the tables are not FORCE RLS), so a policy on `memberships` can call them without re-entering itself. A test proves this.
 - A catalog test fails if any SECURITY DEFINER function in `public` or `private` lacks `search_path = ''`.
 
+## Mutation request protection (SIT-181)
+
+Applied by `withApi` (`src/lib/api/handler.ts`, `request-guard.ts`) to every route; order for a mutation: Origin check (403) → declared size cap (413) → JSON content type (415) → Supabase Auth user check (401) → handler.
+
+- **Origin / CSRF**: any non-GET/HEAD/OPTIONS request needs an `Origin` that exactly matches a trusted origin (`ORIGIN_FORBIDDEN` 403). With no `Origin`, `Sec-Fetch-Site` must be `same-origin` or `none`; a missing header is refused, and `cross-site` is refused even if `Origin` matches. The opaque `Origin: null` is refused. `Host` and `X-Forwarded-Host` are never consulted.
+- **Trusted origins** come from validated env: `NEXT_PUBLIC_APP_URL`, plus Netlify's `DEPLOY_PRIME_URL` (https only) when `CONTEXT` is `deploy-preview` or `branch-deploy`. Both are inlined at build in `next.config.ts` because Netlify does not guarantee them at runtime.
+- **Body cap**: 100 KB by default (`maxBodyBytes` per route, e.g. 2 MB for the CSV import). A declared `Content-Length` over the cap is a 413 before anything is read; `readJson` also counts streamed bytes, so a chunked body with no or a false length is cut off at the cap.
+- **User check**: `auth: "required"` (default) verifies the session with Supabase Auth on every request (401 when signed out) and passes `user` to the handler. `"optional"` is for flows that create the session (demo bootstrap); `"none"` for public endpoints (health).
+- **Opt-out**: `skipOriginCheck: true` exists only for signature-verified webhooks (Stripe, if P2 is built).
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.
