@@ -165,6 +165,8 @@
   }
   html {
     @apply font-sans;
+    /* WCAG 2.2 2.4.11: a focused element must not hide under the sticky top bar. */
+    scroll-padding-top: 4rem;
   }
   /* Figures line up in columns; ops screens are mostly numbers. */
   table,

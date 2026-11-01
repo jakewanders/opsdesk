@@ -37,3 +37,49 @@ Defined as CSS variables in `src/app/globals.css` (`:root` for light, `.dark` fo
 ## Shared state components (SIT-163)
 
 `src/components/shared` holds the reusable states: `TableSkeleton` / `CardSkeleton` / `ChartSkeleton`, `EmptyState`, `ErrorAlert` (shows the API error envelope's request ID), `ToastProvider` + `notify` (sonner), and `ConfirmDialog` (Radix alert dialog). Usage notes are in `src/components/shared/README.md`. `StatePanel`, `PlannedPage`, and `ErrorPanel` (SIT-176) share the same layout. `ConfirmDialog` restores focus itself because Radix only returns focus to its own `Trigger`, and dialogs here are opened from any control.
+
+## Accessibility checklist
+
+The baseline for every screen (PRD 3.2, WCAG 2.2 AA). Feature issues reference this list in their Definition of Done; the pull request template repeats it. Shared pieces already satisfy most items, so reuse them: `FormField`, `ErrorSummary`, `ErrorAlert`, `EmptyState`, the skeletons, `ConfirmDialog`, `notify` (all in `src/components/shared`), and the tokens in `src/app/globals.css`.
+
+**Structure**
+
+- One `h1` per page; headings in order; landmarks `header`, `nav` (labelled when there are several), `main`, `footer`; a page `title`.
+- Skip link first in tab order, targeting `main#main-content`.
+
+**Keyboard**
+
+- Everything interactive is reachable and operable with the keyboard, in an order that matches the visual order. No keyboard traps.
+- Focus is always visible. Never add `outline-none` without a `focus-visible` ring; ring colors are never translucent. A focused element must not hide under the sticky top bar (`scroll-padding-top` in `globals.css`).
+- Dialogs trap focus, return it to the opener on close, and close on Esc unless an action is running (`ConfirmDialog` does this).
+- Anything that needs dragging also has a non-drag control (the kanban board has a stage selector; WCAG 2.5.7).
+
+**Names, labels, and forms**
+
+- Every control has a visible label (`FormField`); helper text and errors are linked with `aria-describedby`; invalid controls set `aria-invalid`.
+- A failed submit shows an `ErrorSummary` (announced, takes focus, links to each field). Errors say what is wrong and how to fix it, in words.
+- Icon-only buttons have an `aria-label`; decorative icons and illustrations are `aria-hidden`; informative images have alt text.
+- Identity fields set `autocomplete`; login and signup never require a cognitive test and allow pasting into password fields (WCAG 3.3.8).
+
+**Color, contrast, and status**
+
+- Use the tokens (contrast is tested in `contrast.test.ts`). Do not hard-code colors.
+- Never color alone: pair status with an icon and text ("Overdue", not just red).
+
+**Motion**
+
+- Animate only to show what changed. All animation and transitions are removed under `prefers-reduced-motion` by the global rule. No auto-playing or looping motion.
+
+**Zoom and touch**
+
+- The page works at 200% zoom and 320px wide with no horizontal scroll and no hidden primary actions. Touch targets are at least 24x24 CSS px (WCAG 2.5.8).
+
+**Dynamic content**
+
+- Loading uses a labelled skeleton (one polite status per area); results and failures are announced (`role="status"` / `role="alert"`, or a toast); async changes never move focus unexpectedly.
+
+**Proof**
+
+- A component test for the keyboard path and an axe check with `expectNoA11yViolations()` (`src/test/axe.ts`) in light and dark. jsdom cannot compute color contrast; the token tests and a browser check cover it.
+- Before a milestone ends: a keyboard-only pass, a screen reader pass on the main journey, and Lighthouse accessibility of at least 90 on key pages (record real scores in `docs/PROGRESS.md`).
+- Lint: `jsx-a11y` recommended rules run as errors (`eslint.config.mjs`) and are tested in `src/test/a11y-baseline.test.ts`.

@@ -85,7 +85,7 @@ export function LandingPage({ repoUrl }: LandingPageProps) {
       </header>
 
       <main id="main-content" tabIndex={-1} className="outline-none">
-        <section className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:py-20">
+        <section className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:items-center lg:py-20">
           <div className="flex flex-col gap-6">
             <h1 className="max-w-[16ch] text-[clamp(2.5rem,6vw,4rem)] leading-[1.05] font-semibold tracking-[-0.025em] text-balance">
               A simpler way to run your business
@@ -143,7 +143,7 @@ export function LandingPage({ repoUrl }: LandingPageProps) {
               <article
                 key={feature.id}
                 aria-labelledby={`${feature.id}-title`}
-                className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14"
+                className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-14"
               >
                 <div className={cn("flex flex-col gap-3", index % 2 === 1 && "lg:order-2")}>
                   <h3
@@ -202,7 +202,7 @@ export function LandingPage({ repoUrl }: LandingPageProps) {
               </li>
             ))}
           </ul>
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             {DESIGN_NOTES.map((note) => (
               <div key={note.title} className="flex flex-col gap-2">
                 <h3 className="text-base font-semibold">{note.title}</h3>
