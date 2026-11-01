@@ -50,3 +50,13 @@ supabase/volumes
 # local agent loop state
 .claude/
 .playwright-mcp/
+
+# exports, test credentials, and test output
+/exports/
+*.export.csv
+*.credentials*
+.env.test.local
+/e2e/.auth/
+/playwright/.auth/
+/playwright-report/
+/test-results/

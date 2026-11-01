@@ -76,3 +76,12 @@ NOT verified: `supabase start` and a real `db:reset` (no Docker or Podman instal
 - Browser look (Playwright, 1100x560, dark theme): shell, Settings now in the sidebar, development notice, holding page rendered correctly.
 - Not verified: proxy behavior on Netlify (not deployed).
 - Found by the clean-checkout run: `npm run build` with no Supabase variables failed on `/app/settings/billing` because flags were read through the full public env parser. `getFeatureFlags()` now parses only the flags (2 new tests); `npm run build` with no environment variables set passes again (29/29 static pages generated), and the full suite is 11 files, 138 tests.
+
+### SIT-157 — Repository layout, npm scripts (done)
+
+- Layout test (`scripts/lib/layout.test.ts`, 26 dirs + 5 files from PRD 10) passes; folders without files hold `.gitkeep`.
+- All 14 scripts from PRD 10.3 exist (checked by reading `package.json`). `test:db`, `test:e2e`, `demo:seed`, `demo:cleanup` print "not implemented yet ... Arrives with SIT-xxx" and exit 0.
+- `rm -rf .next node_modules && npm ci && npm run check`: exit 0, all 7 steps passed (lint, format:check, typecheck, check:env, test:unit 13 files / 172 tests, build, check:bundle: 37 files, clean).
+- Negative check: a file containing `(x: any)` made `npm run check` exit 1 at "lint" and stop; removed.
+- `planSteps("test")` adds `test:db` as soon as a `.sql` file exists in `supabase/tests` (checked with a temporary file; removed) and `test:e2e` once a `*.spec.ts` exists in `e2e`; both covered by unit tests.
+- README documents scripts, layout, and the branch/commit convention.

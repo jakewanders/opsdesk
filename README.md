@@ -14,21 +14,29 @@ npm run dev        # http://localhost:3000
 
 ## Commands
 
-| Command                           | Purpose                                                            |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `npm run dev`                     | Start the dev server                                               |
-| `npm run build`                   | Production build                                                   |
-| `npm run start`                   | Serve the production build                                         |
-| `npm run lint`                    | ESLint                                                             |
-| `npm run typecheck`               | `next typegen && tsc --noEmit` (strict)                            |
-| `npm run format` / `format:check` | Prettier write / check                                             |
-| `npm run test:unit`               | Vitest (jsdom + Testing Library)                                   |
-| `npm run db:start` / `db:stop`    | Start/stop the local Supabase stack (needs Docker)                 |
-| `npm run db:reset`                | Rebuild the LOCAL database from migrations and `supabase/seed.sql` |
-| `npm run db:types`                | Regenerate TypeScript types from the local database                |
-| `npm run test:coverage`           | Vitest with v8 coverage                                            |
+| Command                           | Purpose                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `npm run dev`                     | Start the dev server                                                                                         |
+| `npm run build` / `start`         | Production build / serve it                                                                                  |
+| `npm run lint`                    | ESLint                                                                                                       |
+| `npm run format` / `format:check` | Prettier write / check                                                                                       |
+| `npm run typecheck`               | `next typegen && tsc --noEmit` (strict)                                                                      |
+| `npm run test:unit`               | Vitest (jsdom + Testing Library)                                                                             |
+| `npm run test:coverage`           | Vitest with v8 coverage                                                                                      |
+| `npm run test:db`                 | pgTAP database tests (placeholder until SIT-197)                                                             |
+| `npm run test:e2e`                | Playwright end-to-end tests (placeholder until the E2E issues)                                               |
+| `npm test`                        | Unit tests, plus `test:db` and `test:e2e` once their files exist                                             |
+| `npm run check`                   | `lint`, `format:check`, `typecheck`, `check:env`, tests, `build`, `check:bundle`; stops at the first failure |
+| `npm run check:env`               | Fails if a `NEXT_PUBLIC_*` name contains `SECRET`, `SERVICE` or `WEBHOOK`                                    |
+| `npm run check:bundle`            | After a build, fails if a server-only variable name or value is in `.next/static`                            |
+| `npm run smoke:routes`            | Hits every PRD route on a running server (`-- http://host:port`, `--flags-on`)                               |
+| `npm run db:start` / `db:stop`    | Start/stop the local Supabase stack (needs Docker)                                                           |
+| `npm run db:reset`                | Rebuild the LOCAL database from migrations and `supabase/seed.sql`                                           |
+| `npm run db:types`                | Regenerate TypeScript types from the local database                                                          |
+| `npm run demo:seed`               | Local demo seed (placeholder until SIT-192)                                                                  |
+| `npm run demo:cleanup`            | Expired-demo cleanup (placeholder until SIT-213)                                                             |
 
-More scripts, Supabase local setup, and the env table are added by later issues.
+Placeholder scripts print "not implemented yet" and exit 0 on their own. `npm run check` and `npm test` add `test:db` and `test:e2e` automatically once a `.sql` file exists in `supabase/tests/` or a `*.spec.ts` in `e2e/`, so a placeholder can never hide a real failure.
 
 ## Local Supabase
 
@@ -69,3 +77,15 @@ Copy `.env.example` to `.env.local`. Variables are validated with Zod (`src/lib/
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `AI_API_KEY` | server | no       | Optional P2 integrations                                                                                                                                  |
 
 Guards: `npm run check:env` fails if any `NEXT_PUBLIC_*` name contains `SECRET`, `SERVICE` or `WEBHOOK`; `npm run check:bundle` (after `npm run build`) fails if a server-only variable name or value appears in `.next/static`. CI wiring arrives with SIT-166.
+
+## Repository layout
+
+Follows PRD section 10: `src/app/(marketing)`, `(auth)`, `app/`, `api/v1/`; `src/components/{ui,layout,shared}`; `src/features/*` (one folder per module); `src/lib/*` (supabase, auth, permissions, api, domain, validation, money, logger, env); `supabase/{migrations,tests,seed.sql}`; `netlify/functions`; `e2e`; `docs`. Empty folders hold a `.gitkeep` until their issue adds files. `.github/workflows/ci.yml` and `netlify.toml` arrive with SIT-166 and SIT-272.
+
+## Workflow and conventions
+
+- **Trunk-based:** `main` is the trunk and must stay runnable. Work in short-lived branches (or directly on `main` for a solo change) and keep each commit small enough to review as one pull request.
+- **Branch names:** `<type>/<issue>-<short-slug>`, for example `feat/sit-178-tenancy-tables`. Linear's suggested branch names also work.
+- **Commits:** Conventional Commits with the issue id in the subject, for example `feat(db): create tenancy tables (SIT-178)`. Types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`. Do not commit `.env*` files (only `.env.example`), exports, or test credentials.
+- **Before pushing:** `npm run check`.
+- **GitHub repository:** `jakewanders/opsdesk` (private). The app reads its public source link from `NEXT_PUBLIC_GITHUB_REPO_URL`; nothing hard-codes it. Recommended repository settings, not applied by tooling: squash merge only, delete branch on merge, and the CI workflow as a required check once SIT-166 lands.
