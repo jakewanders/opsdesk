@@ -28,10 +28,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
 /**
  * Routes that have a page today. The nav never links to a page that does not exist
- * (SIT-162); each later issue that adds a page adds its href here, and
- * nav-config.test.ts checks that every listed route has a page file.
+ * (SIT-162). SIT-176 created a page for every PRD 3.3 route, so every nav item is built;
+ * nav-config.test.ts checks that each listed route has a page file.
  */
-export const BUILT_ROUTES: readonly string[] = ["/app"];
+export const BUILT_ROUTES: readonly string[] = NAV_ITEMS.map((item) => item.href);
 
 export function getNavItems(
   flags: Pick<FeatureFlags, "quotes">,

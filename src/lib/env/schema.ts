@@ -51,6 +51,17 @@ export function booleanFlag(name: string, defaultValue: boolean) {
   );
 }
 
+const flagFields = {
+  NEXT_PUBLIC_ENABLE_QUOTES: booleanFlag("NEXT_PUBLIC_ENABLE_QUOTES", true),
+  NEXT_PUBLIC_ENABLE_CSV_IMPORT: booleanFlag("NEXT_PUBLIC_ENABLE_CSV_IMPORT", true),
+  NEXT_PUBLIC_ENABLE_BILLING: booleanFlag("NEXT_PUBLIC_ENABLE_BILLING", false),
+  NEXT_PUBLIC_ENABLE_EMAIL: booleanFlag("NEXT_PUBLIC_ENABLE_EMAIL", false),
+  NEXT_PUBLIC_ENABLE_AI: booleanFlag("NEXT_PUBLIC_ENABLE_AI", false),
+  NEXT_PUBLIC_ENABLE_INTEGRATIONS: booleanFlag("NEXT_PUBLIC_ENABLE_INTEGRATIONS", false),
+};
+
+export const featureFlagsSchema = z.object(flagFields);
+
 export const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: httpUrl("NEXT_PUBLIC_SUPABASE_URL"),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: requiredString("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
@@ -60,12 +71,7 @@ export const publicEnvSchema = z.object({
   ),
   NEXT_PUBLIC_GITHUB_REPO_URL: z.preprocess(emptyToUndefined, z.url().optional()),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString,
-  NEXT_PUBLIC_ENABLE_QUOTES: booleanFlag("NEXT_PUBLIC_ENABLE_QUOTES", true),
-  NEXT_PUBLIC_ENABLE_CSV_IMPORT: booleanFlag("NEXT_PUBLIC_ENABLE_CSV_IMPORT", true),
-  NEXT_PUBLIC_ENABLE_BILLING: booleanFlag("NEXT_PUBLIC_ENABLE_BILLING", false),
-  NEXT_PUBLIC_ENABLE_EMAIL: booleanFlag("NEXT_PUBLIC_ENABLE_EMAIL", false),
-  NEXT_PUBLIC_ENABLE_AI: booleanFlag("NEXT_PUBLIC_ENABLE_AI", false),
-  NEXT_PUBLIC_ENABLE_INTEGRATIONS: booleanFlag("NEXT_PUBLIC_ENABLE_INTEGRATIONS", false),
+  ...flagFields,
 });
 
 export const serverEnvSchema = z.object({
@@ -137,7 +143,7 @@ export function parseServerEnv(source: Source): ServerEnv {
   return result.data;
 }
 
-export function toFeatureFlags(env: PublicEnv): FeatureFlags {
+export function toFeatureFlags(env: z.infer<typeof featureFlagsSchema>): FeatureFlags {
   return {
     quotes: env.NEXT_PUBLIC_ENABLE_QUOTES,
     csvImport: env.NEXT_PUBLIC_ENABLE_CSV_IMPORT,
@@ -146,4 +152,11 @@ export function toFeatureFlags(env: PublicEnv): FeatureFlags {
     ai: env.NEXT_PUBLIC_ENABLE_AI,
     integrations: env.NEXT_PUBLIC_ENABLE_INTEGRATIONS,
   };
+}
+
+/** Parses only the feature flags (cheap; used by the proxy, which must not require every variable). */
+export function parseFeatureFlags(source: Source): FeatureFlags {
+  const result = featureFlagsSchema.safeParse(source);
+  if (!result.success) throw new EnvError(describe(result.error), "public");
+  return toFeatureFlags(result.data);
 }

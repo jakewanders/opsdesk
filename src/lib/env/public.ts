@@ -1,4 +1,4 @@
-import { parsePublicEnv, toFeatureFlags, type FeatureFlags, type PublicEnv } from "./schema";
+import { parseFeatureFlags, parsePublicEnv, type FeatureFlags, type PublicEnv } from "./schema";
 
 let cached: PublicEnv | undefined;
 
@@ -28,6 +28,17 @@ export function getPublicEnv(): PublicEnv {
   return cached;
 }
 
+/**
+ * Feature flags only. They need none of the Supabase variables, so reading them never fails
+ * a build or page render that has no backend configured (CI builds, flag-gated routes).
+ */
 export function getFeatureFlags(): FeatureFlags {
-  return toFeatureFlags(getPublicEnv());
+  return parseFeatureFlags({
+    NEXT_PUBLIC_ENABLE_QUOTES: process.env.NEXT_PUBLIC_ENABLE_QUOTES,
+    NEXT_PUBLIC_ENABLE_CSV_IMPORT: process.env.NEXT_PUBLIC_ENABLE_CSV_IMPORT,
+    NEXT_PUBLIC_ENABLE_BILLING: process.env.NEXT_PUBLIC_ENABLE_BILLING,
+    NEXT_PUBLIC_ENABLE_EMAIL: process.env.NEXT_PUBLIC_ENABLE_EMAIL,
+    NEXT_PUBLIC_ENABLE_AI: process.env.NEXT_PUBLIC_ENABLE_AI,
+    NEXT_PUBLIC_ENABLE_INTEGRATIONS: process.env.NEXT_PUBLIC_ENABLE_INTEGRATIONS,
+  });
 }

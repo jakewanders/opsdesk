@@ -23,3 +23,13 @@ Defined as CSS variables in `src/app/globals.css` (`:root` for light, `.dark` fo
 - **Nav config** (`nav-config.ts`): icons are referenced by name (components cannot cross the server/client boundary). `BUILT_ROUTES` lists the pages that exist; items for pages that do not exist yet are not rendered. Each issue that adds a page appends its href there, and a test checks each has a page file. Quotes follows `NEXT_PUBLIC_ENABLE_QUOTES`.
 - **Slots:** `orgSelector`, `user`, and `banner` props render fine without data; the workspace issues (SIT-209) and guest banner (SIT-211) fill them.
 - **Rendering:** the layout calls `connection()` inside `Suspense`, so the authenticated shell is rendered per request and never prerendered (`cacheComponents` rejects `export const dynamic`).
+
+## Route map (SIT-176)
+
+`src/lib/routes.ts` lists every PRD 3.3 route and drives the route unit test, the nav test, and `npm run smoke:routes` (hits a running server). Route groups follow PRD 10: `(marketing)` for `/`, `/privacy`, `/terms`; `(auth)` for `/demo`, `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/callback`; `app/` for everything under `/app`.
+
+- **Caching:** `/`, `/privacy`, `/terms` are static (`s-maxage=31536000`). Auth pages and everything under `/app` render per request (`connection()` inside `Suspense`) and send `private, no-cache, no-store`.
+- **P2 flags:** `/app/settings/integrations` and `/app/settings/billing` return a real 404 while `NEXT_PUBLIC_ENABLE_INTEGRATIONS` / `NEXT_PUBLIC_ENABLE_BILLING` are off. `src/proxy.ts` rewrites them to a non-existent path, because a page-level `notFound()` would run after the shell has started streaming a 200. The settings sub-nav links them only when the flag is on.
+- **Holding pages:** routes whose feature ships later render `PlannedPage` (title, what it will do, milestone, a link back); no fake data. Each owning issue replaces its page.
+- **Boundaries:** `not-found.tsx` and `error.tsx` exist at the root and inside `/app` (the latter keeps the shell), built on `StatePanel` / `ErrorPanel` in `src/components/shared`.
+- **Auth guard:** `/app` layout carries a visible development notice and a TODO until SIT-180 adds the guard.

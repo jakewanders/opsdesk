@@ -18,7 +18,8 @@
     "db:reset": "node scripts/db-reset.mjs",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "check:env": "node scripts/check-env-names.mjs",
-    "check:bundle": "node scripts/check-bundle-secrets.mjs"
+    "check:bundle": "node scripts/check-bundle-secrets.mjs",
+    "smoke:routes": "node scripts/smoke-routes.mjs"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

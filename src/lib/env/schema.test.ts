@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   EnvError,
   PRODUCTION_ORIGIN,
+  parseFeatureFlags,
   parsePublicEnv,
   parseServerEnv,
   toFeatureFlags,
@@ -97,5 +98,24 @@ describe("parseServerEnv", () => {
     const env = parseServerEnv({ SUPABASE_SECRET_KEY: "sb_secret_x", STRIPE_SECRET_KEY: "" });
     expect(env.SUPABASE_SECRET_KEY).toBe("sb_secret_x");
     expect(env.STRIPE_SECRET_KEY).toBeUndefined();
+  });
+});
+
+describe("parseFeatureFlags", () => {
+  it("needs none of the Supabase variables", () => {
+    expect(parseFeatureFlags({})).toEqual({
+      quotes: true,
+      csvImport: true,
+      billing: false,
+      email: false,
+      ai: false,
+      integrations: false,
+    });
+  });
+
+  it("rejects a malformed flag", () => {
+    expect(() => parseFeatureFlags({ NEXT_PUBLIC_ENABLE_AI: "maybe" })).toThrow(
+      /NEXT_PUBLIC_ENABLE_AI/,
+    );
   });
 });
