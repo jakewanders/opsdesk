@@ -1,0 +1,22 @@
+# Netlify build configuration (SIT-177). No secrets here: real environment variables are set
+# in the Netlify dashboard (see docs/DEPLOYMENT.md). Next.js support (server rendering, the
+# proxy, route handlers) comes from Netlify's automatic Next.js runtime; no publish directory.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  # Same Node as .nvmrc and package.json engines.
+  NODE_VERSION = "24"
+
+# Previews and branch deploys run before the Supabase test project exists (SIT-274), so they
+# get placeholder PUBLIC values only. The app validates that these variables are present at
+# server start; nothing in the M0 shell calls Supabase. `.invalid` is a reserved TLD that never
+# resolves. The production context takes its real values from the dashboard (SIT-272).
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://placeholder.invalid"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "placeholder-not-a-real-key"
+
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "https://placeholder.invalid"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "placeholder-not-a-real-key"

@@ -4,7 +4,9 @@ Real command output only. Nothing here is a claim of completion until the checks
 
 ## Waiting on Jake
 
-Nothing at the moment. (SIT-160 and SIT-166 were unblocked on 2026-11-01: Docker installed, push to `main` approved.)
+Items only Jake can unblock. Each is also an action item in the tracker.
+
+- **SIT-177** (Netlify deploy preview; blocks SIT-213, 272, 273, 274): create the Netlify site from `jakewanders/opsdesk` and enable Deploy Previews (steps in `docs/DEPLOYMENT.md`), then share the site name and assigned `*.netlify.app` hostname. Do not attach `opsdesk.sitelaunch.dev` yet.
 
 ## M0 — Foundation & Application Architecture
 
@@ -135,6 +137,21 @@ Verified on GitHub after the push to `main` was approved:
 - Real bug found and fixed: at 320px the landing page scrolled horizontally (page width 372px) because a no-wrap tab row in the customer illustration widened an implicit grid track. Fixed with `grid-cols-1` on the landing grids; re-measured scrollWidth 320. (jsdom has no layout, so a unit test cannot catch this; it is covered by the browser check and the checklist's 320px item.)
 - Added `scroll-padding-top: 4rem` so a focused element is not hidden by the sticky top bar (WCAG 2.2 2.4.11).
 - Published the accessibility checklist in `docs/ARCHITECTURE.md` and a pull request template (`.github/pull_request_template.md`) that repeats it. The checklist is referenced from the Definition of Done of the 15 parent issues that own UI work (SIT-125, 127, 129, 131, 134 to 144); sub-issues inherit it through their parent's "all sub-issues done" rule.
+
+### SIT-177 — Netlify deploy preview (PARTIAL, needs the Netlify account)
+
+Done and verified locally (nothing is deployed):
+
+- `netlify.toml` (build `npm run build`, Node 24, placeholder public Supabase values for deploy-preview and branch-deploy contexts only; parsed with Python `tomllib`), guarded by `src/lib/netlify-config.test.ts` (4 tests: no publish dir, Node matches `.nvmrc`, only `NEXT_PUBLIC_*` placeholders and no secret-like text, no `sitelaunch.dev`).
+- `noindex` outside production: `src/proxy.ts` adds `X-Robots-Tag: noindex, nofollow` when Netlify's `CONTEXT` is not `production`; `next.config.ts` inlines `CONTEXT` at build because it is a build-time variable. `shouldNoindex` has 3 tests. Real runs of the production build + `next start`: built with `CONTEXT=deploy-preview` and run with no `CONTEXT`: `/`, `/privacy`, `/app`, `/app/customers`, `/login` all 200 with `x-robots-tag: noindex, nofollow`, `/app/settings/billing` 404 with the header; built with `CONTEXT=production` and the production `NEXT_PUBLIC_APP_URL`: 200 and no header; built with `CONTEXT=production` and the default app URL: server refuses to start (`NEXT_PUBLIC_APP_URL must be https://opsdesk.sitelaunch.dev for production deploys`, `/` returns 500); built with no `CONTEXT`: 200 and no header.
+- `docs/DEPLOYMENT.md` with the exact setup steps, verification commands, and empty record fields.
+- `npm run lint`, `format:check`, `typecheck`, `check:env` pass; `test:unit` 21 files, 281 tests pass.
+
+NOT done (needs Jake): no Netlify site exists, so no build on Netlify, no preview URL, no 375px/desktop smoke on a preview, and no real `X-Robots-Tag` check on a preview.
+
+## Waiting on Jake (SIT-177 addition)
+
+- **SIT-177** (blocks SIT-213, 272, 273, 274): create the Netlify site from `jakewanders/opsdesk` (steps in `docs/DEPLOYMENT.md`), enable Deploy Previews, and tell Claude the site name and assigned `*.netlify.app` hostname (or grant the Netlify CLI/MCP access) so the preview can be verified. Do not attach `opsdesk.sitelaunch.dev` yet.
 
 ## M1 — Authentication, Organizations & Public Demo
 
