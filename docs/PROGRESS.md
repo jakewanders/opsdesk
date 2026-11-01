@@ -153,6 +153,18 @@ NOT done (needs Jake): no Netlify site exists, so no build on Netlify, no previe
 
 - **SIT-177** (blocks SIT-213, 272, 273, 274): create the Netlify site from `jakewanders/opsdesk` (steps in `docs/DEPLOYMENT.md`), enable Deploy Previews, and tell Claude the site name and assigned `*.netlify.app` hostname (or grant the Netlify CLI/MCP access) so the preview can be verified. Do not attach `opsdesk.sitelaunch.dev` yet.
 
+### SIT-165 — Privacy and terms pages (done)
+
+- `npm run test:unit`: 22 files, 301 tests pass; `src/app/(marketing)/legal-pages.test.tsx` (20 tests) for both pages: one h1, last-updated date, h2 sections, landmarks and skip link, links home and to each other, a "still being built / will be checked" notice, metadata, no certification/compliance/"we never collect" claims, no placeholder text, no invented email or phone, axe 0 violations in light and dark; Privacy content (anonymous identity, cookies, 24 hours, fictional data, technical identifiers, "does not claim that no data is collected", optional analytics, kept until archived or deleted); Terms content (portfolio demonstration, fictional data only, no uptime guarantee, not certified for HIPAA, SOC 2, PCI DSS). Mutation: adding "We never collect any data." made the claims test fail; reverted.
+- `npm run build` with no environment: `/privacy` and `/terms` are static (`○`); production server sends `Cache-Control: s-maxage=31536000` for both.
+- **Lighthouse 13.6.0** (production build, mobile emulation, local machine): `/privacy` and `/terms` each accessibility **100**, best-practices **100**, SEO **100**; no failing weighted audits. Local measurements, not deployed-site numbers.
+- Copy is written as design intent where behavior is not shipped yet (demo, cleanup, real accounts) and says so; it states what is true today (no analytics collected; theme stored in local storage; no contact address published yet). No contact details were invented. To be re-reviewed against shipped behavior in the release acceptance issues (SIT-149, P-22).
+- The signup form link is not possible yet: `/signup` is still a holding page; SIT-179 owns it (comment left there).
+
+### M0 interim check (all issues except SIT-177 finished)
+
+Run on commit `HEAD` of this entry in a fresh clone with an empty environment (`git clone`, `npm ci`, `npm run check`): lint, format:check, typecheck, check:env, test:unit (22 files, 301 tests), build, check:bundle all passed. GitHub Actions on `main` is green. Exit criteria status against PRD 12 M0: `npm run build`, lint, typecheck pass: yes. Landing and app shell responsive: verified locally at 375px, 640px, 768px, 1280px (and 320px reflow). **Deployed in a preview: not yet (SIT-177 waits on a Netlify site).** M0 is therefore not complete.
+
 ## M1 — Authentication, Organizations & Public Demo
 
 Not started. No checks run.
