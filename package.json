@@ -14,6 +14,7 @@
     "test:unit:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:db": "node scripts/test-db.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:e2e": "node scripts/not-implemented.mjs test:e2e SIT-251 \"Playwright suite.\"",
     "test": "node scripts/run-steps.mjs test",
     "check": "node scripts/run-steps.mjs check",

@@ -7,6 +7,7 @@ Real command output only. Nothing here is a claim of completion until the checks
 Items only Jake can unblock. Each is also an action item in the tracker.
 
 - **SIT-177** (Netlify deploy preview; blocks SIT-213, 272, 273, 274): create the Netlify site from `jakewanders/opsdesk` and enable Deploy Previews (steps in `docs/DEPLOYMENT.md`), then share the site name and assigned `*.netlify.app` hostname. Do not attach `opsdesk.sitelaunch.dev` yet.
+- **SIT-168 (hosted part)**: create a Cloudflare Turnstile widget for `opsdesk.sitelaunch.dev`; in the hosted Supabase project turn on anonymous sign-ins and Turnstile CAPTCHA with the production secret and review the anonymous rate limit; set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in Netlify. Checklist in `docs/DEMO.md`; tracked as P-14. Does not block local work.
 
 ## M0 — Foundation & Application Architecture
 
@@ -178,6 +179,16 @@ In progress. Per-issue results are below; milestone-level checks are not yet run
 - `npm run db:types` generated `src/lib/supabase/database.types.ts` from the local schema (includes `profiles`); formatted with Prettier. Docker's CLI is now found automatically by `db:start`, `db:stop`, `db:reset`, `db:types`, and `test:db` (`scripts/lib/docker-path.mjs`, 3 unit tests).
 - `docs/SECURITY.md` created with the database conventions and the profiles policy table.
 - `npm run lint`, `format:check`, `typecheck` pass; `npm run test:unit` 23 files, 304 tests pass.
+
+### SIT-168 — Anonymous sign-ins and Turnstile CAPTCHA (done; hosted settings tracked in P-14)
+
+- `supabase/config.toml`: `enable_anonymous_sign_ins = true`; `[auth.captcha]` enabled with provider `turnstile` and Cloudflare's published always-pass **dummy** secret; stack restarted (`db:stop`, `db:start`) to load it. `anonymous_users` rate limit stays at 30 per hour per IP.
+- Manual probes against the real local Auth service (users in `auth.users` counted before and after): no token: `400 captcha_failed` ("no captcha_token found"), 0 users created; empty token: same; Cloudflare dummy token: 200, `is_anonymous: true`, 1 user, profile `Demo User` created by the SIT-167 trigger. With the config temporarily switched to Cloudflare's always-fail dummy secret, a non-empty token was rejected (`captcha_failed`, `invalid-input-response`), 0 users created, proving the provider verdict is consulted; the config was restored and the stack restarted.
+- Automated: `npm run test:integration` (new script and config, `src/lib/supabase/anonymous-signin.integration.test.ts`): 3 of 3 pass (no token rejected and creates no user; empty token rejected; dummy token accepted, exactly one anonymous user, profile `Demo User`); the test deletes the user it creates (0 users left). `src/lib/supabase/captcha-config.test.ts` (6 unit tests): anonymous sign-ins on, CAPTCHA on with `turnstile`, secret is one of Cloudflare's three dummy secrets, a rate limit exists, and no real-looking Turnstile key (`0x4...`) appears in any tracked text file.
+- `npm run test:unit`: 24 files, 310 tests pass; `lint`, `format:check`, `typecheck` pass. `npm run check` now also runs `test:integration` when a `*.integration.test.ts` exists.
+- `docs/DEMO.md`: flow, fail-safe rule, keys table (dummy keys for local), hosted-project checklist, verification commands. `.env.example` carries the dummy site key.
+
+Not part of this issue's acceptance (needs Jake): applying the hosted settings and production keys. No Cloudflare Turnstile widget or hosted Supabase project exists to configure or verify; production verification is tracked in P-14 and P-15.
 
 ## M2 — Core CRM, Pipeline & Task Management
 

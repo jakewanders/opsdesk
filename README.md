@@ -7,6 +7,7 @@ Multi-tenant business operations SaaS (customers, pipeline, tasks, quotes) built
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md): every P0 and P1 feature mapped to files, migrations, tests, and Linear issues.
 - [`docs/PROGRESS.md`](docs/PROGRESS.md): real check results per issue and milestone, and what is waiting on the owner.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation from the PRD and why.
+- [`docs/DEMO.md`](docs/DEMO.md): demo sign-in, Turnstile keys, hosted-project checklist.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): Netlify setup, `noindex` behavior, verification commands (not deployed yet).
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): design tokens, app shell, route map.
 
@@ -32,6 +33,7 @@ npm run dev        # http://localhost:3000
 | `npm run test:unit`               | Vitest (jsdom + Testing Library)                                                                             |
 | `npm run test:coverage`           | Vitest with v8 coverage                                                                                      |
 | `npm run test:db`                 | pgTAP tests in `supabase/tests` against the local database (run `npm run db:start` first)                    |
+| `npm run test:integration`        | Integration tests against the local Supabase stack (anonymous sign-in and CAPTCHA)                           |
 | `npm run test:e2e`                | Playwright end-to-end tests (placeholder until the E2E issues)                                               |
 | `npm test`                        | Unit tests, plus `test:db` and `test:e2e` once their files exist                                             |
 | `npm run check`                   | `lint`, `format:check`, `typecheck`, `check:env`, tests, `build`, `check:bundle`; stops at the first failure |

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { hasDbTests, hasE2eTests, planSteps } from "./steps.mjs";
+import { hasDbTests, hasE2eTests, hasIntegrationTests, planSteps } from "./steps.mjs";
 
 function repo(files: string[]): string {
   const root = mkdtempSync(join(tmpdir(), "steps-"));
@@ -38,5 +38,13 @@ describe("planSteps", () => {
     expect(planSteps("test", root)).toEqual(["test:unit", "test:db", "test:e2e"]);
     expect(planSteps("check", root)).toContain("test:db");
     expect(planSteps("check", root)).toContain("test:e2e");
+  });
+
+  it("adds test:integration once a *.integration.test.ts exists under src", () => {
+    const none = repo(["src/lib/a.test.ts"]);
+    expect(hasIntegrationTests(none)).toBe(false);
+    const some = repo(["src/lib/supabase/x.integration.test.ts"]);
+    expect(hasIntegrationTests(some)).toBe(true);
+    expect(planSteps("test", some)).toEqual(["test:unit", "test:integration"]);
   });
 });

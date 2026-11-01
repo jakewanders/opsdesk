@@ -19,6 +19,9 @@ function hasFile(dir, test) {
 /** pgTAP tests exist once a .sql file is in supabase/tests. */
 export const hasDbTests = (root = ".") =>
   hasFile(join(root, "supabase/tests"), (f) => f.endsWith(".sql"));
+/** Integration tests (need the local Supabase stack) exist once a *.integration.test.ts is in src. */
+export const hasIntegrationTests = (root = ".") =>
+  hasFile(join(root, "src"), (f) => f.endsWith(".integration.test.ts"));
 /** Playwright specs exist once a *.spec.ts is in e2e. */
 export const hasE2eTests = (root = ".") =>
   hasFile(join(root, "e2e"), (f) => /\.spec\.[cm]?[jt]s$/.test(f));
@@ -30,6 +33,7 @@ export const hasE2eTests = (root = ".") =>
 export function planSteps(mode, root = ".") {
   const tests = ["test:unit"];
   if (hasDbTests(root)) tests.push("test:db");
+  if (hasIntegrationTests(root)) tests.push("test:integration");
   if (hasE2eTests(root)) tests.push("test:e2e");
   if (mode === "test") return tests;
   return ["lint", "format:check", "typecheck", "check:env", ...tests, "build", "check:bundle"];

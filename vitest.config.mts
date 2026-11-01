@@ -12,6 +12,8 @@ export default defineConfig({
     globals: false,
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+    // Integration tests need the local Supabase stack; see vitest.integration.config.mts.
+    exclude: ["**/node_modules/**", "**/*.integration.test.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
