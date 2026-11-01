@@ -23,6 +23,48 @@ export type Database = {
   };
   public: {
     Tables: {
+      demo_workspaces: {
+        Row: {
+          created_at: string;
+          kind: string;
+          last_reset_at: string | null;
+          organization_id: string;
+          seed_version: number;
+          seeded_at: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          kind?: string;
+          last_reset_at?: string | null;
+          organization_id: string;
+          seed_version?: number;
+          seeded_at?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          kind?: string;
+          last_reset_at?: string | null;
+          organization_id?: string;
+          seed_version?: number;
+          seeded_at?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "demo_workspaces_organization_fkey";
+            columns: ["organization_id", "kind"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id", "kind"];
+          },
+        ];
+      };
       memberships: {
         Row: {
           joined_at: string;

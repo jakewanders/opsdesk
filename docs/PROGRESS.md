@@ -302,6 +302,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: proxy stops applying the policy (5 unit failures, and the real-server test failed 3 after a rebuild), helper does nothing (6), `/api` not private (4), `/app` layout loses `connection()` (1).
 - **Waiting:** the acceptance item "CDN behavior verified on the deployed preview" needs a Netlify site (SIT-177, waiting on Jake). The same header and leak checks should be re-run against that preview; recorded in `docs/SECURITY.md`.
 
+### SIT-191 — Demo-workspace database support (done)
+
+- Migration `20261101000600_demo_workspaces.sql`: `public.demo_workspaces` (unique `user_id`, composite FK pinning `kind = 'demo'`, seed version/time, `last_reset_at`), RLS owner-read-only with restrictive write denials, trusted-only column trigger, helpers `demo_ttl`, `register_demo_workspace`, `record_demo_seed`, `begin_demo_reset` (atomic one-per-minute claim with `OD429` and retry-after). Documented in `docs/DEMO.md`, policies added to `docs/SECURITY.md`.
+- `supabase/tests/demo-workspaces.test.sql` (38 assertions): one demo per identity (second registration is `23505`), real org cannot be registered, kind pinned, seed recording and validation, throttle at 59 s refused / 61 s allowed, guests read only their own row and cannot write anything (also with an accidental grant and RLS off), `anon` denied, cascade frees the identity, cleanup query uses the partial index. `rls-tenancy.test.sql` policy list updated.
+- **EXPLAIN recorded** (5,000 demo orgs, 800 expired, seq scans enabled): `Index Scan using organizations_demo_expiry_idx` with `Index Cond: (expires_at < now())` (plan in `docs/DEMO.md`).
+- `npm run test:db`: 7 files, 265 tests PASS. `npm run check`: all 9 steps passed (unit 716, integration 47).
+- Mutations caught and reverted by `db:reset`: unique `user_id` dropped (15 failed), composite FK replaced by a plain FK (1), trusted-columns trigger dropped (1), update granted and denial dropped (2 + 2), throttle disabled (3), index dropped (2), select policy opened (14).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

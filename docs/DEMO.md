@@ -60,3 +60,23 @@ KEY=$(npx supabase status -o json | python3 -c "import json,sys; print(json.load
 curl -s -X POST http://127.0.0.1:54321/auth/v1/signup -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}'
 # -> 400 captcha_failed (no captcha_token found)
 ```
+
+## Database support for the demo lifecycle (SIT-191)
+
+Migration `20261101000600_demo_workspaces.sql`. The bootstrap and reset RPCs (SIT-199, SIT-205) and the cleanup job (SIT-207) build on these structures.
+
+- **`public.demo_workspaces`**: one row per demo, `organization_id` (primary key), `user_id` (the anonymous identity, **unique**), `seed_version` and `seeded_at`, `last_reset_at`, timestamps. A composite foreign key `(organization_id, kind) -> organizations (id, kind)` with `kind` pinned to `demo` means a real organization can never be registered as a demo.
+- **One demo per identity** is decided by the database: the unique `user_id` is the arbiter when two bootstrap calls race (the loser gets `23505`). An expired demo keeps its row until the cleanup job deletes the organization (the row cascades), which frees the identity for a fresh demo: that is the "after cleanup rules allow" rule.
+- **Lifetime**: `private.demo_ttl()` is 24 hours; `expires_at` is set at creation and changed only through `private.set_demo_expiry` (SIT-188), so a client cannot extend it.
+- **Reset throttle**: `private.begin_demo_reset(org)` claims a reset atomically (the `UPDATE` is the lock): allowed when `last_reset_at` is empty or at least a minute old, otherwise `OD429 DEMO_RESET_THROTTLED` with a `retry-after` hint. Not callable by browser roles.
+- **Seed version**: `private.record_demo_seed(org, version)` stores which seed populated the workspace (version >= 1, with `seeded_at`), so a reset can restore exactly that version.
+- **Access**: RLS on; an owner can read their own row; no insert/update/delete grants and restrictive denial policies; `seed_version`, `seeded_at` and `last_reset_at` are also refused by a trigger for any role except `postgres`, `supabase_admin`, `service_role`; the helpers' EXECUTE is for `service_role` (and the owner-run definer RPCs) only.
+- **Cleanup index**: the partial index `organizations_demo_expiry_idx (expires_at) where kind = 'demo'` serves the scan. Real plan on the local database with 5,000 demo organizations, 800 of them expired, seq scans enabled (the planner chooses it on its own):
+
+```
+ Limit (actual rows=100 loops=1)
+   ->  Index Scan using organizations_demo_expiry_idx on organizations (actual rows=100 loops=1)
+         Index Cond: (expires_at < now())
+```
+
+A pgTAP test also asserts the plan uses the index.
