@@ -49,3 +49,4 @@ supabase/volumes
 
 # local agent loop state
 .claude/
+.playwright-mcp/

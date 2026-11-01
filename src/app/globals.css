@@ -1,26 +1,189 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-heading: var(--font-sans);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * OpsDesk design tokens. Source of truth for color; documented in docs/ARCHITECTURE.md.
+ * All values are plain hex so src/lib/design/contrast.test.ts can verify WCAG AA.
+ * One brand accent (teal) over a warm-neutral base. Status colors are always
+ * paired with an icon or text in components (PRD 3.2), never color alone.
+ */
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1b1a;
+  --card: #ffffff;
+  --card-foreground: #1c1b1a;
+  --popover: #ffffff;
+  --popover-foreground: #1c1b1a;
+  --primary: #0f6b63;
+  --primary-foreground: #ffffff;
+  --secondary: #f0efed;
+  --secondary-foreground: #1c1b1a;
+  --muted: #f0efed;
+  --muted-foreground: #5b5853;
+  --accent: #e6f0ef;
+  --accent-foreground: #0b4f49;
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+  --destructive-subtle: #fdecea;
+  --success: #1b7a3e;
+  --success-foreground: #ffffff;
+  --success-subtle: #e7f4ec;
+  --warning: #8a5a00;
+  --warning-foreground: #ffffff;
+  --warning-subtle: #fff4d6;
+  --info: #1d5fa8;
+  --info-foreground: #ffffff;
+  --info-subtle: #e8f0fa;
+  --border: #e2e0dc;
+  --input: #8f8b84;
+  --ring: #0f6b63;
+  --chart-1: #0f6b63;
+  --chart-2: #1d5fa8;
+  --chart-3: #8a5a00;
+  --chart-4: #7a3e8e;
+  --chart-5: #5b5853;
+  --radius: 0.5rem;
+  --sidebar: #f4f3f1;
+  --sidebar-foreground: #1c1b1a;
+  --sidebar-primary: #0f6b63;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6f0ef;
+  --sidebar-accent-foreground: #0b4f49;
+  --sidebar-border: #e2e0dc;
+  --sidebar-ring: #0f6b63;
+}
+
+.dark {
+  --background: #141413;
+  --foreground: #f2f1ee;
+  --card: #1c1c1a;
+  --card-foreground: #f2f1ee;
+  --popover: #1c1c1a;
+  --popover-foreground: #f2f1ee;
+  --primary: #4cc3b4;
+  --primary-foreground: #0b1f1d;
+  --secondary: #262624;
+  --secondary-foreground: #f2f1ee;
+  --muted: #262624;
+  --muted-foreground: #a8a49c;
+  --accent: #1e3330;
+  --accent-foreground: #bfe9e3;
+  --destructive: #f2766d;
+  --destructive-foreground: #1c0907;
+  --destructive-subtle: #3a1815;
+  --success: #5ccb86;
+  --success-foreground: #07210f;
+  --success-subtle: #12301c;
+  --warning: #e5b23c;
+  --warning-foreground: #261a00;
+  --warning-subtle: #33280a;
+  --info: #6ba8e8;
+  --info-foreground: #08192e;
+  --info-subtle: #14263d;
+  --border: #34332f;
+  --input: #75716a;
+  --ring: #4cc3b4;
+  --chart-1: #4cc3b4;
+  --chart-2: #6ba8e8;
+  --chart-3: #e5b23c;
+  --chart-4: #c68ad8;
+  --chart-5: #a8a49c;
+  --sidebar: #181817;
+  --sidebar-foreground: #f2f1ee;
+  --sidebar-primary: #4cc3b4;
+  --sidebar-primary-foreground: #0b1f1d;
+  --sidebar-accent: #1e3330;
+  --sidebar-accent-foreground: #bfe9e3;
+  --sidebar-border: #34332f;
+  --sidebar-ring: #4cc3b4;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Figures line up in columns; ops screens are mostly numbers. */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Visible keyboard focus everywhere, in both themes. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

@@ -23,3 +23,11 @@ _(none yet)_
 - Negative check: `export const bad = (x: any) => x;` made `npm run lint` fail with `@typescript-eslint/no-explicit-any` (1 error); file removed.
 - Negative check: a deliberately failing test made `npm run test:unit` exit 1 (1 failed, 4 passed); file removed.
 - `npm run test:coverage` runs (v8 reporter): All files 50% stmts on the sample code.
+
+### SIT-159 — shadcn/ui, design tokens, persisted theme (done)
+
+- `npm run test:unit`: 4 files, 57 tests pass (light and dark token contrast: all text pairs >= 4.5:1, control borders and rings >= 3:1; ThemeToggle: default light, cycle and persist, restore stored dark).
+- Mutation check: changing `--muted-foreground` to `#b0aca5` made 2 contrast tests fail; reverted.
+- `npm run lint`, `format:check`, `typecheck`, `build`: pass.
+- Browser check on `npm run dev` (Playwright): clicking the toggle set `html.dark` and `localStorage opsdesk-theme=dark`; after reload the page was still dark (body background `rgb(20, 20, 19)`), and the inline theme script precedes `<main>` in the HTML. Computed focus ring on the toggle: solid `rgb(76, 195, 180)` 3px. IBM Plex Sans applied.
+- Not done here: Lighthouse/axe scores (later accessibility issues, SIT-175 and P-09).
