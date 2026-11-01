@@ -118,6 +118,14 @@ Verified on GitHub after the push to `main` was approved:
 - Real browser (Playwright, temporary scratch page since removed): dialog opened with focus on Cancel; Esc closed it and `#archive` regained focus; `notify.success` produced a toast inside an `aria-live="polite"` region and focus stayed on the button. Viewed in dark and light: alert, empty state, card/table/chart skeletons, toast, and dialog all render correctly.
 - `npm run lint`, `format:check`, `typecheck` pass. Final clean-checkout run is in the commit message trail below.
 
+### SIT-164 — Marketing landing page (done)
+
+- `npm run lint`, `format:check`, `typecheck` pass; `npm run test:unit`: 17 files, 237 tests pass. New: `landing-page.test.tsx` (headline and subhead, landmarks, skip link first, Try Live Demo is `/demo` in header and hero, View Source Code absent without a repo URL and present with `target=_blank rel=noopener` when set, Technical Overview links to an existing on-page section, three feature articles, disclosure text, footer links to `/privacy` and `/terms`, no lorem/placeholder/testimonial text, no `$ % € £` and no digits except "SOC 2", no images, every illustration captioned "Not real data", axe in light and dark: 0 violations), `page.test.ts` (title, description, canonical, origin from `NEXT_PUBLIC_APP_URL`), `links.test.ts` (repo URL and origin parsing, `javascript:` and malformed values rejected).
+- `npm run build` with no environment variables: `/`, `/privacy`, `/terms` are static (`○`).
+- **Lighthouse 13.6.0** against `next start` of the production build (`http://localhost:3100/`, mobile emulation, headless Chrome, this Mac, no repo URL set): accessibility **100**, performance **100**, best-practices **100**, seo **100**; no failing weighted audits. Local measurement, not a deployed-site number.
+- Real browser (Playwright): 1280px full page reviewed; 375px dark: no horizontal scroll, both Try Live Demo links point to `/demo`, no source link without the env var. A truncated "Negotiation" label in the illustration at 375px was found and fixed.
+- Note: `next start` without the Supabase variables returns 500 for every route (the startup guard from SIT-161); Lighthouse needs `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set.
+
 ## M1 — Authentication, Organizations & Public Demo
 
 Not started. No checks run.
