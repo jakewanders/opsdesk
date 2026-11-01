@@ -85,3 +85,17 @@ NOT verified: `supabase start` and a real `db:reset` (no Docker or Podman instal
 - Negative check: a file containing `(x: any)` made `npm run check` exit 1 at "lint" and stop; removed.
 - `planSteps("test")` adds `test:db` as soon as a `.sql` file exists in `supabase/tests` (checked with a temporary file; removed) and `test:e2e` once a `*.spec.ts` exists in `e2e`; both covered by unit tests.
 - README documents scripts, layout, and the branch/commit convention.
+
+### SIT-166 — GitHub Actions CI skeleton (PARTIAL, needs a push)
+
+Done and verified locally:
+
+- `.github/workflows/ci.yml` (PR + push to `main`, `permissions: contents read`, concurrency cancel, 15 min timeout, no secrets or `env:` references). `npx @action-validator/cli` exits 0; parsed triggers, permissions, and 10 steps confirmed.
+- Simulated CI: `git clone` of the commit into `/tmp/opsdesk-ci`, then with an empty environment (`env -i`): `npm ci`, `lint`, `format:check`, `typecheck`, `check:env`, `test:unit`, `build`, `check:bundle` all passed (exit 0).
+- A lint error failing the pipeline was shown earlier through `npm run check` (SIT-157); the workflow runs the same commands as separate steps.
+
+NOT verified: any run on GitHub Actions (nothing has been pushed; the loop does not push).
+
+## Waiting on Jake (SIT-166 addition)
+
+- **SIT-166:** approve pushing `main` to `origin` (`jakewanders/opsdesk`), then confirm the first Actions run is green; for the failing-run check, push a branch with a deliberate lint error, open a PR, confirm it fails, then close it.
