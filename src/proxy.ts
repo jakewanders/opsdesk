@@ -3,10 +3,13 @@ import { FLAGGED_ROUTES } from "@/lib/routes";
 import { parseFeatureFlags } from "@/lib/env/schema";
 import { NOINDEX_VALUE, shouldNoindex } from "@/lib/robots";
 import { decideRoute } from "@/lib/auth/route-guard";
+import { applyPrivateNoStore, isPrivateRoute } from "@/lib/http/cache-control";
 import { resolveWorkspaceState } from "@/lib/auth/workspace-state";
 import { needsSession, updateSession } from "@/lib/supabase/middleware";
 
-function withRobots<T extends NextResponse>(response: T): T {
+function withRobots<T extends NextResponse>(response: T, pathname?: string): T {
+  // Anything that can depend on the session is never cached, including redirects and flag 404s.
+  if (pathname !== undefined && isPrivateRoute(pathname)) applyPrivateNoStore(response);
   if (shouldNoindex(process.env.CONTEXT)) {
     // Previews and branch deploys must never be indexed; only the production context may be.
     response.headers.set("X-Robots-Tag", NOINDEX_VALUE);
@@ -40,7 +43,7 @@ export async function proxy(request: NextRequest) {
     );
     if (blocked) {
       // Rewriting to a path that has no page yields the standard 404 response.
-      return withRobots(NextResponse.rewrite(new URL("/_flag-disabled", request.url)));
+      return withRobots(NextResponse.rewrite(new URL("/_flag-disabled", request.url)), pathname);
     }
   }
   if (needsSession(pathname)) {
@@ -64,11 +67,19 @@ export async function proxy(request: NextRequest) {
         const value = response.headers.get(name);
         if (value) redirect.headers.set(name, value);
       }
-      return withRobots(redirect);
+      return withRobots(redirect, pathname);
     }
-    return withRobots(response);
+    // A real 307 for the settings index (a page-level redirect() would stream a 200 inside the shell).
+    if (pathname === "/app/settings") {
+      const target = request.nextUrl.clone();
+      target.pathname = "/app/settings/organization";
+      const redirect = NextResponse.redirect(target, 307);
+      for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+      return withRobots(redirect, pathname);
+    }
+    return withRobots(response, pathname);
   }
-  return withRobots(NextResponse.next());
+  return withRobots(NextResponse.next(), pathname);
 }
 
 export const config = {

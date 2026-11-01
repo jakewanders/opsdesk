@@ -10,12 +10,8 @@ const nextConfig: NextConfig = {
   env: { CONTEXT: process.env.CONTEXT ?? "", DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL ?? "" },
   cacheComponents: true,
   partialPrefetching: true,
-  async redirects() {
-    // A real 307 for the settings index (a page-level redirect() would stream a 200 inside the shell).
-    return [
-      { source: "/app/settings", destination: "/app/settings/organization", permanent: false },
-    ];
-  },
+  // The settings index redirect lives in src/proxy.ts: a redirect declared here would answer without the
+  // private cache headers that every /app response must carry.
   turbopack: {
     rules: {
       "*.css": {

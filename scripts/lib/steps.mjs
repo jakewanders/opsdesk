@@ -36,5 +36,17 @@ export function planSteps(mode, root = ".") {
   if (hasIntegrationTests(root)) tests.push("test:integration");
   if (hasE2eTests(root)) tests.push("test:e2e");
   if (mode === "test") return tests;
-  return ["lint", "format:check", "typecheck", "check:env", ...tests, "build", "check:bundle"];
+  // The integration tests start the production build (cache-leak test), so `build` comes first.
+  const beforeBuild = tests.filter((t) => t !== "test:integration" && t !== "test:e2e");
+  const afterBuild = tests.filter((t) => t === "test:integration" || t === "test:e2e");
+  return [
+    "lint",
+    "format:check",
+    "typecheck",
+    "check:env",
+    ...beforeBuild,
+    "build",
+    "check:bundle",
+    ...afterBuild,
+  ];
 }

@@ -293,6 +293,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: reset reveals unknown account (1 failed), other sessions kept (1), any path allowed (5), callback trusts next (1), no confirm check (1), password not updated (2).
 - Found: Next prerendered `/forgot-password` at build (needs `connection()` because it reads runtime config); the PKCE verifier cookie must survive between request and link (clearing cookies in between breaks the flow, as it should); React resets uncontrolled fields after a failed server action, so password fields are cleared on error.
 
+### SIT-190 — Dynamic rendering and no-store on authenticated routes, with a leak test (done, CDN check pending)
+
+- `src/lib/http/cache-control.ts` (`PRIVATE_NO_STORE`, `isPrivateRoute`, `applyPrivateNoStore`), applied in `src/proxy.ts` to every private route including redirects and flag 404s (adds `Vary: Cookie`, never loosens Next's stricter header) and in `withApi`. Settings-index redirect moved into the proxy. PR template has the new checklist item. Details in `docs/SECURITY.md`.
+- **Real HTTP before the change:** rendered pages were already `private, no-cache, no-store...`, but redirects (`/app` 307, `/auth/callback` 303) and the config redirect `/app/settings` carried no cache header; landing/legal pages were `s-maxage=31536000` as intended. The header test found the `/app/settings` redirect, now fixed.
+- `npm run check`: all 9 steps passed (unit: 43 files, 716 tests; db: PASS; integration: 6 files, 47 tests). `check` now builds before the integration tests.
+- New tests: `proxy.test.ts` (every protected path x signed-out/member/guest, redirects, public pages untouched, settings redirect), `dynamic-rendering.test.ts` (layouts use `connection()`, no `use cache`/static exports under `/app` and `(auth)`, API routes use `withApi`, marketing code reads no session), `cache-leak.integration.test.ts` (7 tests over a real `next start`: every route header, static pages cacheable with no cookies, 30 alternating A/B/signed-out requests plus RSC payload variants never cross users, tampered session cookie gets nothing).
+- Mutations caught and reverted: proxy stops applying the policy (5 unit failures, and the real-server test failed 3 after a rebuild), helper does nothing (6), `/api` not private (4), `/app` layout loses `connection()` (1).
+- **Waiting:** the acceptance item "CDN behavior verified on the deployed preview" needs a Netlify site (SIT-177, waiting on Jake). The same header and leak checks should be re-run against that preview; recorded in `docs/SECURITY.md`.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

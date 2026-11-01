@@ -47,7 +47,7 @@ describe("successResponse", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/json; charset=utf-8");
     expect(res.headers.get("x-request-id")).toBe("req-12345678");
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.json()).toEqual({ data: [{ id: "1" }], meta: { total: 1 } });
   });
 
@@ -74,7 +74,7 @@ describe("errorResponse", () => {
     });
     expect(isApiErrorResponse(body)).toBe(true);
     expect(res.headers.get("x-request-id")).toBe("req-abcdefgh");
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("includes fieldErrors only when there are some", async () => {
@@ -104,7 +104,7 @@ describe("withBaseHeaders", () => {
     );
     expect(res.headers.get("content-type")).toBe("text/csv");
     expect(res.headers.get("x-request-id")).toBe("req-abcdefgh");
-    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("keeps a Cache-Control the handler set deliberately", () => {

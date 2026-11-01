@@ -6,19 +6,7 @@ import { authCookieOptions } from "./cookie-options";
 import type { Database } from "./database.types";
 import { resolveUser, type CurrentUser } from "./resolve-user";
 
-/**
- * Routes that read or change the session. Everything else (the static landing and legal pages)
- * is left alone so it stays cacheable and never receives a Set-Cookie header.
- */
-export function needsSession(pathname: string): boolean {
-  return (
-    pathname === "/app" ||
-    pathname.startsWith("/app/") ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/api/") ||
-    ["/demo", "/login", "/signup", "/forgot-password", "/reset-password"].includes(pathname)
-  );
-}
+export { isPrivateRoute as needsSession } from "@/lib/http/cache-control";
 
 /**
  * Refreshes the Supabase session for a request (called from src/proxy.ts) and forwards any new

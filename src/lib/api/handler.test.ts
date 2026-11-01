@@ -35,7 +35,7 @@ afterEach(() => {
 /** Every response, success or error, carries a request ID header and is never cached. */
 function expectBaseHeaders(res: Response) {
   expect(res.headers.get("x-request-id")).toBeTruthy();
-  expect(res.headers.get("cache-control")).toBe("no-store");
+  expect(res.headers.get("cache-control")).toBe("private, no-store");
 }
 
 describe("contract: one test per status code", () => {

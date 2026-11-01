@@ -40,6 +40,23 @@ describe("planSteps", () => {
     expect(planSteps("check", root)).toContain("test:e2e");
   });
 
+  it("check builds before the integration tests, because the cache-leak test starts the production build", () => {
+    const root = repo(["supabase/tests/a.sql", "src/x.integration.test.ts"]);
+    expect(planSteps("check", root)).toEqual([
+      "lint",
+      "format:check",
+      "typecheck",
+      "check:env",
+      "test:unit",
+      "test:db",
+      "build",
+      "check:bundle",
+      "test:integration",
+    ]);
+    // `npm test` has no build step; the cache-leak test builds on its own when none exists
+    expect(planSteps("test", root)).toEqual(["test:unit", "test:db", "test:integration"]);
+  });
+
   it("adds test:integration once a *.integration.test.ts exists under src", () => {
     const none = repo(["src/lib/a.test.ts"]);
     expect(hasIntegrationTests(none)).toBe(false);

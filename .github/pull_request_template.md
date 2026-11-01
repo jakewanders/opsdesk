@@ -6,6 +6,7 @@
 
 - [ ] `npm run check` passes locally
 - [ ] Tests cover the behavior, including a permissions or tenant-isolation case where data is involved
+- [ ] Any new route that shows user data is under `/app` or `/api` (or an auth page), so it is dynamic and `private, no-store`; no user data is rendered on a static page
 
 ## UI changes only
 

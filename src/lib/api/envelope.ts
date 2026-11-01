@@ -1,3 +1,4 @@
+import { PRIVATE_NO_STORE } from "@/lib/http/cache-control";
 import { ApiError, InternalError } from "./errors";
 import type { ApiErrorResponse, ApiMeta, ApiSuccess } from "./types";
 
@@ -49,7 +50,7 @@ const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8" };
 function baseHeaders(requestId: string, extra?: Record<string, string>): Headers {
   const headers = new Headers(extra);
   headers.set("X-Request-Id", requestId);
-  headers.set("Cache-Control", "no-store");
+  headers.set("Cache-Control", PRIVATE_NO_STORE);
   return headers;
 }
 
@@ -86,7 +87,7 @@ export function internalErrorResponse(requestId: string): Response {
 export function withBaseHeaders(response: Response, requestId: string): Response {
   const headers = new Headers(response.headers);
   headers.set("X-Request-Id", requestId);
-  if (!headers.has("Cache-Control")) headers.set("Cache-Control", "no-store");
+  if (!headers.has("Cache-Control")) headers.set("Cache-Control", PRIVATE_NO_STORE);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
