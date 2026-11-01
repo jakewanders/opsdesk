@@ -33,3 +33,7 @@ Defined as CSS variables in `src/app/globals.css` (`:root` for light, `.dark` fo
 - **Holding pages:** routes whose feature ships later render `PlannedPage` (title, what it will do, milestone, a link back); no fake data. Each owning issue replaces its page.
 - **Boundaries:** `not-found.tsx` and `error.tsx` exist at the root and inside `/app` (the latter keeps the shell), built on `StatePanel` / `ErrorPanel` in `src/components/shared`.
 - **Auth guard:** `/app` layout carries a visible development notice and a TODO until SIT-180 adds the guard.
+
+## Shared state components (SIT-163)
+
+`src/components/shared` holds the reusable states: `TableSkeleton` / `CardSkeleton` / `ChartSkeleton`, `EmptyState`, `ErrorAlert` (shows the API error envelope's request ID), `ToastProvider` + `notify` (sonner), and `ConfirmDialog` (Radix alert dialog). Usage notes are in `src/components/shared/README.md`. `StatePanel`, `PlannedPage`, and `ErrorPanel` (SIT-176) share the same layout. `ConfirmDialog` restores focus itself because Radix only returns focus to its own `Trigger`, and dialogs here are opened from any control.

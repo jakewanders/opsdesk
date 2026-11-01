@@ -107,6 +107,13 @@ NOT verified: any run on GitHub Actions (nothing has been pushed; the loop does 
 - `docs/PROGRESS.md` restructured: one section per milestone M0 to M5; M1 to M5 say "Not started. No checks run."; M0 says milestone checks not yet run. `docs/DECISIONS.md` seeded with the planning decisions (API foundation in M1, seed registry extended per entity, M6 holds P2, activity mechanism M2 / UI M3, pending issues outside Linear). README links all docs.
 - `npm run lint`, `format:check`, `typecheck`, `test:unit` (14 files, 192 tests) pass.
 
+### SIT-163 — Shared state components (done)
+
+- `npm run test:unit`: 15 files, 218 tests pass; `src/components/shared/shared-states.test.tsx` has 26 tests: skeletons (one polite status per area, blocks hidden), EmptyState, ErrorAlert (`role="alert"`, request ID from prop and from an API error body, retry), toast live region (`aria-live="polite"`, focus not moved), ConfirmDialog (focus starts on Cancel, Tab/Shift+Tab stay inside, Esc closes and returns focus to the opener, Cancel, Enter on the confirm button, Esc ignored and buttons disabled while the action runs, failure keeps the dialog open with an alert), and axe in light and dark for every component (0 violations; jsdom cannot compute color-contrast, covered by the token tests).
+- A failing test caught a real bug: focus did not return to the opener after Esc (Radix only restores focus to its own Trigger); fixed in `ConfirmDialog`, test now passes.
+- Real browser (Playwright, temporary scratch page since removed): dialog opened with focus on Cancel; Esc closed it and `#archive` regained focus; `notify.success` produced a toast inside an `aria-live="polite"` region and focus stayed on the button. Viewed in dark and light: alert, empty state, card/table/chart skeletons, toast, and dialog all render correctly.
+- `npm run lint`, `format:check`, `typecheck` pass. Final clean-checkout run is in the commit message trail below.
+
 ## M1 — Authentication, Organizations & Public Demo
 
 Not started. No checks run.
