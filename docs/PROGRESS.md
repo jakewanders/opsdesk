@@ -163,7 +163,7 @@ NOT done (needs Jake): no Netlify site exists, so no build on Netlify, no previe
 
 ### M0 interim check (all issues except SIT-177 finished)
 
-Run on commit `HEAD` of this entry in a fresh clone with an empty environment (`git clone`, `npm ci`, `npm run check`): lint, format:check, typecheck, check:env, test:unit (22 files, 301 tests), build, check:bundle all passed. GitHub Actions on `main` is green. Exit criteria status against PRD 12 M0: `npm run build`, lint, typecheck pass: yes. Landing and app shell responsive: verified locally at 375px, 640px, 768px, 1280px (and 320px reflow). **Deployed in a preview: not yet (SIT-177 waits on a Netlify site).** M0 is therefore not complete.
+Run on commit `HEAD` of this entry in a fresh clone with an empty environment (`git clone`, `npm ci`, `npm run check`): lint, format:check, typecheck, check:env, test:unit (22 files, 301 tests), build, check:bundle all passed. GitHub Actions on `main` is green. Exit criteria status against PRD 12 M0: `npm run build`, lint, typecheck pass: yes. Landing and app shell responsive: verified locally at 375px, 640px, 768px, 1280px (and 320px reflow). **Deployed in a preview: not yet (SIT-177 waits on a Netlify site).** M0 is therefore not complete. Linear: SIT-124 is Done; SIT-125 stays In Progress until the preview exists (its Definition of Done requires it); SIT-126 stays open for SIT-177.
 
 ## M1 — Authentication, Organizations & Public Demo
 
