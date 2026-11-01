@@ -242,6 +242,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Found while testing: awaiting `reader.cancel()` on a cloned body hangs until the other tee branch is cancelled; the 415 check now does not await it.
 - Not tested over real HTTP yet: no `/api/v1` route exists; the first route (health, SIT-186) should get a `next start` curl check.
 
+### SIT-182 — Zod validation utilities and query parsing (done)
+
+- `src/lib/validation/` (`text`, `primitives`, `query`, `body`, `paginate`): bounded plain-text schemas, uuid, calendar-checked `YYYY-MM-DD`, bounded integer cents, email, URL with scheme allowlist, tags, `listQuery`/`parseQuery`, `parseBody`, `paginate`. Rules documented in `docs/API.md`; decisions logged.
+- `validation.test.ts`: 50 tests (Unicode scripts and emoji, NFC, code-point lengths, control/bidi characters, 9 HTML/script injection strings, plain `<` allowed, bad URL schemes and credentials, impossible dates, float/NaN cents, unknown sort fields including `__proto__`, `limit` 101 rejected, repeated and unknown params, 422 field paths).
+- `npm run check`: all 9 steps passed (unit: 35 files, 618 tests; integration: 3 files, 24 tests).
+- Mutations caught and reverted: limit cap off (2 failed), HTML check off (6), UTF-16 length (1), URL credentials allowed (1), month and day calendar checks both off (1), non-strict query object (1). Removing only one of the two redundant calendar checks is not caught, as expected (either alone is sufficient). The sort-whitelist mutation did not compile, so it was not run; that rule is covered by the tests asserting the error for 8 hostile `sort` values.
+- Fixed while testing: the tag detector first allowed whitespace after `<`, which wrongly rejected "Revenue < Costs"; and `String.prototype.trim` strips a leading BOM, so only an interior BOM is rejected.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

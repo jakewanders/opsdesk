@@ -121,3 +121,16 @@ export const POST = withApi(async ({ request }) => {
 ```
 
 A role denial is `403 FORBIDDEN`; a demo-workspace restriction is `403 DEMO_RESTRICTED` with a message the UI can show. An unknown role, kind, or action is always denied. This check comes before the database and never replaces it: every write is re-checked by RLS. For membership changes use `canChangeMembership` and `grantableRoles`.
+
+## Validation and query parsing (SIT-182)
+
+Everything lives in `src/lib/validation` (`import { ... } from "@/lib/validation"`).
+
+- **Plain text only.** Free text is stored exactly as typed (trimmed, NFC-normalized) and rendered only through React's escaping; nothing is ever inserted as HTML. As defence in depth the text schemas also reject tag-like input (`<` followed by a letter, `/`, `!` or `?`), so markup is a 422 rather than stored data. A bare `<` in prose ("revenue < costs") is fine.
+- **Length is counted in code points**, the same unit as Postgres `varchar(n)`, so an emoji counts as 1 and a value that passes validation cannot fail a database length check.
+- Single-line fields (`singleLine(max, min?)`) reject control characters, line breaks, zero-width and bidirectional override characters; `multiLine(max)` allows line breaks (CRLF becomes LF) but still rejects controls and tags. `optionalSingleLine`/`optionalMultiLine` turn blank into `null`.
+- Primitives: `uuid()`, `isoDate()` (real calendar days, `YYYY-MM-DD`), `cents(max = MAX_CENTS)` (whole, non-negative, bounded; floats are refused, never rounded), `email()` (trimmed, lowercased, 254 max), `url(schemes = ["http","https"])` (no credentials, no `javascript:`/`data:`), `tags()` (0 to 10 tags of 1 to 30 characters, case-insensitive de-duplication), `choice([...])`.
+- **`parseBody(schema, request)`** reads the size-capped body and validates it: malformed JSON is 400, schema failures are 422 with `fieldErrors` keyed by path (`"tags.1"`). Use `z.strictObject` for write schemas so unknown fields (for example a client-sent `organization_id`) are errors.
+- **`listQuery({ sortable, defaultSort, defaultOrder?, filters? })`** builds a list endpoint's query schema: `page` (>= 1, default 1), `limit` (default 25), `sort` (enum of the whitelist), `order` (`asc`/`desc`, default `desc`) plus the endpoint's own filters. `parseQuery(schema, searchParams)` validates it; empty values count as absent, unknown and repeated parameters are 422. **`limit` above 100 is rejected with 422, not clamped**, so a client always knows what it received.
+- **Sort is never SQL text.** `sort` can only be a whitelisted key; map it to a column with a constant record at the call site.
+- `paginate({ page, limit }, total)` returns `{ offset, from, to, meta }`; `meta` is `{ page, limit, total, totalPages }` (`totalPages` is 0 for an empty collection). Pass `from`/`to` to Supabase `.range()`.
