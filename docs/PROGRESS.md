@@ -233,6 +233,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted by `db:reset`: `org_is_writable` always true failed 3/31; dropping `search_path` on `has_role` plus granting `is_member` to anon failed 2/31.
 - profiles test updated: `authenticated` now has USAGE on `private` by design (see DECISIONS).
 
+### SIT-181 — Mutation request protections (done)
+
+- `src/lib/api/request-guard.ts` (Origin / `Sec-Fetch-Site` CSRF check, trusted origins from env, Content-Length and streamed body caps), `withApi` options (`auth`, `maxBodyBytes`, `skipOriginCheck`), `readJson` now size-capped, `DEPLOY_PRIME_URL` added to server env and inlined in `next.config.ts`.
+- Tests: `request-guard.test.ts` and `handler-protection.test.ts` cover forged, `null` and missing Origin, spoofed `X-Forwarded-Host`/`Host`, cross-site fetch metadata, same-origin success, 401 after origin check, 413 before parse (declared and streamed), raised per-route cap, 415.
+- `npm run check`: all 9 steps passed (unit: 34 files, 568 tests; integration: 3 files, 24 tests).
+- Mutations caught and reverted: origin check removed (9 failed), missing Origin accepted (4), Content-Length cap off (2), stream cap off (3), cross-site ignored (1).
+- Found while testing: awaiting `reader.cancel()` on a cloned body hangs until the other tee branch is cancelled; the 415 check now does not await it.
+- Not tested over real HTTP yet: no `/api/v1` route exists; the first route (health, SIT-186) should get a `next start` curl check.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.
