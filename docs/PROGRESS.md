@@ -1,12 +1,17 @@
 # Progress log
 
-Real command results only. Updated after every issue and milestone.
+Real command output only. Nothing here is a claim of completion until the checks listed under it have been run; a milestone section holds its milestone-level check results once its last issue is finished. Per-issue entries are added in the order issues are finished. Pending issues that Linear could not hold (`P-01` to `P-23`, see the Pending Issues document) are tracked here by their key when worked.
 
 ## Waiting on Jake
 
-_(see entries below; kept in sync with the bottom of this file)_
+Items only Jake can unblock. Each is also an action item in the tracker.
+
+- **SIT-160** (local Supabase; blocks SIT-167, 168, 169, 197, so the whole database lane): install Docker Desktop or Podman, then run `npm run db:start && npm run db:reset && npm run db:reset`.
+- **SIT-166** (CI; blocks SIT-177): approve pushing `main` to `origin` (`jakewanders/opsdesk`), confirm the first Actions run is green, then push a branch with a deliberate lint error, open a PR, confirm CI fails, and close it.
 
 ## M0 — Foundation & Application Architecture
+
+Milestone-level checks: not yet run. M0 is still open.
 
 ### SIT-150 — Bootstrap Next.js (done)
 
@@ -42,10 +47,6 @@ Done and verified without Docker:
 - README documents the local steps and type generation.
 
 NOT verified: `supabase start` and a real `db:reset` (no Docker or Podman installed on this machine: `docker: command not found`).
-
-## Waiting on Jake
-
-- **SIT-160** (blocks SIT-167, SIT-168, SIT-169, SIT-197 and the whole database lane): install Docker Desktop or Podman, then run `npm run db:start && npm run db:reset && npm run db:reset` to finish the acceptance checks.
 
 ### SIT-161 — .env.example, typed env, feature flags (done)
 
@@ -96,6 +97,32 @@ Done and verified locally:
 
 NOT verified: any run on GitHub Actions (nothing has been pushed; the loop does not push).
 
-## Waiting on Jake (SIT-166 addition)
-
 - **SIT-166:** approve pushing `main` to `origin` (`jakewanders/opsdesk`), then confirm the first Actions run is green; for the failing-run check, push a branch with a deliberate lint error, open a PR, confirm it fails, then close it.
+
+### SIT-158 — Implementation plan, progress log, decisions log (done)
+
+- `docs/IMPLEMENTATION_PLAN.md`: 17 feature rows (F01 to F17), each with files, migrations, tests, and Linear issues, plus a cross-cutting table. Rows contain planned names only and no status claims.
+- `src/lib/plan.test.ts` (6 tests) passes: rows F01..F17 in order, no empty cell, an issue key per row, no completion wording in any table row. Mutations: adding "(done)" to a row failed it; blanking F05's migrations cell failed it; both reverted.
+- Review against PRD section 2: a script compared every row's priority and milestone with the PRD table (0 mismatches) and every `SIT-`/`P-` key with the Requirements Traceability Matrix (only parent issues SIT-137, 141, 144, 145, 148 are absent from the matrix, as expected). It also found SIT-147 missing from the plan; added. M6 issues (SIT-151 to 155) are intentionally excluded.
+- `docs/PROGRESS.md` restructured: one section per milestone M0 to M5; M1 to M5 say "Not started. No checks run."; M0 says milestone checks not yet run. `docs/DECISIONS.md` seeded with the planning decisions (API foundation in M1, seed registry extended per entity, M6 holds P2, activity mechanism M2 / UI M3, pending issues outside Linear). README links all docs.
+- `npm run lint`, `format:check`, `typecheck`, `test:unit` (14 files, 192 tests) pass.
+
+## M1 — Authentication, Organizations & Public Demo
+
+Not started. No checks run.
+
+## M2 — Core CRM, Pipeline & Task Management
+
+Not started. No checks run.
+
+## M3 — Dashboard, Reporting Foundations & Activity
+
+Not started. No checks run.
+
+## M4 — Advanced Business Features (P1)
+
+Not started. No checks run.
+
+## M5 — Production Readiness & Public Portfolio Launch
+
+Not started. No checks run.

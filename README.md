@@ -2,6 +2,13 @@
 
 Multi-tenant business operations SaaS (customers, pipeline, tasks, quotes) built as an engineering portfolio project. Production origin: `https://opsdesk.sitelaunch.dev` (not yet deployed).
 
+## Project docs
+
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md): every P0 and P1 feature mapped to files, migrations, tests, and Linear issues.
+- [`docs/PROGRESS.md`](docs/PROGRESS.md): real check results per issue and milestone, and what is waiting on the owner.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation from the PRD and why.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): design tokens, app shell, route map.
+
 ## Setup
 
 Requires Node 24 (see `.nvmrc`) and npm 11.
