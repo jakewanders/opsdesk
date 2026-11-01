@@ -104,3 +104,20 @@ raise exception using errcode = 'OD429',
 | `OD429`  | 429  | quota or throttle                                    |
 
 Tested against the real local database in `src/lib/api/postgres-errors.integration.test.ts`.
+
+## Permission checks in handlers
+
+Check the caller's role before touching data, using the permission module (`src/lib/permissions`, the matrix in `docs/SECURITY.md`):
+
+```ts
+import { assertCan } from "@/lib/permissions";
+
+export const POST = withApi(async ({ request }) => {
+  const org = await resolveActiveOrg(request);            // SIT-193: membership proven, never trusted from the header
+  const { constraints } = assertCan(org.role, org.kind, "records.write"); // throws a 403 envelope
+  // honor `constraints` (for example "demo_quota_limited"); RLS still re-checks the write
+  ...
+});
+```
+
+A role denial is `403 FORBIDDEN`; a demo-workspace restriction is `403 DEMO_RESTRICTED` with a message the UI can show. An unknown role, kind, or action is always denied. This check comes before the database and never replaces it: every write is re-checked by RLS. For membership changes use `canChangeMembership` and `grantableRoles`.

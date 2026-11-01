@@ -105,3 +105,7 @@ Files in `src/lib/supabase/`:
 ## API layer (SIT-170)
 
 `src/lib/api/` holds the one contract every `/api/v1` handler uses: `types.ts` (envelope types shared with the future typed client and with `ErrorAlert`), `errors.ts` (`ApiError` and its subclasses), `envelope.ts` (`okItem`, `okList`, `created`, `noContent`, and the response builders), `request-id.ts`, `json-body.ts` (content-type check, `readJson`), `postgres-errors.ts` (database error mapping and the `OD` SQLSTATE convention), `to-api-error.ts` (Zod and database conversion), `log.ts` (interim server error log until SIT-185), and `handler.ts` (`withApi`). The full contract, the status table, and how to write a handler are in `docs/API.md`.
+
+## Permissions (SIT-171)
+
+`src/lib/permissions/`: `matrix.ts` is the PRD 5.1 matrix as typed data (a missing action or role is a type error); `can.ts` has `can`, `allowedActions`, `permissionsFor` (UI), `assertCan` (route handlers, throws the 403 envelope), `grantableRoles` and `canChangeMembership` (invitations and role changes); `docs.ts` renders the table that `docs/SECURITY.md` embeds (a test fails if they drift). The database stays the final authority.

@@ -210,6 +210,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Real bug found by that run and fixed: a body-less `POST` returned 415 because in the Next.js runtime `request.body` is an empty stream, not `null`. Body presence is now decided from the actual bytes; the unit test now reproduces the empty-stream shape (the first version of the test used a `null` body and missed it).
 - `npm run lint`, `format:check`, `typecheck`, `check:bundle` pass.
 
+### SIT-171 — Permission matrix module (done)
+
+- `src/lib/permissions/` (`matrix.ts`, `can.ts`, `docs.ts`, `index.ts`): roles owner/admin/member/viewer plus workspace kind real/demo; 11 actions (the 8 PRD 5.1 rows, with integrations and billing split, plus `email.send_external` and `demo.reset`); `can(role, kind, action)` returns `{ allowed: true, constraints }` or `{ allowed: false, reason }` (`ROLE_INSUFFICIENT`, `DEMO_RESTRICTED`, `NOT_APPLICABLE`, `UNKNOWN_ACTION`, `UNKNOWN_ROLE`, `UNKNOWN_KIND`); UI helpers `allowedActions` and `permissionsFor`; `assertCan` throws the 403 envelope (`DEMO_RESTRICTED` machine code for guests); `grantableRoles` and `canChangeMembership` for invitations and role changes. Referenced from `docs/API.md` and `docs/ARCHITECTURE.md`.
+- `npm run test:unit`: 32 files, 537 tests pass; `src/lib/permissions/can.test.ts` has 108 tests: every cell of PRD 5.1 (9 actions x 5 columns = 45 cells, including the demo guest's constraints: own-org reads, quota-limited writes, simulated quotes, fictional-data exports, last-owner guard, no owner changes by admins) transcribed independently of the code; reset for guest vs real; guest denied invite, owner changes, billing, integrations, external email and org settings; deny-by-default for unknown roles, kinds, and actions including `toString`, `__proto__`, `constructor`, and non-string input; UI helper agreement with `can`; `assertCan` codes and messages; role granting and membership change rules; and a test that `docs/SECURITY.md`'s embedded matrix equals the generated one.
+- Mutations, each caught and reverted: guest allowed `members.manage` (6 tests failed), viewer allowed to write (6 failed), lookup by `in` instead of `Object.hasOwn` so `toString` resolves (5 failed), changing a matrix cell without regenerating the doc (2 failed). Compile-time: an action added without a matrix entry, and a role removed from one rule, each fail `tsc`.
+- `npm run lint`, `format:check`, `typecheck` pass.
+- First attempt of the doc-sync test failed because Prettier pads table cells; the comparison now normalizes whitespace and dashes. One edit to that test silently did not apply (Prettier had reformatted the block) and was caught by re-running before the check.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

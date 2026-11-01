@@ -40,3 +40,25 @@ Living document. The threat model and the full role table are finalized by the d
 - A record that does not exist and a record in another tenant return the same 404 with the same message.
 - A caller-supplied `X-Request-Id` is accepted only in a safe format; otherwise it is replaced, so it cannot forge or break log lines.
 - API responses are `Cache-Control: no-store`.
+
+## Permission matrix (SIT-171)
+
+`src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.
+
+<!-- permissions-matrix:start -->
+
+| Action                 | owner                  | admin                  | member | viewer | demo guest                   |
+| ---------------------- | ---------------------- | ---------------------- | ------ | ------ | ---------------------------- |
+| `records.read`         | yes                    | yes                    | yes    | yes    | yes (own_demo_org_only)      |
+| `records.write`        | yes                    | yes                    | yes    | no     | yes (demo_quota_limited)     |
+| `quotes.write`         | yes                    | yes                    | yes    | no     | yes (demo_simulated_only)    |
+| `export.run`           | yes                    | yes                    | yes    | yes    | yes (demo_fictional_marking) |
+| `org.settings.update`  | yes                    | yes                    | no     | no     | no                           |
+| `members.manage`       | yes                    | yes (no_owner_changes) | no     | no     | no                           |
+| `members.owner_change` | yes (last_owner_guard) | no                     | no     | no     | no                           |
+| `integrations.manage`  | yes                    | no                     | no     | no     | no                           |
+| `billing.manage`       | yes                    | no                     | no     | no     | no                           |
+| `email.send_external`  | yes                    | yes                    | yes    | no     | no                           |
+| `demo.reset`           | demo only              | no                     | no     | no     | yes                          |
+
+<!-- permissions-matrix:end -->
