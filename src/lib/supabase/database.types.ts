@@ -23,6 +23,79 @@ export type Database = {
   };
   public: {
     Tables: {
+      memberships: {
+        Row: {
+          joined_at: string;
+          organization_id: string;
+          role: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          joined_at?: string;
+          organization_id: string;
+          role: string;
+          user_id: string;
+        };
+        Update: {
+          joined_at?: string;
+          organization_id?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "memberships_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      organizations: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          expires_at: string | null;
+          id: string;
+          industry: string | null;
+          kind: string;
+          name: string;
+          slug: string | null;
+          timezone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          expires_at?: string | null;
+          id?: string;
+          industry?: string | null;
+          kind?: string;
+          name: string;
+          slug?: string | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          expires_at?: string | null;
+          id?: string;
+          industry?: string | null;
+          kind?: string;
+          name?: string;
+          slug?: string | null;
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;

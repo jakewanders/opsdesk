@@ -218,6 +218,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run lint`, `format:check`, `typecheck` pass.
 - First attempt of the doc-sync test failed because Prettier pads table cells; the comparison now normalizes whitespace and dashes. One edit to that test silently did not apply (Prettier had reformatted the block) and was caught by re-running before the check.
 
+### SIT-178 — Organizations and memberships tables (done)
+
+- Migration `20261101000200_organizations_memberships.sql`: `public.organizations`, `public.memberships`, constraints (name/slug/industry length, slug format, IANA timezone, USD currency, kind/expiry rules, role values), indexes, deferred last-owner guard, RLS on and all API-role privileges revoked.
+- `npm run test:db`: 3 files, 99 tests, `Result: PASS` (organizations 58, last-owner-guard 12, profiles 29).
+- Mutations caught and reverted by `db:reset`: dropping the guard trigger failed 4/12 guard tests; dropping the slug-format constraint failed 1/58.
+- First test layout aborted because `set constraints all immediate` fires every pending check; the guard tests moved to their own file with no owner-less fixtures.
+- `npm run db:types` regenerated; `npm run check`: all 9 steps passed.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

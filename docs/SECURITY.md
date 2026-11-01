@@ -41,6 +41,14 @@ Living document. The threat model and the full role table are finalized by the d
 - A caller-supplied `X-Request-Id` is accepted only in a safe format; otherwise it is replaced, so it cannot forge or break log lines.
 - API responses are `Cache-Control: no-store`.
 
+## public.organizations and public.memberships (SIT-178)
+
+- Tables are closed by default: RLS is enabled and all privileges are revoked from `anon`/`authenticated`. Policies and grants arrive with SIT-187 and SIT-188; until then only `service_role` and SECURITY DEFINER functions can touch them.
+- `organizations.kind` is `real` or `demo`. A demo organization must carry `demo_expires_at`; a real one must not (check constraints), so cleanup can find expired demos by index.
+- `timezone` must be an IANA zone from `pg_timezone_names` (helper `private.is_valid_timezone`, executable by `authenticated` and `service_role` only). Abbreviations such as `EST` and `posix/`/`right/` aliases are rejected.
+- Last-owner guard: `private.assert_org_has_owner()` (SECURITY DEFINER, `search_path=''`, not executable by API roles) runs from deferred constraint triggers, so ownership can be handed over inside one transaction but a commit that leaves an organization ownerless fails with `OD409` / `LAST_OWNER`. Deleting a whole organization is allowed.
+- `organizations.created_by` is nullable with `on delete set null`; memberships cascade with their organization or user.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.
