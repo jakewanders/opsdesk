@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { AUTH_MESSAGES, classifyAuthError } from "./auth-errors";
-import { logIn, signUp } from "./flows";
-import { loginSchema, PASSWORD_MAX, signupSchema } from "./schemas";
+import { logIn, requestPasswordReset, setNewPassword, signUp } from "./flows";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  PASSWORD_MAX,
+  resetPasswordSchema,
+  signupSchema,
+} from "./schemas";
 import { DEFAULT_AFTER_LOGIN, safeNextPath } from "./safe-redirect";
 
 describe("safeNextPath", () => {
@@ -223,5 +229,140 @@ describe("signUp", () => {
     expect(await run({ status: 429 })).toMatchObject({ failure: "rate_limited" });
     // a validation failure must not be swallowed as "check your email"
     expect(await run({ code: "validation_failed", status: 422 })).toMatchObject({ ok: false });
+  });
+});
+
+describe("safeNextPath extra paths", () => {
+  it("allows an exact extra path only when the caller names it", () => {
+    expect(safeNextPath("/reset-password")).toBe("/app");
+    expect(safeNextPath("/reset-password", "/app", ["/reset-password"])).toBe("/reset-password");
+  });
+  it("matches the path exactly, not as a prefix, and never via tricks", () => {
+    const allow = ["/reset-password"];
+    for (const v of [
+      "/reset-password/x",
+      "/reset-passwordx",
+      "//reset-password",
+      "/%72eset-password/../x",
+      "/reset-password/../login",
+      "https://evil.com/reset-password",
+      "/\\reset-password",
+    ]) {
+      expect(safeNextPath(v, "/app", allow), v).toBe("/app");
+    }
+  });
+});
+
+describe("forgot and reset schemas", () => {
+  it("forgot needs an email and the CAPTCHA token", () => {
+    expect(
+      forgotPasswordSchema.safeParse({ email: "a@example.com", captchaToken: "t" }).success,
+    ).toBe(true);
+    expect(forgotPasswordSchema.safeParse({ email: "", captchaToken: "t" }).success).toBe(false);
+    expect(
+      forgotPasswordSchema.safeParse({ email: "a@example.com", captchaToken: "" }).success,
+    ).toBe(false);
+  });
+  it("reset enforces the password rules and a matching confirmation", () => {
+    expect(
+      resetPasswordSchema.safeParse({ password: "long enough pw", confirm: "long enough pw" })
+        .success,
+    ).toBe(true);
+    const short = resetPasswordSchema.safeParse({ password: "short", confirm: "short" });
+    expect(short.success).toBe(false);
+    const mismatch = resetPasswordSchema.safeParse({
+      password: "long enough pw",
+      confirm: "different pw!",
+    });
+    expect(
+      mismatch.success ? [] : mismatch.error.issues.map((i) => [i.path.join("."), i.message]),
+    ).toEqual([["confirm", "The passwords do not match."]]);
+    expect(resetPasswordSchema.safeParse({ password: "long enough pw", confirm: "" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("requestPasswordReset", () => {
+  const forgot = { email: "a@example.com", captchaToken: "tok" };
+  const redirect = "http://localhost:3000/auth/callback?next=/reset-password";
+  it("sends the callback redirect and the CAPTCHA token", async () => {
+    const fn = vi.fn().mockResolvedValue({ error: null });
+    expect(
+      await requestPasswordReset(client({ resetPasswordForEmail: fn }), forgot, redirect),
+    ).toEqual({ ok: true, next: "check-email" });
+    expect(fn).toHaveBeenCalledWith("a@example.com", { redirectTo: redirect, captchaToken: "tok" });
+  });
+  it("answers the same when the account does not exist", async () => {
+    const r = await requestPasswordReset(
+      client({
+        resetPasswordForEmail: async () => ({ error: { code: "user_not_found", status: 400 } }),
+      }),
+      forgot,
+      redirect,
+    );
+    expect(r).toEqual({ ok: true, next: "check-email" });
+  });
+  it("reports only what the caller can act on", async () => {
+    const run = (error: object) =>
+      requestPasswordReset(
+        client({ resetPasswordForEmail: async () => ({ error }) }),
+        forgot,
+        redirect,
+      );
+    expect(await run({ status: 429 })).toMatchObject({ failure: "rate_limited" });
+    expect(await run({ code: "captcha_failed", status: 400 })).toMatchObject({
+      failure: "captcha",
+    });
+    expect(await run({ status: 500 })).toMatchObject({ failure: "unavailable" });
+  });
+});
+
+describe("setNewPassword", () => {
+  it("updates the password, then signs out the other sessions", async () => {
+    const updateUser = vi.fn().mockResolvedValue({ error: null });
+    const signOut = vi.fn().mockResolvedValue({ error: null });
+    expect(await setNewPassword(client({ updateUser, signOut }), "new long password")).toEqual({
+      ok: true,
+      next: "signed-in",
+    });
+    expect(updateUser).toHaveBeenCalledWith({ password: "new long password" });
+    expect(signOut).toHaveBeenCalledWith({ scope: "others" });
+  });
+  it("does not revoke sessions when the update fails, and explains why", async () => {
+    const signOut = vi.fn();
+    const same = await setNewPassword(
+      client({
+        updateUser: async () => ({ error: { code: "same_password", status: 422 } }),
+        signOut,
+      }),
+      "x",
+    );
+    expect(same).toMatchObject({ ok: false, failure: "same_password" });
+    expect(signOut).not.toHaveBeenCalled();
+    const expired = await setNewPassword(
+      client({
+        updateUser: async () => ({ error: { code: "session_not_found", status: 403 } }),
+        signOut,
+      }),
+      "x",
+    );
+    expect(expired).toMatchObject({
+      ok: false,
+      failure: "no_session",
+      message: AUTH_MESSAGES.no_session,
+    });
+  });
+  it("a failure to revoke other sessions does not undo the reset", async () => {
+    const r = await setNewPassword(
+      client({
+        updateUser: async () => ({ error: null }),
+        signOut: async () => {
+          throw new Error("x");
+        },
+      }),
+      "new long password",
+    );
+    expect(r).toEqual({ ok: true, next: "signed-in" });
   });
 });

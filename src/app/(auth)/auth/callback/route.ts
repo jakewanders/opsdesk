@@ -26,5 +26,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   } catch {
     return target("/login?error=callback");
   }
-  return target(safeNextPath(next));
+  // /reset-password is allowed only as the exact destination of a recovery link.
+  return target(safeNextPath(next, "/app", ["/reset-password"]));
 }

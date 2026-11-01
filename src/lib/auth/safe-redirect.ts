@@ -7,7 +7,12 @@ export const DEFAULT_AFTER_LOGIN = "/app";
  * `/\\evil.test`, `javascript:`, a path outside `/app`) returns the fallback, so an open-redirect
  * attempt just lands on the dashboard.
  */
-export function safeNextPath(value: unknown, fallback: string = DEFAULT_AFTER_LOGIN): string {
+export function safeNextPath(
+  value: unknown,
+  fallback: string = DEFAULT_AFTER_LOGIN,
+  /** Exact extra paths (no query) that may also be targets, for example `/reset-password` from the email callback. */
+  extraPaths: readonly string[] = [],
+): string {
   if (typeof value !== "string" || value.length === 0 || value.length > 2048) return fallback;
   if (!value.startsWith("/") || value.startsWith("//")) return fallback;
   // Backslashes are treated as slashes by browsers; control characters and whitespace are never valid.
@@ -29,6 +34,7 @@ export function safeNextPath(value: unknown, fallback: string = DEFAULT_AFTER_LO
   if (decoded.includes("\\") || decoded.includes("//") || decoded.split("/").includes("..")) {
     return fallback;
   }
-  if (parsed.pathname !== "/app" && !parsed.pathname.startsWith("/app/")) return fallback;
+  const inApp = parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
+  if (!inApp && !extraPaths.includes(parsed.pathname)) return fallback;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }

@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Sign in" };
 
 const NOTICES: Record<string, string> = {
   callback:
-    "That confirmation link is invalid or has expired. Sign in, or create the account again.",
+    'That link is invalid or has expired. Sign in, or request a new link from "Forgot your password?".',
 };
 
 export default async function LoginPage({

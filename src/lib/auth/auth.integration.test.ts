@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { localSupabase, psql, type LocalSupabase } from "@/test/local-supabase";
 import { AUTH_MESSAGES } from "./auth-errors";
-import { logIn, signUp } from "./flows";
+import { logIn, requestPasswordReset, setNewPassword, signUp } from "./flows";
 
 // Cloudflare's dummy token: the local dummy secret accepts any non-empty value.
 const TOKEN = "XXXX.DUMMY.TOKEN.XXXX";
@@ -113,5 +113,89 @@ describe("sign-up and sign-in against local Supabase Auth", () => {
     );
     expect(result).toMatchObject({ ok: false });
     expect(psql(`select count(*) from auth.users where email = '${emailOf("c")}'`)).toBe("0");
+  });
+});
+
+describe("password reset against local Supabase Auth", () => {
+  const REDIRECT_RESET = "http://localhost:3000/auth/callback?next=/reset-password";
+
+  it("answers a reset request the same for an existing and an unknown address", async () => {
+    const created = await fetch(`${supabase.apiUrl}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        apikey: supabase.secretKey,
+        Authorization: `Bearer ${supabase.secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: emailOf("reset"), password: PASSWORD, email_confirm: true }),
+    });
+    expect(created.status).toBe(200);
+    const known = await requestPasswordReset(
+      client(),
+      { email: emailOf("reset"), captchaToken: TOKEN },
+      REDIRECT_RESET,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const unknown = await requestPasswordReset(
+      client(),
+      { email: emailOf("ghost"), captchaToken: TOKEN },
+      REDIRECT_RESET,
+    );
+    expect(known).toEqual({ ok: true, next: "check-email" });
+    expect(unknown).toEqual(known);
+  });
+
+  it("requires the CAPTCHA token", async () => {
+    expect(
+      await requestPasswordReset(
+        client(),
+        { email: emailOf("reset"), captchaToken: "" },
+        REDIRECT_RESET,
+      ),
+    ).toMatchObject({ ok: false, failure: "captcha" });
+  });
+
+  it("sets a new password, rejects the old one, and signs the other sessions out", async () => {
+    const a = client();
+    const b = client();
+    for (const c of [a, b]) {
+      expect(
+        await logIn(c, { email: emailOf("reset"), password: PASSWORD, captchaToken: TOKEN }),
+      ).toMatchObject({ ok: true });
+    }
+    expect((await b.auth.getUser()).data.user?.email).toBe(emailOf("reset"));
+
+    expect(await setNewPassword(a, "a brand new password")).toEqual({
+      ok: true,
+      next: "signed-in",
+    });
+
+    expect(
+      await logIn(client(), { email: emailOf("reset"), password: PASSWORD, captchaToken: TOKEN }),
+    ).toMatchObject({ ok: false, failure: "invalid_credentials" });
+    expect(
+      await logIn(client(), {
+        email: emailOf("reset"),
+        password: "a brand new password",
+        captchaToken: TOKEN,
+      }),
+    ).toMatchObject({ ok: true });
+    // the other device's session was revoked; the one that changed the password still works
+    expect((await b.auth.getUser()).data.user).toBeNull();
+    expect((await a.auth.getUser()).data.user?.email).toBe(emailOf("reset"));
+  });
+
+  it("refuses to set a password without a session, and a reused password", async () => {
+    expect(await setNewPassword(client(), "whatever long password")).toMatchObject({ ok: false });
+    const c = client();
+    await logIn(c, {
+      email: emailOf("reset"),
+      password: "a brand new password",
+      captchaToken: TOKEN,
+    });
+    expect(await setNewPassword(c, "a brand new password")).toMatchObject({
+      ok: false,
+      failure: "same_password",
+    });
   });
 });

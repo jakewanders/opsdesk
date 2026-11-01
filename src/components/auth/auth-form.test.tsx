@@ -171,3 +171,41 @@ describe("AuthForm", () => {
     expect(screen.getByRole("button", { name: "Sign in" })).toHaveFocus();
   });
 });
+
+describe("AuthForm in forgot mode", () => {
+  it("asks only for the email, and says what the button does", () => {
+    render(<AuthForm mode="forgot" action={failure({})} siteKey="k" />);
+    expect(screen.getByRole("textbox", { name: /Email/ })).toBeRequired();
+    expect(screen.queryByLabelText(/Password/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send reset link" })).toBeEnabled();
+    expect(screen.getByRole("link", { name: "Back to sign in" })).toHaveAttribute("href", "/login");
+  });
+  it("shows the same neutral confirmation whether or not the account exists", async () => {
+    const user = userEvent.setup();
+    const action: Action = async () => ({
+      status: "check-email",
+      attempt: 0,
+      values: { email: "nobody@example.com" },
+    });
+    render(<AuthForm mode="forgot" action={action} siteKey="k" />);
+    await user.type(screen.getByRole("textbox", { name: /Email/ }), "nobody@example.com");
+    await user.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "If an account exists for nobody@example.com, we sent a link",
+    );
+  });
+  it("shows field errors with a focused summary and passes axe", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <AuthForm
+        mode="forgot"
+        action={failure({ fieldErrors: { email: ["Enter your email address."] } })}
+        siteKey="k"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Send reset link" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert).toHaveFocus());
+    await expectNoA11yViolations(container);
+  });
+});

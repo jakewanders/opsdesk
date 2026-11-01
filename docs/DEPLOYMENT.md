@@ -47,3 +47,15 @@ Then open the preview at 375px and at desktop width and confirm the landing page
 ## Rollback
 
 Until a custom domain is attached there is nothing to roll back beyond removing the Netlify site. Rollback for the custom domain (only the `opsdesk` record and the Netlify domain association) is documented with SIT-272 and P-20.
+
+## Supabase Auth URL configuration (SIT-189)
+
+Auth emails (sign-up confirmation, password reset) link back to the app, and Supabase only redirects to allowlisted URLs. Anything else falls back to the Site URL, so a wrong entry shows up as the user landing on the home page with a `code` instead of on the right screen.
+
+| Environment                    | Site URL                         | Redirect URLs (exact entries)                                                                                                                                        |
+| ------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local (`supabase/config.toml`) | `http://localhost:3000`          | `http://localhost:3000/auth/callback`, `http://localhost:3000/auth/callback?next=/reset-password`, `http://localhost:3000/reset-password`                            |
+| Production                     | `https://opsdesk.sitelaunch.dev` | `https://opsdesk.sitelaunch.dev/auth/callback`, `https://opsdesk.sitelaunch.dev/auth/callback?next=/reset-password`, `https://opsdesk.sitelaunch.dev/reset-password` |
+| Preview / test project         | the deploy preview origin        | the same three paths on that origin only (tracked in SIT-274); never a wildcard                                                                                      |
+
+Local email is delivered to the Supabase mail catcher (Mailpit; `http://127.0.0.1:54324`). Keep **Confirm email** on in hosted projects (local config has it on) and set the minimum password length to 8. Status: **not yet applied to a hosted project** (needs Jake's Supabase access; tracked with the production setup issues).

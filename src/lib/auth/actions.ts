@@ -3,9 +3,11 @@
 import { redirect } from "next/navigation";
 import { getPublicEnv } from "@/lib/env/public";
 import { createClient } from "@/lib/supabase/server";
+import { resolveUser } from "@/lib/supabase/resolve-user";
+import { AUTH_MESSAGES } from "./auth-errors";
 import { zodFieldErrors } from "@/lib/api/to-api-error";
-import { logIn, signUp } from "./flows";
-import { loginSchema, signupSchema } from "./schemas";
+import { logIn, requestPasswordReset, setNewPassword, signUp } from "./flows";
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema, signupSchema } from "./schemas";
 import type { AuthFormState } from "./form-state";
 import { safeNextPath } from "./safe-redirect";
 
@@ -65,4 +67,46 @@ export async function logoutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function forgotPasswordAction(
+  previous: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const values = { email: text(formData, "email").trim() };
+  const parsed = forgotPasswordSchema.safeParse({
+    email: text(formData, "email"),
+    captchaToken: text(formData, "captchaToken"),
+  });
+  if (!parsed.success)
+    return failed(previous, { fieldErrors: zodFieldErrors(parsed.error), values });
+
+  // The link goes to the allowlisted callback, which sends the recovery session on to /reset-password.
+  const redirectTo = new URL(
+    "/auth/callback?next=/reset-password",
+    getPublicEnv().NEXT_PUBLIC_APP_URL,
+  ).toString();
+  const result = await requestPasswordReset(await createClient(), parsed.data, redirectTo);
+  if (!result.ok) return failed(previous, { message: result.message, values });
+  return { status: "check-email", attempt: previous.attempt, values };
+}
+
+export async function resetPasswordAction(
+  previous: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = resetPasswordSchema.safeParse({
+    password: text(formData, "password"),
+    confirm: text(formData, "confirm"),
+  });
+  if (!parsed.success) return failed(previous, { fieldErrors: zodFieldErrors(parsed.error) });
+
+  const supabase = await createClient();
+  // Only a signed-in (recovery) session may set a password; verify with Supabase Auth, not the cookie alone.
+  if (!(await resolveUser(supabase))) {
+    return failed(previous, { message: AUTH_MESSAGES.no_session });
+  }
+  const result = await setNewPassword(supabase, parsed.data.password);
+  if (!result.ok) return failed(previous, { message: result.message });
+  redirect("/app");
 }

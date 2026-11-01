@@ -5,6 +5,8 @@ export type AuthFailure =
   | "captcha"
   | "signups_disabled"
   | "weak_password"
+  | "same_password"
+  | "no_session"
   | "unavailable";
 
 type AuthLike = { status?: number; code?: string; name?: string } | null | undefined;
@@ -28,6 +30,14 @@ export function classifyAuthError(error: AuthLike): AuthFailure {
   if (code === "email_not_confirmed") return "email_not_confirmed";
   if (code === "signup_disabled" || code === "email_provider_disabled") return "signups_disabled";
   if (code === "weak_password") return "weak_password";
+  if (code === "same_password") return "same_password";
+  if (
+    code === "session_not_found" ||
+    code === "session_expired" ||
+    code === "refresh_token_not_found" ||
+    error.status === 401
+  )
+    return "no_session";
   if (code === "invalid_credentials" || code === "user_not_found") return "invalid_credentials";
   if (code === "user_already_exists" || code === "email_exists") return "invalid_credentials";
   if (error.status === 400 || error.status === 422) return "invalid_credentials";
@@ -42,5 +52,7 @@ export const AUTH_MESSAGES: Record<AuthFailure, string> = {
   captcha: "We could not verify you are human. Complete the check again.",
   signups_disabled: "Sign-ups are turned off right now.",
   weak_password: "Choose a stronger password.",
+  same_password: "Choose a password you have not used for this account before.",
+  no_session: "This reset link has expired. Request a new one.",
   unavailable: "We could not reach the sign-in service. Try again in a moment.",
 };

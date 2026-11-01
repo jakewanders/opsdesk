@@ -15,7 +15,7 @@ type Action = (state: AuthFormState, formData: FormData) => Promise<AuthFormStat
 const initial: AuthFormState = { status: "idle", attempt: 0 };
 
 type AuthFormProps = {
-  mode: "login" | "signup";
+  mode: "login" | "signup" | "forgot";
   action: Action;
   siteKey: string | undefined;
   /** Already-validated post-login path, forwarded as a hidden field. */
@@ -28,7 +28,7 @@ type AuthFormProps = {
 const IDS = { email: "email", password: "password", captcha: "captcha" } as const;
 
 /**
- * One form for sign-in and sign-up. Submitting runs a server action that validates with Zod and
+ * One form for sign-in, sign-up and the password-reset request (email only). Submitting runs a server action that validates with Zod and
  * talks to Supabase Auth; the page never sees the password after the request. While the action is
  * pending the button is disabled, which prevents a double submit. A failed submit puts focus on the
  * error summary and re-issues the CAPTCHA token (a token can be used once).
@@ -50,15 +50,23 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
   if (state.message) summary.unshift({ fieldId: IDS.email, message: state.message });
 
   const isSignup = mode === "signup";
+  const isForgot = mode === "forgot";
 
   if (state.status === "check-email") {
     return (
       <div role="status" className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-5">
         <h2 className="text-lg font-semibold">Check your email</h2>
-        <p>
-          If <strong className="break-all">{state.values?.email}</strong> can be used to create an
-          account, we sent a confirmation link. Open it to finish signing up, then sign in.
-        </p>
+        {isForgot ? (
+          <p>
+            If an account exists for <strong className="break-all">{state.values?.email}</strong>,
+            we sent a link to choose a new password. It works once and expires after an hour.
+          </p>
+        ) : (
+          <p>
+            If <strong className="break-all">{state.values?.email}</strong> can be used to create an
+            account, we sent a confirmation link. Open it to finish signing up, then sign in.
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Nothing arrived after a few minutes? Check spam, or{" "}
           <Link href="/login" className="underline underline-offset-2">
@@ -91,22 +99,24 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
         )}
       </FormField>
 
-      <FormField
-        label="Password"
-        id={IDS.password}
-        error={errorFor("password")}
-        hint={isSignup ? "At least 8 characters." : undefined}
-        required
-      >
-        {(control) => (
-          <Input
-            {...control}
-            name="password"
-            type="password"
-            autoComplete={isSignup ? "new-password" : "current-password"}
-          />
-        )}
-      </FormField>
+      {isForgot ? null : (
+        <FormField
+          label="Password"
+          id={IDS.password}
+          error={errorFor("password")}
+          hint={isSignup ? "At least 8 characters." : undefined}
+          required
+        >
+          {(control) => (
+            <Input
+              {...control}
+              name="password"
+              type="password"
+              autoComplete={isSignup ? "new-password" : "current-password"}
+            />
+          )}
+        </FormField>
+      )}
 
       <TurnstileField
         siteKey={siteKey}
@@ -117,12 +127,16 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
 
       <Button type="submit" disabled={pending || !siteKey} className="h-10">
         {pending
-          ? isSignup
-            ? "Creating account…"
-            : "Signing in…"
-          : isSignup
-            ? "Create account"
-            : "Sign in"}
+          ? isForgot
+            ? "Sending…"
+            : isSignup
+              ? "Creating account…"
+              : "Signing in…"
+          : isForgot
+            ? "Send reset link"
+            : isSignup
+              ? "Create account"
+              : "Sign in"}
       </Button>
 
       {isSignup ? (
@@ -136,6 +150,12 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
             Privacy notice
           </Link>
           .
+        </p>
+      ) : isForgot ? (
+        <p className="text-sm">
+          <Link href="/login" className="underline underline-offset-2">
+            Back to sign in
+          </Link>
         </p>
       ) : (
         <p className="text-sm">

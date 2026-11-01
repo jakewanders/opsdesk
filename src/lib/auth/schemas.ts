@@ -40,3 +40,18 @@ export const signupSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
+
+export const forgotPasswordSchema = z.object({ email: email(), captchaToken });
+
+export const resetPasswordSchema = z
+  .object({
+    password: newPassword,
+    confirm: z.string({ error: "Repeat the new password." }).min(1, "Repeat the new password."),
+  })
+  .refine((v) => v.password === v.confirm, {
+    path: ["confirm"],
+    error: "The passwords do not match.",
+  });
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
