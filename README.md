@@ -47,7 +47,7 @@ Placeholder scripts print "not implemented yet" and exit 0 on their own. `npm ru
 
 ## Local Supabase
 
-Requires Docker (or Podman) running, plus the project's pinned Supabase CLI (installed by `npm ci`).
+Requires Docker (or Podman) running (on macOS, Docker Desktop's `docker` is in `~/.docker/bin`; add it to your PATH if `docker` is not found), plus the project's pinned Supabase CLI (installed by `npm ci`).
 
 ```bash
 npm run db:start     # Postgres, Auth, Studio. Prints local URLs and keys.

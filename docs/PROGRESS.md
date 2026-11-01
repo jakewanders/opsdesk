@@ -4,10 +4,7 @@ Real command output only. Nothing here is a claim of completion until the checks
 
 ## Waiting on Jake
 
-Items only Jake can unblock. Each is also an action item in the tracker.
-
-- **SIT-160** (local Supabase; blocks SIT-167, 168, 169, 197, so the whole database lane): install Docker Desktop or Podman, then run `npm run db:start && npm run db:reset && npm run db:reset`.
-- **SIT-166** (CI; blocks SIT-177): approve pushing `main` to `origin` (`jakewanders/opsdesk`), confirm the first Actions run is green, then push a branch with a deliberate lint error, open a PR, confirm CI fails, and close it.
+Nothing at the moment. (SIT-160 and SIT-166 were unblocked on 2026-11-01: Docker installed, push to `main` approved.)
 
 ## M0 — Foundation & Application Architecture
 
@@ -37,7 +34,7 @@ Milestone-level checks: not yet run. M0 is still open.
 - Browser check on `npm run dev` (Playwright): clicking the toggle set `html.dark` and `localStorage opsdesk-theme=dark`; after reload the page was still dark (body background `rgb(20, 20, 19)`), and the inline theme script precedes `<main>` in the HTML. Computed focus ring on the toggle: solid `rgb(76, 195, 180)` 3px. IBM Plex Sans applied.
 - Not done here: Lighthouse/axe scores (later accessibility issues, SIT-175 and P-09).
 
-### SIT-160 — Local Supabase, migrations, seed (PARTIAL, blocked on Docker)
+### SIT-160 — Local Supabase, migrations, seed (done)
 
 Done and verified without Docker:
 
@@ -46,7 +43,11 @@ Done and verified without Docker:
 - `npm run db:reset` guard: `NEXT_PUBLIC_SUPABASE_URL=https://abcd.supabase.co` exits 1 with a refusal; `--linked` exits 1; 7 unit tests in `scripts/lib/assert-local-db.test.ts` pass.
 - README documents the local steps and type generation.
 
-NOT verified: `supabase start` and a real `db:reset` (no Docker or Podman installed on this machine: `docker: command not found`).
+Verified once Docker was installed (Docker 29.9.2; Docker Desktop's CLI lives in `~/.docker/bin`, which is not on the default PATH):
+
+- `npm run db:start`: all Supabase containers came up healthy (db, auth, rest, studio, kong, storage, realtime, ...); `supabase status` reports API `http://127.0.0.1:54321`, Studio `http://127.0.0.1:54323`, DB `127.0.0.1:54322`.
+- `npm run db:reset` run twice: both exit 0 ("Applying migration 20261101000000_baseline.sql... Seeding data from supabase/seed.sql... Finished supabase db reset"). After the second: `pg_trgm` is installed in schema `extensions` and `supabase_migrations.schema_migrations` has exactly `20261101000000`.
+- `NEXT_PUBLIC_SUPABASE_URL=https://abcd.supabase.co npm run db:reset` refuses with a message (guard still works).
 
 ### SIT-161 — .env.example, typed env, feature flags (done)
 
@@ -87,7 +88,7 @@ NOT verified: `supabase start` and a real `db:reset` (no Docker or Podman instal
 - `planSteps("test")` adds `test:db` as soon as a `.sql` file exists in `supabase/tests` (checked with a temporary file; removed) and `test:e2e` once a `*.spec.ts` exists in `e2e`; both covered by unit tests.
 - README documents scripts, layout, and the branch/commit convention.
 
-### SIT-166 — GitHub Actions CI skeleton (PARTIAL, needs a push)
+### SIT-166 — GitHub Actions CI skeleton (done)
 
 Done and verified locally:
 
@@ -95,7 +96,10 @@ Done and verified locally:
 - Simulated CI: `git clone` of the commit into `/tmp/opsdesk-ci`, then with an empty environment (`env -i`): `npm ci`, `lint`, `format:check`, `typecheck`, `check:env`, `test:unit`, `build`, `check:bundle` all passed (exit 0).
 - A lint error failing the pipeline was shown earlier through `npm run check` (SIT-157); the workflow runs the same commands as separate steps.
 
-NOT verified: any run on GitHub Actions (nothing has been pushed; the loop does not push).
+Verified on GitHub after the push to `main` was approved:
+
+- Run 41351478373 on `main` (push): success, all steps green (checkout, setup-node, npm ci, Lint, Format check, Typecheck, Environment naming guard, Unit tests, Build, Client bundle secret scan). Annotations only: Node 20 deprecation notice for `actions/checkout@v4` / `actions/setup-node@v4` and an `ubuntu-latest` migration notice.
+- Failing check: throwaway PR #1 with `(x: any)` failed at the Lint step (run 41351688574; every later step skipped). PR closed without merging and the branch deleted.
 
 - **SIT-166:** approve pushing `main` to `origin` (`jakewanders/opsdesk`), then confirm the first Actions run is green; for the failing-run check, push a branch with a deliberate lint error, open a PR, confirm it fails, then close it.
 
