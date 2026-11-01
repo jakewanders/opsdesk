@@ -15,6 +15,34 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // The admin client bypasses RLS. Only trusted server code may import it.
+    files: ["**/*.{ts,tsx,mts,mjs}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/supabase/admin", "**/supabase/admin"],
+              message:
+                "The admin Supabase client bypasses RLS. Import it only from demo cleanup, the demo route handlers, Netlify functions, or scripts (see eslint.config.mjs).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "src/lib/supabase/admin*.{ts,tsx}",
+      "src/features/demo/cleanup/**",
+      "src/app/api/v1/demo/**",
+      "netlify/functions/**",
+      "scripts/**",
+    ],
+    rules: { "no-restricted-imports": "off" },
+  },
   prettier,
   globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"]),
 ]);

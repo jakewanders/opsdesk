@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { FLAGGED_ROUTES } from "@/lib/routes";
 import { parseFeatureFlags } from "@/lib/env/schema";
 import { NOINDEX_VALUE, shouldNoindex } from "@/lib/robots";
+import { needsSession, updateSession } from "@/lib/supabase/middleware";
 
 function withRobots<T extends NextResponse>(response: T): T {
   if (shouldNoindex(process.env.CONTEXT)) {
@@ -15,9 +16,11 @@ function withRobots<T extends NextResponse>(response: T): T {
  * 1. P2 routes exist only while their feature flag is on. Turning a flag off must give a real
  *    404 status. A page-level notFound() cannot, because the authenticated shell has already
  *    started streaming (200) by then, so the check happens here, before rendering.
- * 2. Non-production deploys send `X-Robots-Tag: noindex, nofollow` on every response.
+ * 2. Routes that use the session refresh it here (`updateSession`) and forward the new cookies.
+ *    Static public pages are skipped so they stay cacheable.
+ * 3. Non-production deploys send `X-Robots-Tag: noindex, nofollow` on every response.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const flagged = FLAGGED_ROUTES.some(
     (route) => pathname === route.path || pathname.startsWith(`${route.path}/`),
@@ -35,6 +38,10 @@ export function proxy(request: NextRequest) {
       // Rewriting to a path that has no page yields the standard 404 response.
       return withRobots(NextResponse.rewrite(new URL("/_flag-disabled", request.url)));
     }
+  }
+  if (needsSession(pathname)) {
+    const { response } = await updateSession(request);
+    return withRobots(response);
   }
   return withRobots(NextResponse.next());
 }

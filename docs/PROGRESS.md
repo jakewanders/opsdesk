@@ -190,6 +190,16 @@ In progress. Per-issue results are below; milestone-level checks are not yet run
 
 Not part of this issue's acceptance (needs Jake): applying the hosted settings and production keys. No Cloudflare Turnstile widget or hosted Supabase project exists to configure or verify; production verification is tracked in P-14 and P-15.
 
+### SIT-169 — Supabase SSR clients and session refresh (done)
+
+- Added `@supabase/ssr` 0.12.7 and `@supabase/supabase-js` 2.118.0. Files in `src/lib/supabase/`: `client.ts`, `server.ts`, `create-server-client.ts`, `middleware.ts` (`updateSession`, `needsSession`), `resolve-user.ts`, `current-user.ts`, `cookie-options.ts`, `admin.ts`; `src/proxy.ts` now refreshes the session for `/app`, `/auth/*`, `/api/*` and the auth pages. ESLint `no-restricted-imports` limits the admin client to four trusted locations.
+- Unit tests (`npm run test:unit`: 27 files, 344 tests pass): cookie options (Secure only for https, no Domain, SameSite Lax, path `/`), `needsSession` for 10 refreshed and 6 untouched paths, the admin import boundary through ESLint (5 forbidden paths plus a relative import fail with `no-restricted-imports`; 4 allowed paths pass), `createAdminClient` throws without the secret.
+- Integration tests (`npm run test:integration`: 2 files, 15 tests pass against the local stack, 0 users left in `auth.users`): `resolveUser` returns `{ id, email: null, isAnonymous: true }` for a valid token and `null` for a tampered signature, a payload edited to claim another user, an expired HS256-signed token, garbage, no session, and an unreachable Auth service (never throws); a server client acting as user A reads exactly A's profile and none of B's through PostgREST (RLS), and as no user gets `42501`; the proxy refreshes an expired session cookie (valid refresh token) and returns a new `sb-...-auth-token` cookie with SameSite=lax, no Domain, and `cache-control: ...no-store`, and updates the request cookie; a request with no session passes through with no Set-Cookie.
+- Mutations: `resolveUser` trusting the unverified payload made 7 integration tests fail; dropping the cache-header copy in `updateSession` made the refresh test fail; both reverted (15 pass).
+- Real server (`next build` + `next start` against the local stack): `GET /app` with an expired session cookie returned 200 with `Set-Cookie: sb-127-auth-token=...; Path=/; SameSite=lax` and `cache-control: private, no-cache, no-store...`; without a cookie, no Set-Cookie; `/`, `/privacy`, `/terms` have `s-maxage=31536000` and 0 Set-Cookie headers. A client component importing the admin client failed the build ("server-only").
+- A first integration run failed 3 tests: anonymous users have `email: ""`, which `resolveUser` returned instead of `null`; fixed (`email || null`).
+- `npm run lint`, `format:check`, `typecheck`, `check:bundle` pass. Documented in `docs/ARCHITECTURE.md` and `docs/SECURITY.md`.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

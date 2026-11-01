@@ -23,3 +23,12 @@ Living document. The threat model and the full role table are finalized by the d
 | `anon` role          | No privileges at all: any select fails with `42501`.                                                                                                                                                            |
 | Other members' names | Not readable here. Later issues (member lists) must add a narrowly scoped policy or a view; do not widen this one.                                                                                              |
 | Tests                | `supabase/tests/profiles.test.sql` (29 assertions: structure, trigger, definer hardening, own-row access, cross-user negatives, column grants, anon, cascade).                                                  |
+
+## Sessions and the admin client (SIT-169)
+
+| Aspect                    | Decision                                                                                                                                                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who is the caller         | `resolveUser` (`auth.getUser()`): Supabase Auth verifies the token. The cookie payload and `getSession()` are never trusted on the server. Forged, tampered, expired, or missing tokens resolve to signed out.                                            |
+| Auth cookies              | Host-scoped, `SameSite=Lax`, `Secure` over https, not `HttpOnly` (the browser client needs them). Responses that set them carry `Cache-Control: private, no-cache, no-store` so a CDN cannot serve one user's session to another.                         |
+| Static pages              | The proxy skips the session refresh for `/`, `/privacy`, `/terms`, so they never receive a Set-Cookie and stay cacheable.                                                                                                                                 |
+| Admin (secret key) client | `src/lib/supabase/admin.ts`, server-only, bypasses RLS. Import allowed only from `src/features/demo/cleanup`, `src/app/api/v1/demo`, `netlify/functions`, `scripts`; lint fails elsewhere (tested). Constructing it without `SUPABASE_SECRET_KEY` throws. |
