@@ -49,6 +49,16 @@ Living document. The threat model and the full role table are finalized by the d
 - Last-owner guard: `private.assert_org_has_owner()` (SECURITY DEFINER, `search_path=''`, not executable by API roles) runs from deferred constraint triggers, so ownership can be handed over inside one transaction but a commit that leaves an organization ownerless fails with `OD409` / `LAST_OWNER`. Deleting a whole organization is allowed.
 - `organizations.created_by` is nullable with `on delete set null`; memberships cascade with their organization or user.
 
+## RLS helper functions (SIT-187)
+
+All in the `private` schema (PostgREST serves only `public`): `current_user_id()`, `is_anonymous()`, `is_member(org_id)`, `has_role(org_id, roles[])`, `org_is_writable(org_id)`, `can_write(org_id)`.
+
+- Pattern: `SECURITY DEFINER`, `search_path = ''`, fully qualified names, `STABLE`, EXECUTE revoked from PUBLIC/anon and granted to `authenticated` and `service_role` only. `authenticated` gets schema USAGE (needed to resolve functions in policies) but no CREATE and no table access.
+- No helper accepts a user id, role or org kind from the caller: the actor is always `auth.uid()` and the JWT. Anonymous users are told apart by the `is_anonymous` claim (anything but the string `true` counts as not anonymous) and by the database-controlled `organizations.kind`.
+- Demo expiry lives in `org_is_writable`: real orgs are always writable, demo orgs only while `expires_at > now()`. `can_write` = role owner/admin/member and writable.
+- Recursion: helpers read `memberships`/`organizations` as the function owner, which bypasses RLS (the tables are not FORCE RLS), so a policy on `memberships` can call them without re-entering itself. A test proves this.
+- A catalog test fails if any SECURITY DEFINER function in `public` or `private` lacks `search_path = ''`.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.

@@ -74,8 +74,8 @@ select ok(
 );
 select ok(
   not has_schema_privilege('anon', 'private', 'usage')
-  and not has_schema_privilege('authenticated', 'private', 'usage'),
-  'the private schema is not usable by anon or authenticated'
+  and not has_schema_privilege('authenticated', 'private', 'create'),
+  'the private schema is not usable by anon, and authenticated (usage only, for RLS helpers) cannot create in it'
 );
 
 -- updated_at is maintained by trigger: now() is fixed inside a transaction, so prove it by

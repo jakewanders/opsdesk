@@ -226,6 +226,13 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - First test layout aborted because `set constraints all immediate` fires every pending check; the guard tests moved to their own file with no owner-less fixtures.
 - `npm run db:types` regenerated; `npm run check`: all 9 steps passed.
 
+### SIT-187 — Hardened RLS helper functions (done)
+
+- Migration `20261101000300_rls_helpers.sql` (6 helpers in `private`); `supabase/tests/rls-helpers.test.sql` (31 assertions: owner/admin/member/viewer, non-member, anonymous guest, live and expired demo, no JWT, malformed claim, recursion probe, anon/PUBLIC privileges, catalog search_path guard).
+- `npm run test:db`: 4 files, 130 tests, `Result: PASS`.
+- Mutations caught and reverted by `db:reset`: `org_is_writable` always true failed 3/31; dropping `search_path` on `has_role` plus granting `is_member` to anon failed 2/31.
+- profiles test updated: `authenticated` now has USAGE on `private` by design (see DECISIONS).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.
