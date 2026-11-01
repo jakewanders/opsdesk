@@ -102,3 +102,19 @@ describe("mapPostgresError: anything else is not ours", () => {
     },
   );
 });
+
+describe("immutability trigger errors (SIT-188)", () => {
+  it("maps IMMUTABLE_COLUMN to a 403 with a machine code and the safe message", () => {
+    const error = mapPostgresError({
+      code: "OD403",
+      message: "This field cannot be changed.",
+      details: "IMMUTABLE_COLUMN",
+      hint: "organization_id",
+    });
+    expect(error?.status).toBe(403);
+    expect(error?.code).toBe("IMMUTABLE_COLUMN");
+    expect(error?.message).toBe("This field cannot be changed.");
+    // the column name in the hint is not exposed
+    expect(JSON.stringify(error)).not.toContain("organization_id");
+  });
+});

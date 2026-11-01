@@ -268,6 +268,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: signed-out not redirected (4 failed), guest with no workspace (1), setup loop (2), expired demo passes (1), guest bounced from login (1), expiry ignored (2).
 - Not verifiable end to end yet: the org-setup and expired-demo redirects need SIT-194's policies (see DECISIONS). The proxy's cookie carry-over on redirects is exercised only by the real browser run (sign-in then redirect worked), not by a unit test.
 
+### SIT-188 — Immutability triggers (done)
+
+- Migration `20261101000400_immutability_triggers.sql`: `private.prevent_column_change()`, one-line `private.protect_columns(table, cols...)`, `private.protect_org_expiry()`, `private.set_demo_expiry()`; applied to `organizations`, `memberships`, `profiles`. Usage rules for later tables in `docs/SECURITY.md`.
+- `supabase/tests/immutability.test.sql` (40 assertions): each protected column on each table as `authenticated` fails with `OD403`; ordinary updates still work; `updated_at` is server time; `service_role` may change `expires_at` but never `kind`/`created_by`; `set_demo_expiry` works, refuses real orgs, unknown ids and null, and is closed to API users; creator deletion still nulls `created_by`; the helper attaches in one line to a new table and fails loudly on typos.
+- `npm run test:db`: 5 files, 170 tests PASS. `npm run check`: all 9 steps passed (unit 675, integration 36).
+- Mutations caught and reverted by `db:reset`: org protection trigger dropped (10 failed), expiry trigger dropped (3), authenticated trusted for expiry (2), no depth rule for NULL (3), no typo guard (1), service_role revoked on `set_demo_expiry` (6).
+- The earlier last-owner test that moved a membership between organizations now expects `OD403` (the immutability trigger fires before the unique constraint).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

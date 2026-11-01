@@ -73,7 +73,7 @@ select throws_ok(
   $$update public.memberships set organization_id = 'd0000000-0000-0000-0000-00000000000d'
     where organization_id = 'e0000000-0000-0000-0000-00000000000e' and user_id = '44444444-0000-0000-0000-000000000004';
     set constraints all immediate$$,
-  '23505', null, 'a membership cannot be moved onto a user that already belongs to the target'
+  'OD403', null, 'a membership cannot be moved to another organization (immutable organization_id)'
 );
 set constraints all deferred;
 
