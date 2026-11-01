@@ -14,12 +14,14 @@ insert into public.memberships (organization_id, user_id, role) values
   ('d1000000-0000-0000-0000-00000000000d', 'c2000000-0000-0000-0000-000000000002', 'admin'),
   ('d2000000-0000-0000-0000-00000000000d', 'c1000000-0000-0000-0000-000000000001', 'owner');
 
--- Temporary grants and policies so an API-role session can reach the triggers. The real ones arrive with
--- SIT-194; this transaction (and these grants) is rolled back at the end.
+-- The triggers are what is under test, so row level security is switched off for the three tables for this
+-- transaction (rolled back); the API roles' column grants still apply. Grants for service_role are temporary too.
 grant select, update on public.organizations, public.memberships, public.profiles to authenticated, service_role;
-create policy zz_o on public.organizations for all to authenticated, service_role using (true) with check (true);
-create policy zz_m on public.memberships for all to authenticated, service_role using (true) with check (true);
-create policy zz_p on public.profiles for all to authenticated, service_role using (true) with check (true);
+set constraints all immediate;
+set constraints all deferred;
+alter table public.organizations disable row level security;
+alter table public.memberships disable row level security;
+alter table public.profiles disable row level security;
 
 create or replace function pg_temp.act_as(r text) returns void language plpgsql as $$
 begin

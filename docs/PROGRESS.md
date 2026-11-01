@@ -276,6 +276,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted by `db:reset`: org protection trigger dropped (10 failed), expiry trigger dropped (3), authenticated trusted for expiry (2), no depth rule for NULL (3), no typo guard (1), service_role revoked on `set_demo_expiry` (6).
 - The earlier last-owner test that moved a membership between organizations now expects `OD403` (the immutability trigger fires before the unique constraint).
 
+### SIT-194 — RLS policies and restrictive grants for tenancy tables (done)
+
+- Migration `20261101000500_rls_tenancy_policies.sql`: defaults inverted (anon has nothing; new tables, sequences and functions start closed; no PUBLIC execute), policies and column grants for `profiles`, `organizations`, `memberships` with restrictive denials; policy table in `docs/SECURITY.md`. Holding page `/app/setup` added for the route guard.
+- `supabase/tests/rls-tenancy.test.sql` (60 assertions): catalog tests (RLS on every public table, anon holds no table/column privilege, authenticated writes limited to approved columns, no public function for anon/PUBLIC, a table and a function created now start closed, exact policy list); behaviour tests with actors A1 owner, A2 admin, A3 member, A4 viewer, B1 (org B), guests G1/G2 and expired-demo guest G3: reads are tenant-scoped, member/viewer/foreign-owner/guest updates change 0 rows, kind/expires_at/created_by/id/slug writes are refused, no client insert/delete of organizations, no client write to memberships (also with an accidental grant), profiles own-row only, anon gets 42501 everywhere.
+- `npm run test:db`: 6 files, 227 tests PASS. `npm run check`: all 9 steps passed (unit 675, integration 36). Older pgTAP files were adjusted: privileges tests in `organizations.test.sql`, and `immutability.test.sql` now disables RLS inside its rolled-back transaction because it tests triggers.
+- **Real browser run (local Supabase, `next start`):** a confirmed user with no organization who signs in and opens `/app/customers` is sent to `/app/setup` ("Set up your workspace"); after a membership is inserted `/app/customers` and `/app/setup` both load. This re-verifies the org-setup rule of SIT-180 end to end; the expired-demo rule is covered by `workspace-state.integration.test.ts` against the real policies (expired demo, live demo, real org, none).
+- Mutations caught and reverted by `db:reset`: org select policy dropped (11 failed), guests allowed to edit settings (2), memberships select using true (4), any member may update org (4), anon select on profiles (4), authenticated insert on organizations (2), update on kind granted (2), default privileges reopened (2), restrictive update denial dropped (2), expired demo writable (3).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

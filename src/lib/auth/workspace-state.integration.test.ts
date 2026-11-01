@@ -4,10 +4,8 @@ import { localSupabase, psql, type LocalSupabase } from "@/test/local-supabase";
 import { resolveWorkspaceState } from "./workspace-state";
 
 /**
- * The tenancy policies arrive with SIT-194. To prove the routing query against the real schema
- * (including the PostgREST embed memberships -> organizations), this test installs a TEMPORARY
- * grant and policy that let a user read their own memberships and their organizations, and removes
- * them afterwards. Nothing here is a model for the real policies.
+ * The routing query against the real schema and the real tenancy policies (SIT-194): a signed-in
+ * user reads their own memberships and organizations through RLS.
  */
 const run = Date.now();
 const PASSWORD = "correct horse battery";
@@ -51,14 +49,9 @@ beforeAll(async () => {
     update public.organizations set expires_at = now() - interval '1 minute' where id = '${dead}';
     insert into public.memberships (organization_id, user_id, role) values
       ('${real}', '${users.real.id}', 'owner'), ('${live}', '${users.live.id}', 'owner'), ('${dead}', '${users.dead.id}', 'owner');`);
-  psql(`grant select on public.memberships, public.organizations to authenticated;
-    create policy zz_route_it_m on public.memberships for select to authenticated using (user_id = auth.uid());
-    create policy zz_route_it_o on public.organizations for select to authenticated using (id in (select organization_id from public.memberships where user_id = auth.uid()));`);
 });
 
 afterAll(() => {
-  psql(`drop policy if exists zz_route_it_m on public.memberships; drop policy if exists zz_route_it_o on public.organizations;
-    revoke select on public.memberships, public.organizations from authenticated;`);
   psql(
     `delete from public.organizations where id::text like 'e1000000-0000-0000-0000-0000000000a%'`,
   );
@@ -80,7 +73,7 @@ describe("resolveWorkspaceState against the local database", () => {
   });
 });
 
-describe("before the policies exist", () => {
+describe("when the query is refused", () => {
   it("a refused query is unknown, so routing never redirects on it", async () => {
     psql(`revoke select on public.memberships, public.organizations from authenticated`);
     try {

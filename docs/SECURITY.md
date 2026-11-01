@@ -94,7 +94,7 @@ Applied by `withApi` (`src/lib/api/handler.ts`, `request-guard.ts`) to every rou
 | Anyone                              | `/demo`             | never redirected away (prevents loops)                                              |
 
 - `next` goes through `safeNextPath` (only `/app` or below; `//`, backslashes, absolute URLs, encoded and dot-segment tricks fall back to `/app`).
-- The workspace state is read with the caller's own session (`resolveWorkspaceState`). If it cannot be determined (query refused or failing) the result is `unknown` and nothing redirects. **Until the tenancy policies of SIT-194 exist, `memberships` is closed to clients, so the state is `unknown` in practice and the org-setup and expired-demo redirects are inert.** They are covered by unit tests with every state and by an integration test that installs a temporary policy.
+- The workspace state is read with the caller's own session (`resolveWorkspaceState`). If it cannot be determined (query refused or failing) the result is `unknown` and nothing redirects. With the tenancy policies of SIT-194 in place the state is read for real: a member with no organization is sent to `/app/setup`. These rules are covered by unit tests with every state and by an integration test against the real policies.
 - A fixpoint test walks every user kind, workspace state and start path and fails if any chain takes more than two redirects.
 
 ## Immutable columns (SIT-188)
@@ -105,6 +105,26 @@ Applied by `withApi` (`src/lib/api/handler.ts`, `request-guard.ts`) to every rou
 - **`organizations.expires_at`** can be changed only when the running role is `postgres`, `supabase_admin` or `service_role`: that covers SECURITY DEFINER functions (they run as their owner) and trusted server code with the service key. An API user (`authenticated`, `anon`) cannot, including a demo owner for their own workspace. The named path is `private.set_demo_expiry(org_id, ts)`: demo organizations only, null refused, EXECUTE for `service_role` only; the bootstrap and reset RPCs (SIT-199, SIT-205) call it from definer code. `kind` cannot be changed by anyone through SQL UPDATE.
 - `updated_at` is set by `private.set_updated_at()` on every update, so a client-supplied value is overwritten with server time.
 - Triggers are SECURITY INVOKER so `current_user` is the role that ran the UPDATE. Disabling them needs table ownership, which no API role has.
+
+## RLS policies and grants for the tenancy tables (SIT-194)
+
+This is the template every business table copies.
+
+**Defaults are inverted.** Migration `20261101000500_rls_tenancy_policies.sql` revokes everything from `anon`, revokes `authenticated`'s table grants, and changes the default privileges of the migration role so that _new_ tables, sequences and functions in `public` start with no access for `anon`/`authenticated` (and functions are not executable by PUBLIC). Every new table or RPC therefore needs explicit `grant`s; an RPC must `grant execute ... to authenticated`.
+
+| Table           | Who      | select                                        | insert           | update                                                                                    | delete                  |
+| --------------- | -------- | --------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------- | ----------------------- |
+| `profiles`      | the user | own row                                       | no               | own row: `display_name`, `avatar_url`                                                     | no                      |
+| `organizations` | member   | own organizations (including an expired demo) | no (checked RPC) | owner/admin of a **real** org with writable settings: `name`, `industry`, `timezone` only | no (privileged cleanup) |
+| `memberships`   | member   | memberships of own organizations              | no               | no                                                                                        | no (validated RPCs, M4) |
+| any             | `anon`   | no                                            | no               | no                                                                                        | no                      |
+
+- Policies: `profiles_select_own`, `profiles_update_own`, `organizations_select_member`, `organizations_update_admin`, `organizations_no_insert`, `organizations_no_delete`, `memberships_select_same_org`, `memberships_no_insert/update/delete`. The `no_*` policies are RESTRICTIVE denials: even a future careless `grant insert` cannot open the table (tested).
+- Policies call only the `private` helpers (`is_member`, `has_role`, `org_is_writable`, `is_anonymous`), which read as the function owner, so `memberships` policies do not recurse.
+- A demo guest cannot edit organization settings (PRD 5.1: guests are denied `org.settings.update`), even on their own live demo; this is enforced as `not private.is_anonymous()` in the update policy. An expired demo is read-only for everyone.
+- `kind`, `expires_at`, `created_by`, `id` and `slug` have no column grant, so a client cannot write them at all; the immutability triggers (SIT-188) refuse them even for a role that were granted.
+- **`FORCE ROW LEVEL SECURITY` is not used.** The table owner (`postgres`) runs the SECURITY DEFINER helpers and RPCs that must cross tenants and has BYPASSRLS regardless; API roles are never owners, so RLS always applies to them.
+- **Catalog tests** (`rls-tenancy.test.sql`) fail if any `public` table lacks RLS, if `anon` holds any table or column privilege, if `authenticated` holds insert/delete/truncate/references/trigger anywhere or can update any column other than the approved ones, if any `public` function is executable by anon/PUBLIC, if a freshly created table or function is not closed, or if the set of policies differs from this document.
 
 ## Permission matrix (SIT-171)
 

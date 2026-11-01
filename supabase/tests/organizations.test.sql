@@ -4,7 +4,7 @@
 -- RLS policies and grants for real use arrive with SIT-194; until then these tables are closed to
 -- every API role.
 begin;
-select plan(58);
+select plan(55);
 
 -- ---------------------------------------------------------------------------------------------
 -- Structure
@@ -197,31 +197,21 @@ select is(
   'deleting a user deletes only their memberships (the organization stays)'
 );
 
--- ---------------------------------------------------------------------------------------------
--- Locked down until SIT-194 adds policies and grants
+-- Privileges are now defined by SIT-194 (see rls-tenancy.test.sql); here only the invariant that matters
+-- to the constraints: the API roles can never insert or delete.
 -- ---------------------------------------------------------------------------------------------
 select ok(
   not has_table_privilege('anon', 'public.organizations', 'select')
-  and not has_table_privilege('authenticated', 'public.organizations', 'select')
   and not has_table_privilege('authenticated', 'public.organizations', 'insert')
-  and not has_table_privilege('authenticated', 'public.organizations', 'update')
-  and not has_table_privilege('authenticated', 'public.organizations', 'delete'),
-  'API roles hold no privileges on organizations'
-);
-select ok(
-  not has_table_privilege('anon', 'public.memberships', 'select')
-  and not has_table_privilege('authenticated', 'public.memberships', 'select')
+  and not has_table_privilege('authenticated', 'public.organizations', 'delete')
+  and not has_table_privilege('anon', 'public.memberships', 'select')
   and not has_table_privilege('authenticated', 'public.memberships', 'insert')
   and not has_table_privilege('authenticated', 'public.memberships', 'update')
   and not has_table_privilege('authenticated', 'public.memberships', 'delete'),
-  'API roles hold no privileges on memberships'
+  'API roles cannot insert or delete organizations or write memberships; anon reads nothing'
 );
-set local role anon;
-select throws_ok($$select * from public.organizations$$, '42501', null, 'anon cannot read organizations');
-reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "11111111-0000-0000-0000-000000000001", "role": "authenticated"}';
-select throws_ok($$select * from public.memberships$$, '42501', null, 'a signed-in user cannot read memberships yet');
 select throws_ok(
   $$insert into public.memberships (organization_id, user_id, role)
     values ('b0000000-0000-0000-0000-00000000000b', '11111111-0000-0000-0000-000000000001', 'owner')$$,
