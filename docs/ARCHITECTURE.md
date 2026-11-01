@@ -13,3 +13,13 @@ Defined as CSS variables in `src/app/globals.css` (`:root` for light, `.dark` fo
 - **Theme:** `next-themes` with `attribute="class"`, default `light`, options Light, Dark, System, stored in `localStorage` under `opsdesk-theme`. Its inline script runs before the page content paints, so there is no flash. `ThemeToggle` (`src/components/layout/theme-toggle.tsx`) cycles Light, Dark, System and goes in the app shell top bar.
 - **Focus:** primitives use a solid 3px `--ring` ring; a global `:focus-visible` outline covers anything else. Reduced motion is respected globally.
 - **Primitives (shadcn/ui, Radix base):** button, input, label, select, dialog, sheet, drawer, dropdown-menu, table, tabs, sonner (toast), skeleton, badge. Icons: lucide-react.
+
+## App shell (SIT-162)
+
+`src/components/layout/app-shell.tsx` hosts every `/app/*` page. `src/app/app/layout.tsx` renders it for the `/app` segment.
+
+- **Desktop (md and up):** fixed 240px sidebar, compact 48px top bar (workspace selector slot, search, theme toggle, account menu). **Below md:** the sidebar becomes a left drawer (Radix dialog via `Sheet`), opened from a menu button in the top bar; Escape closes it and focus returns to the button; choosing a link closes it.
+- **Landmarks and keyboard:** a skip link is the first focusable element and moves focus to `<main id="main-content" tabindex="-1">`; `header`, `nav` ("Main"), `main`. The current section carries `aria-current="page"`.
+- **Nav config** (`nav-config.ts`): icons are referenced by name (components cannot cross the server/client boundary). `BUILT_ROUTES` lists the pages that exist; items for pages that do not exist yet are not rendered. Each issue that adds a page appends its href there, and a test checks each has a page file. Quotes follows `NEXT_PUBLIC_ENABLE_QUOTES`.
+- **Slots:** `orgSelector`, `user`, and `banner` props render fine without data; the workspace issues (SIT-209) and guest banner (SIT-211) fill them.
+- **Rendering:** the layout calls `connection()` inside `Suspense`, so the authenticated shell is rendered per request and never prerendered (`cacheComponents` rejects `export const dynamic`).
