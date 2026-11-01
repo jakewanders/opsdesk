@@ -89,3 +89,7 @@ Follows PRD section 10: `src/app/(marketing)`, `(auth)`, `app/`, `api/v1/`; `src
 - **Commits:** Conventional Commits with the issue id in the subject, for example `feat(db): create tenancy tables (SIT-178)`. Types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`. Do not commit `.env*` files (only `.env.example`), exports, or test credentials.
 - **Before pushing:** `npm run check`.
 - **GitHub repository:** `jakewanders/opsdesk` (private). The app reads its public source link from `NEXT_PUBLIC_GITHUB_REPO_URL`; nothing hard-codes it. Recommended repository settings, not applied by tooling: squash merge only, delete branch on merge, and the CI workflow as a required check once SIT-166 lands.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and every push to `main`: `npm ci` (Node from `.nvmrc`, npm cache), `lint`, `format:check`, `typecheck`, `check:env`, `test:unit`, `build`, then `check:bundle`. It uses no secrets and has read-only permissions. Database (pgTAP) and end-to-end jobs are marked as placeholders in the workflow and arrive with SIT-197 and the CI extension issues. To reproduce a CI run locally on a clean tree: `git clone . /tmp/opsdesk-ci && cd /tmp/opsdesk-ci && npm ci && npm run check`.

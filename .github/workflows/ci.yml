@@ -1,0 +1,62 @@
+name: CI
+
+# Gates pull requests and pushes to the default branch (PRD 11.5).
+# No secrets and no production credentials are used here. The build needs none: the server
+# validates its environment at startup, not at build time.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: the workflow only reads the repository.
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR supersedes a run that is still going.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (lockfile only)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Environment naming guard
+        run: npm run check:env
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build
+        run: npm run build
+
+      - name: Client bundle secret scan
+        run: npm run check:bundle
+
+  # Added by later issues. Kept as comments so the required-check list stays accurate.
+  #
+  # database:   ephemeral local Supabase (`supabase start`), `npm run test:db`, API integration
+  #             tests. Needs the pgTAP harness (SIT-197) and the CI extension issue (P-11).
+  # e2e:        Playwright against a deploy preview or a local container with a TEST Supabase
+  #             project. Never against production. (P-12)
