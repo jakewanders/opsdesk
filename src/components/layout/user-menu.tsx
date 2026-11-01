@@ -2,6 +2,7 @@
 
 import { CircleUserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logoutAction } from "@/lib/auth/actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +32,19 @@ export function UserMenu({ user }: { user?: ShellUser | null }) {
           </DropdownMenuLabel>
         ) : null}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>Sign out</DropdownMenuItem>
+        {user ? (
+          <form action={logoutAction}>
+            <DropdownMenuItem asChild>
+              <button type="submit" className="w-full cursor-pointer">
+                Sign out
+              </button>
+            </DropdownMenuItem>
+          </form>
+        ) : (
+          <DropdownMenuItem asChild>
+            <a href="/login">Sign in</a>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

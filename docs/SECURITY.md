@@ -69,6 +69,17 @@ Applied by `withApi` (`src/lib/api/handler.ts`, `request-guard.ts`) to every rou
 - **User check**: `auth: "required"` (default) verifies the session with Supabase Auth on every request (401 when signed out) and passes `user` to the handler. `"optional"` is for flows that create the session (demo bootstrap); `"none"` for public endpoints (health).
 - **Opt-out**: `skipOriginCheck: true` exists only for signature-verified webhooks (Stripe, if P2 is built).
 
+## Sign-up, sign-in and sign-out (SIT-179)
+
+- Forms (`/signup`, `/login`) submit to server actions (`src/lib/auth/actions.ts`) that validate with Zod and call Supabase Auth through the SSR client; the password never reaches client code after submit and is never trimmed, logged or returned (a failed submit refills only the email).
+- **No account enumeration.** A wrong password and an unknown email return the same message ("The email or password is not correct."). Signing up with an address that already exists returns the same "Check your email" screen as a new address. A correct password on an unconfirmed account says to confirm the email (this reveals nothing the caller did not already know). Verified in a real browser and by `auth.integration.test.ts` against local GoTrue.
+- **CAPTCHA.** Supabase checks a Turnstile token on every public auth call, so both forms render the Turnstile widget (`TurnstileField`) and send `captchaToken`. The token is single-use: a failed submit resets the widget. With no `NEXT_PUBLIC_TURNSTILE_SITE_KEY` the form says so and cannot be submitted.
+- **Email confirmation** is on (`enable_confirmations = true`), with a minimum password length of 8 (72 bytes maximum, the bcrypt limit). The confirmation link points to `NEXT_PUBLIC_APP_URL + /auth/callback`, an exact allowlisted URL in `supabase/config.toml`.
+- **Callback** (`/auth/callback`) exchanges the one-time `code` for a session, then redirects to a validated path. Redirects are built from the configured origin, never from `Host` or a query parameter; a bad or reused code goes to `/login?error=callback`.
+- **`next` redirects** go through `safeNextPath`: only `/app` or below, no `//`, backslashes, control characters, encoded dot segments or absolute URLs; anything else lands on `/app`.
+- **Sign out** is a server action behind the account menu (clears the session cookies, returns to `/login`).
+- Supabase throttles repeated confirmation emails for one address (`max_frequency`); the form surfaces that as "Too many attempts. Wait a minute, then try again."
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.

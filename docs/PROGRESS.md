@@ -250,6 +250,16 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: limit cap off (2 failed), HTML check off (6), UTF-16 length (1), URL credentials allowed (1), month and day calendar checks both off (1), non-strict query object (1). Removing only one of the two redundant calendar checks is not caught, as expected (either alone is sufficient). The sort-whitelist mutation did not compile, so it was not run; that rule is covered by the tests asserting the error for 8 hostile `sort` values.
 - Fixed while testing: the tag detector first allowed whitespace after `<`, which wrongly rejected "Revenue < Costs"; and `String.prototype.trim` strips a leading BOM, so only an interior BOM is rejected.
 
+### SIT-179 — Sign-up, login and logout flows (done)
+
+- Real flows via server actions (`src/lib/auth/`), `AuthForm` + `TurnstileField` (`src/components/auth/`), `/login` and `/signup` pages, `/auth/callback` code exchange, account-menu sign-out, app layout shows the signed-in email. Local Supabase now requires email confirmation and 8-character passwords.
+- **Real browser run (Playwright, `next start` on :3100 against local Supabase):** empty submit shows an error summary with focus; sign-up shows "Check your email"; the link from the local Mailpit inbox lands on `/app` signed in; the account menu shows the email; Sign out returns to `/login`; wrong password for an existing email and an unknown email both show "The email or password is not correct."; sign-up with the existing address shows the same "Check your email"; `?next=/app/customers` lands on `/app/customers`; `next` of `//evil.example`, `https://evil.example`, `/\\evil.example` and `/app/../login` all land on `/app`; `/auth/callback?code=bad` is a 303 to `/login?error=callback`. The Turnstile widget rendered "Success!" with Cloudflare's test site key.
+- `npm run check`: all 9 steps passed (unit: 38 files, 652 tests; integration: 4 files, 31 tests).
+- New tests: `auth.test.ts` (safe redirect, schemas, error mapping, flows), `auth-form.test.tsx` and `turnstile-field.test.tsx` (13 tests: validation, focus, generic error, double-submit lock, check-email state, keyboard order, axe on three states), `auth.integration.test.ts` (7 tests against local GoTrue: unconfirmed, confirmed, wrong vs unknown identical, CAPTCHA required, short password).
+- Mutations caught and reverted: outside-`/app` allowed (1 failed), existing account revealed (1), login sends no CAPTCHA (1), no pending lock (3), short passwords allowed (1), unknown email distinguishable (2). Removing only the `startsWith("//")` guard is not caught because the URL-origin check also rejects it (redundant defence).
+- Found while testing: Next prerendered the callback route handler at build and failed without env; it now reads the request before touching env. A second sign-up for one address within `max_frequency` returns 429, so the integration test waits 1.5 s.
+- Not done here (see DECISIONS): the no-organization redirect (SIT-193/209).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.
