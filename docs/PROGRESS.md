@@ -310,6 +310,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run test:db`: 7 files, 265 tests PASS. `npm run check`: all 9 steps passed (unit 716, integration 47).
 - Mutations caught and reverted by `db:reset`: unique `user_id` dropped (15 failed), composite FK replaced by a plain FK (1), trusted-columns trigger dropped (1), update granted and denial dropped (2 + 2), throttle disabled (3), index dropped (2), select policy opened (14).
 
+### SIT-192 — Demo seed registry and deterministic fixtures (done)
+
+- Migration `20261101000700_demo_seed_registry.sql`: registry `private.demo_seeders`, `register_demo_seeder` (one call adds an entity), `demo_seed_version`, fixtures (`demo_company/person/first_name/last_name/email/phone/ts`), runner `seed_demo_workspace` (order by position, caller's transaction, demo-only, idempotent via the stored seed version), `clear_demo_seed_marker` for reset. `src/lib/demo/seed-manifest.ts`, `fixture-lint.ts` (+ test), `npm run demo:seed` (local-only). Extension steps for entity issues in `docs/DEMO.md`.
+- `supabase/tests/demo-seed.test.sql` (49 assertions): banned-pattern lint of every fixture (emails `@example.com`, phones 555-01xx, 24 distinct values, no real brands or famous names), date window, registration, run order by position, idempotence (no duplicates), **two workspaces get byte-identical content (md5) with different ids**, reset-then-reseed restores the same content, real/unknown/unregistered orgs refused, failing seeder is atomic, browser roles cannot execute. `npm run demo:seed` run locally: "Seeded demo organization ..., seed version 1" (cleaned up afterwards).
+- `npm run test:db`: 8 files, 314 tests PASS. `npm run check`: all 9 steps passed (unit 727, integration 47). Vitest fixture lint scans every seed migration, `supabase/seed.sql` and the manifest.
+- Mutations caught and reverted by `db:reset`: phone outside reserved range (2 failed), real email domain (2), non-deterministic dates via `random()` (5), runner ignores marker (5), reversed order (2), seeder executable by authenticated (1).
+- Note: no entity seeders exist yet (customers etc. arrive in M2); the framework is exercised with probe seeders registered inside the rolled-back tests. SIT-199 can now call `seed_demo_workspace`.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

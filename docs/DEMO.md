@@ -80,3 +80,40 @@ Migration `20261101000600_demo_workspaces.sql`. The bootstrap and reset RPCs (SI
 ```
 
 A pgTAP test also asserts the plan uses the index.
+
+## Demo seed registry and fixtures (SIT-192)
+
+Migration `20261101000700_demo_seed_registry.sql`. One mechanism seeds a demo workspace for both bootstrap (SIT-199) and reset (SIT-205).
+
+### How seeding works
+
+- `private.seed_demo_workspace(org_id)` runs every registered seeder, in `position` order, **inside the caller's transaction** (a failing seeder rolls the whole seed back), then records the seed version with `record_demo_seed`.
+- It accepts only an organization that is a **demo** and has a `demo_workspaces` row (the calling RPC has already validated and registered its own org; it never takes an id from client input). Real organizations raise `OD403`, unknown or unregistered ones `OD404`.
+- **Idempotent**: a workspace whose stored `seed_version` is at least the current `private.demo_seed_version()` is left alone. The seed version is `1 + the sum of every registered seeder's version`.
+- **Reset**: empty the workspace's data, call `private.clear_demo_seed_marker(org_id)`, then `seed_demo_workspace` again. Call the runner only on a fresh or emptied workspace (a newly registered seeder raises the version, and seeding a populated workspace would duplicate rows).
+- All of these are executable by `service_role` and the owner-run definer RPCs only, never by browser roles.
+
+### Adding a seeder for a new entity (customers, opportunities, tasks, quotes, activity)
+
+1. In the entity's migration, write `private.seed_<entity>(org_id uuid) returns void` that inserts the rows using the fixtures below and `private.demo_ts(days_ago, hour)`. Reference parent rows by looking them up in this org (never by a hard-coded id): ids are random per workspace, content is not.
+2. Register it with **one call**: `select private.register_demo_seeder('<entity>', <position>, 'private.seed_<entity>(uuid)'::regprocedure);` Lower positions run first, so a parent (customers, 10) seeds before its children (opportunities, 20; tasks, 30). Bump the optional `seeder_version` argument when the content changes.
+3. Seeded activity events have no actor (`System`, a null actor).
+4. Add the rows to the manifest check in the verification issue (SIT-258). The fixture lint test (`src/lib/demo/fixture-lint.test.ts`) automatically scans any migration that mentions the seed registry or fixtures.
+
+### Fixtures (all deterministic, no `random()`)
+
+`private.demo_company(i)`, `demo_person(i)`, `demo_first_name(i)`, `demo_last_name(i)`, `demo_email(i)`, `demo_phone(i)`, `demo_ts(days_ago, hour)`. Index `i` is 1-based and wraps after 24, so the same `i` always yields the same value. Fiction rules (PRD 8.2): invented company names, `first.last@example.com` addresses, phones `(202) 555-01NN` (the 555-0100..0199 block is reserved for fiction), no real people or brands. Dates are offsets from today, 0 to 90 days back.
+
+### Manifest (target contents; `src/lib/demo/seed-manifest.ts`)
+
+| Entity                    | Count    |
+| ------------------------- | -------- |
+| customers                 | 18       |
+| opportunities             | 10       |
+| tasks                     | 24       |
+| quotes (when enabled, M4) | 4        |
+| activity events           | about 40 |
+
+### Local use
+
+`npm run demo:seed` creates a throwaway demo organization in the **local** database (it refuses any non-local target) and seeds it; it prints the SQL to remove it. With no entity seeders registered yet it records the framework seed version (1).
