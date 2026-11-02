@@ -24,6 +24,8 @@ type AppShellProps = {
   user?: ShellUser | null;
   /** Rendered above the page content (guest-mode banner, SIT-211). */
   banner?: ReactNode;
+  /** Rendered below the page content (the fictional-data note for guests). */
+  footer?: ReactNode;
 };
 
 function Brand() {
@@ -37,7 +39,7 @@ function Brand() {
   );
 }
 
-export function AppShell({ items, children, orgSelector, user, banner }: AppShellProps) {
+export function AppShell({ items, children, orgSelector, user, banner, footer }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -108,6 +110,9 @@ export function AppShell({ items, children, orgSelector, user, banner }: AppShel
         <main id="main-content" tabIndex={-1} className="flex-1 p-4 outline-none md:p-6">
           {children}
         </main>
+        {footer ? (
+          <footer className="border-t border-border px-4 py-3 md:px-6">{footer}</footer>
+        ) : null}
       </div>
     </div>
   );

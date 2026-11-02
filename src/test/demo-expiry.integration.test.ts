@@ -35,7 +35,7 @@ describe("a live demo", () => {
     const res = await server.request("/app/setup", live);
     expect(res.status).toBe(200);
     const html = await res.text();
-    expect(html).toContain("Demo workspace.");
+    expect(html).toContain("Demo workspace • fictional data • resets automatically");
     expect(html).toMatch(/23h 5\d m|24h 00m|23h 59m/);
     expect(html).toContain("Data is fictional");
   });

@@ -1,8 +1,13 @@
+import { connection } from "next/server";
 import type { ReactNode } from "react";
+import { GuestSettingsNotice } from "@/components/demo/guest-settings-notice";
+import { getCurrentUser } from "@/lib/supabase/current-user";
 import { SettingsNav, type SettingsLink } from "@/components/layout/settings-nav";
 import { getFeatureFlags } from "@/lib/env/public";
 
-export default function SettingsLayout({ children }: { children: ReactNode }) {
+export default async function SettingsLayout({ children }: { children: ReactNode }) {
+  await connection();
+  const user = await getCurrentUser();
   const flags = getFeatureFlags();
   const links: SettingsLink[] = [
     { href: "/app/settings/organization", label: "Organization" },
@@ -14,6 +19,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="max-w-3xl">
       <SettingsNav links={links} />
+      {user?.isAnonymous ? <GuestSettingsNotice /> : null}
       {children}
     </div>
   );

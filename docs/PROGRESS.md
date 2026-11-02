@@ -481,6 +481,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 1003 / 70 files, integration 163 / 21 files, pgTAP PASS).
 - Mutations caught: cache not cleared, no refresh, new key every attempt, throttle message not rewritten. The route's guest check is covered by the database function (same `GUEST_ONLY` 403), as for bootstrap.
 
+### SIT-211 — Guest-mode banner, restrictions UI and fictional-data labels (done)
+
+- Banner copy and states, Create an account, footer note, `GuestModeProvider`, `RestrictedAction` / `GuestRestricted`, guest settings notice, `AppShell` footer slot. Documented in `docs/DEMO.md`.
+- Tests: `guest-ui.test.tsx` (banner active, near expiry, ended and the transition, axe in each state; `RestrictedAction` focusable, `aria-disabled`, reason as accessible description, inert for mouse and keyboard, axe; `GuestRestricted` for member, guest and no provider; the settings notice lists all six restrictions with reasons; the fictional-data note), `guest-ui.integration.test.ts` (real production build: a guest sees the banner, Reset Demo, Create an account and the footer note on eight `/app` pages including settings; settings show the read-only notice with every restriction; **a registered user sees none of it on the same pages**). The integration test caught a real bug: importing a constant from a `"use client"` module into a Server Component made the settings pages throw; the list moved to a plain module.
+- Real browser (production build, 375 px): banner and footer note on the dashboard and settings with no horizontal scroll (screenshot reviewed).
+- `npm run check`: all 9 steps passed (unit 1016 / 71 files, integration 167 / 22 files, pgTAP PASS).
+- Mutations caught and reverted: a real `disabled` attribute, the reason not linked with `aria-describedby`, guests shown the real control, no near-expiry state.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

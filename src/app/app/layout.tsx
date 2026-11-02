@@ -4,6 +4,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { getNavItems } from "@/components/layout/nav-config";
 import { getFeatureFlags } from "@/lib/env/public";
 import { DemoCountdown } from "@/components/demo/demo-countdown";
+import { FictionalDataNote } from "@/components/demo/fictional-data-note";
+import { GuestModeProvider } from "@/components/demo/restricted-action";
 import { DemoResetButton } from "@/components/demo/demo-reset-button";
 import { loadMemberships } from "@/lib/api/org-context";
 import { toWorkspaces } from "@/lib/api/organizations";
@@ -98,8 +100,9 @@ async function DynamicShell({ children }: { children: ReactNode }) {
           ) : undefined
         }
         banner={banner}
+        footer={user?.isAnonymous ? <FictionalDataNote /> : undefined}
       >
-        {children}
+        <GuestModeProvider isGuest={Boolean(user?.isAnonymous)}>{children}</GuestModeProvider>
       </AppShell>
     </ApiClientProvider>
   );

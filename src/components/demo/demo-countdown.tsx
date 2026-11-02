@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { announceBand, bandLabel, formatRemaining } from "@/lib/demo/time-remaining";
@@ -38,24 +39,47 @@ export function DemoCountdown({ expiresAt, serverNow, actions }: DemoCountdownPr
     if (remaining === 0 && elapsedMs > 0) router.refresh();
   }, [remaining, elapsedMs, router]);
 
+  const ended = remaining === 0;
+  const nearEnd = !ended && remaining < 600;
+
   return (
     <div
       role="note"
-      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-subtle px-4 py-2 text-sm text-foreground"
+      aria-label="Demo workspace"
+      data-state={ended ? "ended" : nearEnd ? "near-end" : "active"}
+      className="border-b border-warning/40 bg-warning-subtle px-4 py-2 text-sm text-foreground"
     >
-      <Clock aria-hidden="true" className="size-4 shrink-0" />
-      <p>
-        <strong className="font-semibold">Demo workspace.</strong>{" "}
-        {remaining === 0 ? (
-          "This demo has ended."
-        ) : (
-          <>
-            About <span data-testid="demo-remaining">{formatRemaining(remaining)}</span> left. Data
-            is fictional and is deleted when the demo ends.
-          </>
-        )}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <p className="flex items-center gap-2">
+          <Clock aria-hidden="true" className="size-4 shrink-0" />
+          <strong className="font-semibold">
+            Demo workspace • fictional data • resets automatically
+          </strong>
+        </p>
+        <p className={nearEnd ? "font-semibold" : undefined}>
+          {ended ? (
+            "This demo has ended."
+          ) : (
+            <>
+              {nearEnd ? "Less than 10 minutes left: about " : "About "}
+              <span data-testid="demo-remaining">{formatRemaining(remaining)}</span> left.
+            </>
+          )}
+        </p>
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          {actions}
+          <Link
+            href="/signup"
+            className="rounded-md px-1 font-medium underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring"
+          >
+            Create an account
+          </Link>
+        </div>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Data is fictional and is deleted when the demo ends. A new account starts empty: demo data
+        is not carried over.
       </p>
-      {actions ? <div className="ml-auto">{actions}</div> : null}
       <span className="sr-only" role="status" aria-live="polite">
         {band === null ? "" : bandLabel(band)}
       </span>
