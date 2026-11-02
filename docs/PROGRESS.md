@@ -364,6 +364,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: real orgs capped too (2 + 1 integration), off by one (5 + 1), archived rows excluded (6 + 1), wrong errcode (8 + 1), count filter ignored (5), invoker instead of definer (13 + 1), **no advisory lock (not caught at first; added a lock-held assertion and a two-session blocking test, now 1 pgTAP + 1 integration failure)**.
 - No entity table exists yet; each entity issue (SIT-208, 216, 220, 222, 195/201) must call `attach_demo_cap` (listed in `docs/DEMO.md`).
 
+### SIT-203 — Session and organization endpoints (done)
+
+- Routes `GET /api/v1/session`, `GET`/`POST /api/v1/organizations`, `GET /api/v1/organizations/:id` (`src/app/api/v1/...`) built on `withApi`, `parseBody`, `selectOrg` and the user-scoped client (RLS applies); `src/lib/api/organizations.ts` (body schema, IANA check mirroring the database rule, workspace summaries); `docs/openapi.yaml` (implemented routes, guarded by `openapi.test.ts`); endpoint table in `docs/API.md`; decisions logged. Shared `src/test/real-server.ts` starts the production build against local Supabase with real member and guest sessions.
+- **Integration over real HTTP (19 tests):** 201 creating a workspace (trimmed name, caller is owner, `private, no-store`, `X-Request-Id`), second user creates their own, 422 with `fieldErrors` (name, timezone), 422 for unknown fields (`owner_id`, `kind`) with nothing created, 403 `ACCOUNT_REQUIRED` for a guest, 401 signed out, 403 `ORIGIN_FORBIDDEN` cross-origin, 429 `ORG_LIMIT` after five; 200 lists only the caller's workspaces, 200 detail with role, 404 for another tenant's id identical to an unknown id, 404 across guest/member/guest boundaries, 400 malformed id, nobody ever lists another tenant; session 200 for a member (no demo), **guest sees `isAnonymous: true`, no email and the demo expiry (about 24 h, `secondsRemaining`)**, guest with no demo, expired demo reported with `expired: true` and 0 seconds, 401 for signed out and for a tampered cookie. Every status in the acceptance list (200, 201, 401, 403, 404, 422) is demonstrated, plus 400 and 429.
+- Unit tests (14 + 3): schema, time zone rule, workspace summaries (expiry never negative, hidden RLS rows dropped), openapi/route agreement.
+- `npm run check`: all 9 steps passed (unit: 47 files, 765 tests; integration: 11 files, 87 tests).
+- Mutations: loose body schema (4 integration failures), `allowExpired` removed (1; first attempt silently did not apply because Prettier had reflowed the code, re-done with a regex). Removing the route's own guest check is **not** caught, by design: the database function returns the same `ACCOUNT_REQUIRED` 403, so the route check is defense in depth.
+- Found: the cache-policy source test hard-coded `withApi(`; it now accepts a type argument and `withOrgApi`.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

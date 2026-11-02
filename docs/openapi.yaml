@@ -1,0 +1,196 @@
+openapi: 3.1.0
+info:
+  title: OpsDesk API
+  version: 0.1.0
+  description: |
+    Implemented routes only (a test fails when a route and this file disagree). Conventions: docs/API.md.
+    All responses are `{ data, meta }` or `{ error: { code, message, fieldErrors?, requestId } }`, send
+    `Cache-Control: private, no-store` and an `X-Request-Id`. Cookie session; mutations must come from the app's
+    own origin (CSRF check). Tenant routes choose the workspace with the `X-Organization-Id` header.
+servers:
+  - url: /api/v1
+paths:
+  /session:
+    get:
+      summary: Who is calling, their workspaces, and the demo expiry for a guest
+      responses:
+        "200":
+          description: The session
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Session" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /organizations:
+    get:
+      summary: "The caller's workspaces (RLS hides every other tenant)"
+      responses:
+        "200":
+          description: Workspaces, with `meta.total`
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Workspace" }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Create a real workspace (registered users only; calls create_real_organization)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrganization" }
+      responses:
+        "201":
+          description: The new workspace; the caller is its owner
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Workspace" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A guest (`ACCOUNT_REQUIRED`) or a request from another origin (`ORIGIN_FORBIDDEN`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Validation failed; `error.fieldErrors` names the fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: The per-user workspace limit was reached (`ORG_LIMIT`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /organizations/{id}:
+    get:
+      summary: One workspace the caller belongs to
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: "The workspace, with the caller's role. An expired demo is still readable (`expired: true`)."
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/OrganizationDetail" }
+                  meta: { type: object }
+        "400":
+          description: The id is not a UUID
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: Not found, or not a member. The two are indistinguishable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+components:
+  responses:
+    Unauthenticated:
+      description: No valid session
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            fieldErrors:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    Workspace:
+      type: object
+      required: [id, name, kind, role, timezone, expiresAt, secondsRemaining, expired]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        kind: { type: string, enum: [real, demo] }
+        role: { type: string, enum: [owner, admin, member, viewer] }
+        timezone: { type: string }
+        expiresAt: { type: [string, "null"], format: date-time, description: Demo workspaces only }
+        secondsRemaining:
+          { type: [integer, "null"], description: Demo workspaces only; never negative }
+        expired: { type: boolean }
+    OrganizationDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        industry: { type: [string, "null"] }
+        timezone: { type: string }
+        currency: { type: string, enum: [USD] }
+        kind: { type: string, enum: [real, demo] }
+        role: { type: string, enum: [owner, admin, member, viewer] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: [string, "null"], format: date-time }
+        secondsRemaining: { type: [integer, "null"] }
+        expired: { type: boolean }
+    Session:
+      type: object
+      required: [user, organizations, demo]
+      properties:
+        user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            displayName: { type: [string, "null"] }
+            email: { type: [string, "null"], description: Null for a guest }
+            isAnonymous: { type: boolean }
+        organizations:
+          type: array
+          items: { $ref: "#/components/schemas/Workspace" }
+        demo:
+          type: [object, "null"]
+          properties:
+            organizationId: { type: string, format: uuid }
+            expiresAt: { type: [string, "null"], format: date-time }
+            secondsRemaining: { type: [integer, "null"] }
+            expired: { type: boolean }
+    CreateOrganization:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        industry: { type: [string, "null"], maxLength: 80 }
+        timezone:
+          {
+            type: string,
+            description: "UTC or an IANA Area/City name; default UTC",
+            examples: [America/New_York],
+          }

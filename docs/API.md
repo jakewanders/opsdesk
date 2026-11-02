@@ -159,3 +159,16 @@ export const GET = withOrgApi(async ({ org, supabase }) => {
 
 - The id is a **selector, never an authorization**. Each request re-proves membership with a read of the caller's own memberships under their session (RLS applies, never the admin client), and the role is taken from that row. A user id or role sent by a client is ignored. An id kept in a cookie or local storage is only a UI preference that is sent as this header and re-verified every time.
 - `resolveOrg(request, user, supabase)` and the pure `selectOrg(user, memberships, header)` are in `src/lib/api/org-context.ts`.
+
+## Implemented endpoints (SIT-203)
+
+Full machine-readable contract: `docs/openapi.yaml` (a test fails when a route and the file disagree).
+
+| Method and path                 | Purpose                                                                                                                                                                                                         | Success | Notable errors                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/session`           | The caller: `user` (id, display name, `isAnonymous`, email for members only), `organizations` (id, name, `kind`, role, timezone, `expiresAt`, `secondsRemaining`, `expired`) and `demo` (a guest's demo expiry) | 200     | 401                                                                                                |
+| `GET /api/v1/organizations`     | The caller's workspaces only (RLS), `meta.total`                                                                                                                                                                | 200     | 401                                                                                                |
+| `POST /api/v1/organizations`    | Create a real workspace through `create_real_organization`; body `{ name, industry?, timezone? }`, unknown fields rejected                                                                                      | 201     | 401, 403 `ACCOUNT_REQUIRED` (guest) or `ORIGIN_FORBIDDEN`, 422 with `fieldErrors`, 429 `ORG_LIMIT` |
+| `GET /api/v1/organizations/:id` | One workspace the caller belongs to, with their role; an expired demo is still readable (`expired: true`)                                                                                                       | 200     | 400 (id not a UUID), 401, 404 (not a member and unknown ids look the same)                         |
+
+`PATCH /api/v1/organizations/:id` arrives with the organization settings issue (M4).

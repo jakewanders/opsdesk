@@ -29,7 +29,7 @@ describe("authenticated areas render per request", () => {
   });
   it("every API route handler is wrapped in withApi (private, no-store by construction)", () => {
     const api = files(join(ROOT, "api")).filter((f) => /route\.tsx?$/.test(f));
-    const offenders = api.filter((f) => !/withApi\(/.test(source(f)));
+    const offenders = api.filter((f) => !/with(Org)?Api(<[^>]*>)?\(/.test(source(f)));
     expect(offenders).toEqual([]);
   });
 });
