@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ErrorAlert } from "@/components/shared/error-alert";
+import { cn } from "@/lib/utils";
 
 type TurnstileApi = {
   render: (
@@ -12,6 +13,7 @@ type TurnstileApi = {
       "expired-callback": () => void;
       "error-callback": () => void;
       theme?: "light" | "dark" | "auto";
+      appearance?: "always" | "execute" | "interaction-only";
     },
   ) => string;
   reset: (widgetId?: string) => void;
@@ -52,6 +54,12 @@ type TurnstileFieldProps = {
   /** Validation message for the CAPTCHA, shown under the widget. */
   error?: string;
   id?: string;
+  /** Called with each new token (and with "" when it expires or errors). */
+  onToken?: (token: string) => void;
+  /** Called when the widget itself fails (blocked, network, misconfigured key). */
+  onError?: () => void;
+  /** `interaction-only` shows the widget only if the visitor has to do something (the invisible mode). */
+  appearance?: "always" | "interaction-only";
 };
 
 /**
@@ -60,13 +68,27 @@ type TurnstileFieldProps = {
  * The widget iframe is titled by Cloudflare; the container is a labelled region so the check
  * is announced.
  */
-export function TurnstileField({ siteKey, resetKey, error, id }: TurnstileFieldProps) {
+export function TurnstileField({
+  siteKey,
+  resetKey,
+  error,
+  id,
+  onToken,
+  onError,
+  appearance = "always",
+}: TurnstileFieldProps) {
   const generated = useId();
   const fieldId = id ?? generated;
   const container = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | undefined>(undefined);
   const [token, setToken] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
+  const onTokenRef = useRef(onToken);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onTokenRef.current = onToken;
+    onErrorRef.current = onError;
+  });
 
   useEffect(() => {
     if (!siteKey || !container.current) return;
@@ -77,18 +99,32 @@ export function TurnstileField({ siteKey, resetKey, error, id }: TurnstileFieldP
         widgetId.current = api.render(container.current, {
           sitekey: siteKey,
           theme: "auto",
-          callback: (value) => setToken(value),
-          "expired-callback": () => setToken(""),
-          "error-callback": () => setToken(""),
+          appearance,
+          callback: (value) => {
+            setToken(value);
+            onTokenRef.current?.(value);
+          },
+          "expired-callback": () => {
+            setToken("");
+            onTokenRef.current?.("");
+          },
+          "error-callback": () => {
+            setToken("");
+            onTokenRef.current?.("");
+            onErrorRef.current?.();
+          },
         });
       })
-      .catch(() => setLoadFailed(true));
+      .catch(() => {
+        setLoadFailed(true);
+        onErrorRef.current?.();
+      });
     return () => {
       cancelled = true;
       if (widgetId.current) window.turnstile?.remove(widgetId.current);
       widgetId.current = undefined;
     };
-  }, [siteKey]);
+  }, [siteKey, appearance]);
 
   useEffect(() => {
     if (resetKey === 0 || !widgetId.current) return;
@@ -113,7 +149,10 @@ export function TurnstileField({ siteKey, resetKey, error, id }: TurnstileFieldP
         tabIndex={-1}
         role="group"
         aria-label="Security check"
-        className="min-h-[65px] outline-none focus-visible:ring-3 focus-visible:ring-ring"
+        className={cn(
+          "outline-none focus-visible:ring-3 focus-visible:ring-ring",
+          appearance === "always" && "min-h-[65px]",
+        )}
       />
       <input type="hidden" name="captchaToken" value={token} />
       {loadFailed ? (

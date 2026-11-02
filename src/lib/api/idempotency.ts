@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { IDEMPOTENCY_HEADER } from "./idempotency-header";
 import { BadRequestError, ConflictError, ValidationError } from "./errors";
 import { mapPostgresError } from "./postgres-errors";
 import type { ApiResult } from "./envelope";
@@ -18,7 +19,7 @@ import type { ApiResult } from "./envelope";
  * DEFINER functions `idempotency_begin / complete / abandon`, which act as `auth.uid()`.
  */
 
-export const IDEMPOTENCY_HEADER = "Idempotency-Key";
+export { IDEMPOTENCY_HEADER };
 const KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
 
 export const idempotencyKeySchema = z.string().regex(KEY_PATTERN);

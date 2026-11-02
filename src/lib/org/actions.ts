@@ -1,29 +1,16 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { WorkspaceFormState } from "./form-state";
-import { getAppOrigin } from "@/lib/env/links";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { ACTIVE_ORG_COOKIE } from "./active-org";
+import { rememberWorkspace } from "./remember-workspace";
 import { createWorkspace, isMemberOf } from "./workspace-core";
 
 const text = (data: FormData, key: string) => {
   const value = data.get(key);
   return typeof value === "string" ? value : "";
 };
-
-/** Stores the UI preference. It is re-verified against memberships on every request. */
-async function rememberWorkspace(id: string) {
-  (await cookies()).set(ACTIVE_ORG_COOKIE, id, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: getAppOrigin().protocol === "https:",
-    maxAge: 365 * 24 * 60 * 60,
-  });
-}
 
 /** Workspace setup form: creates the workspace, remembers it, and opens the app. */
 export async function createWorkspaceAction(

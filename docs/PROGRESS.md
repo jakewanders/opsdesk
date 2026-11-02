@@ -429,6 +429,16 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 833 / 55 files, integration 126 / 17 files, pgTAP PASS).
 - Mutations caught and reverted: update without the `updated_at` match, mismatch ignored, no abandon on failure, begin always claiming, version trusting the client, begin ignoring the user, a table grant to `authenticated` (pgTAP).
 
+### SIT-204 — /demo entry flow and POST /api/v1/demo/bootstrap (done)
+
+- `POST /api/v1/demo/bootstrap` (`src/app/api/v1/demo/bootstrap/route.ts`): `withApi`, guests only (`403 GUEST_ONLY`), `Idempotency-Key` through `withIdempotency`, calls `bootstrap_demo_workspace`, returns `{ organizationId, expiresAt, created }`, sets the active-workspace cookie (shared `remember-workspace.ts`). Documented in `docs/openapi.yaml` and `docs/DEMO.md`.
+- `/demo` page: live guest -> `/app`; expired guest -> restart panel; member -> told the demo is for guests; everyone else -> `DemoEntry` (invisible Turnstile `interaction-only`, auto-start, "Preparing your demo workspace", named retryable failures with home and GitHub links, retry reuses session and key, widget reset after a failure). `TurnstileField` gained `onToken`, `onError`, `appearance`.
+- Fix found by `check:bundle`: `getPublicEnv()` must not be imported from client code (it carries the server variable names); `src/lib/supabase/client.ts` now reads the two literal public variables.
+- Tests: `failure.test.ts` (classification, retryable, no success wording), `demo-entry.test.tsx` (flow, repeated tokens, existing session, six failure kinds, widget reset, retry with the same key, widget error, member, axe), `demo-entry.integration.test.ts` (real production build and Supabase: seeded workspace with id, expiry and cookie; same workspace on repeat; replay by key; five simultaneous calls make one workspace; malformed key 422; registered user 403 with no workspace; signed out 401; foreign origin 403; GET 405; `/demo` redirect, entry flow, member and no-workspace guest).
+- Real browser (Playwright, production build, local Supabase, Cloudflare's always-pass test site key): a cold visit to `/demo` reached `/app` (seeded Demo Workspace, banner "About 23h 59m left") with no click after the visit; reopening `/demo` returned to `/app` with 1 guest, 1 demo workspace, 1 idempotency key in the database; a failed bootstrap showed "The demo is unavailable right now" with Try again and Back to home (screenshot reviewed), and Try again on a first-attempt network failure completed with the same session.
+- `npm run check`: all 9 steps passed (unit 864 / 57 files, integration 137 / 18 files, pgTAP PASS).
+- Mutations caught: fresh idempotency key per attempt, bootstrap failure treated as success. Not caught, equivalent: removing the route's guest check (the database function raises the same `GUEST_ONLY` 403, so this is defence in depth) and removing the second double-start guard in the component (the token handler already ignores repeats).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

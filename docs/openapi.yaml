@@ -25,6 +25,49 @@ paths:
                   data: { $ref: "#/components/schemas/Session" }
                   meta: { type: object }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+  /demo/bootstrap:
+    post:
+      summary: Create or return the signed-in guest's demo workspace (anonymous sessions only; sets the active workspace)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The guest's demo workspace; `created` is false when it already existed or on a replay
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required: [organizationId, expiresAt, created]
+                    properties:
+                      organizationId: { type: string, format: uuid }
+                      expiresAt: { type: string, format: date-time }
+                      created: { type: boolean }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A registered (non-anonymous) session (`GUEST_ONLY`) or a request from another origin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The same Idempotency-Key is still being processed (`IDEMPOTENCY_IN_PROGRESS`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Malformed Idempotency-Key (`IDEMPOTENCY_KEY_INVALID`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: The demo is at capacity (`DEMO_CAPACITY`); `Retry-After` says when to retry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /organizations:
     get:
       summary: "The caller's workspaces (RLS hides every other tenant)"
