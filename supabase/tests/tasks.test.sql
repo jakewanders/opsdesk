@@ -1,6 +1,6 @@
 -- pgTAP tests for public.tasks (SIT-220, PRD 6.2, 6.4, US-05).
 begin;
-select plan(81);
+select plan(85);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Sam Member' where id = tests.uid('a_member');
 
@@ -50,6 +50,15 @@ update public.tasks set status = 'in_progress' where id = 'e1000000-0000-4000-80
 select is((select completed_at is null from public.tasks where id = 'e1000000-0000-4000-8000-000000000001'), true, 'reopening clears completed_at');
 update public.tasks set completed_at = now() where id = 'e1000000-0000-4000-8000-000000000001';
 select is((select completed_at is null from public.tasks where id = 'e1000000-0000-4000-8000-000000000001'), true, 'setting completed_at by hand on an open task changes nothing');
+
+-- ---- the same, as a real member (the trigger runs as the caller; a private helper it cannot execute would fail here)
+select tests.act_as('a_member');
+insert into public.tasks (id, organization_id, title, status) values ('e1000000-0000-4000-8000-000000000020', tests.org_id('a'), 'Member born done', 'done');
+select tests.reset();
+select is((select completed_at is not null from public.tasks where id = 'e1000000-0000-4000-8000-000000000020'), true, 'a member can insert a task as done');
+select is(tests.sqlstate_of_as('a_member', 'update public.tasks set status = ''todo'' where id = ''e1000000-0000-4000-8000-000000000020'''), 'ok', 'a member can reopen it');
+select is(tests.sqlstate_of_as('a_member', 'update public.tasks set status = ''done'' where id = ''e1000000-0000-4000-8000-000000000020'''), 'ok', 'and complete it again');
+select is((select prosrc !~ 'private\.' from pg_proc where oid = 'private.prepare_task()'::regprocedure), true, 'the task trigger runs as the caller and calls no private helper (the API roles cannot execute them)');
 
 -- ---- composite foreign keys: same tenant only
 select lives_ok($$insert into public.tasks (organization_id, title, customer_id, opportunity_id) values (tests.org_id('a'), 'Linked', 'c1000000-0000-4000-8000-0000000000a1', 'd1000000-0000-4000-8000-0000000000a1')$$, 'a task can link a customer and a deal of its own organization');

@@ -381,6 +381,7 @@ export type Database = {
           opportunity_id: string | null;
           organization_id: string;
           priority: string;
+          priority_rank: number | null;
           status: string;
           title: string;
           updated_at: string;
@@ -399,6 +400,7 @@ export type Database = {
           opportunity_id?: string | null;
           organization_id: string;
           priority?: string;
+          priority_rank?: never;
           status?: string;
           title: string;
           updated_at?: string;
@@ -416,6 +418,7 @@ export type Database = {
           opportunity_id?: string | null;
           organization_id?: string;
           priority?: string;
+          priority_rank?: never;
           status?: string;
           title?: string;
           updated_at?: string;
