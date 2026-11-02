@@ -714,6 +714,16 @@ In progress. Entries are added per issue.
 - `npm run check`: all steps passed (unit 1517 / 97 files, integration 402 / 36 files, pgTAP PASS). Mutation checks caught: the strip's amount replaced by a constant (1 failure); invalid-date filtering removed from `toListQuery` (1).
 - Not done: the Playwright toggle scenario (no Playwright suite exists yet) and a real-browser look at the mobile default.
 
+### SIT-234 — Archive and restore UX with confirmation, active-opportunity warning and archived filter (done)
+
+- One shared `ArchiveCustomerDialog` (list row menu and detail page). It reads the customer's counts and, when open opportunities or tasks remain, says how many ("2 open opportunities and 1 open task. They stay open and visible."), then always the retention text ("Archiving hides this customer from the active list. Related records and history are kept. You can restore it any time."). A failure stays in the dialog with the API message and `(request <id>)`. Success toast names the customer; list, customer and dashboard queries are invalidated (the detail page also refreshes server data).
+- API: `GET /customers/:id` `related` gained `openOpportunities` (stage new/qualified/proposal/negotiation, not archived) and `openTasks` (not done, not archived); documented in `docs/openapi.yaml`.
+- List: a "Show: Active customers / Archived" filter (`?archived=true`, sent to the existing API filter); archived rows offer Restore (POST `/restore`, toast names the customer, failure toast carries the request id) instead of Archive. Viewers see a disabled "Archive (needs edit access)" menu item; the detail page shows a disabled Archive button described by "You can view this customer but not archive it..." (the API still enforces; 403 asserted).
+- Focus: the shared `ConfirmDialog` got a `fallbackFocus` option because a dropdown menu item that opened the dialog is gone on close; focus now returns to the row's actions button.
+- Tests: `archive-restore.test.tsx` (7: warning with counts, no warning when nothing is open, Escape and focus return, failure with request id, archived filter to URL and API, Restore and its failure, viewer menu) plus updated list/detail tests; `customer-archive.integration.test.ts` (4, real build and Supabase): total vs open counts (won deal and done task excluded), archive/restore round trip with list membership and both events in the page, an archived customer's opportunity still listed and linking to it, viewer refused with 403 and the customer unchanged.
+- `npm run check`: all steps passed (unit 1524 / 98 files, integration 406 / 37 files, pgTAP PASS). Mutation checks caught: warning disabled (1 failure); open count including won deals (1).
+- Not done: the Playwright scenario 1 (create/edit/archive/restore); no Playwright suite exists yet (SIT-251 covers customer E2E once the harness exists).
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.

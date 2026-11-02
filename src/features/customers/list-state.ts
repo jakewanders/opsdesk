@@ -10,6 +10,8 @@ export const customerListUrl = defineUrlState({
   q: urlField.string("", 100),
   status: urlField.enum(["", ...CUSTOMER_STATUSES], ""),
   source: urlField.enum(["", ...CUSTOMER_SOURCES], ""),
+  /** `false` (default) lists active customers, `true` lists archived ones. */
+  archived: urlField.enum(["false", "true"], "false"),
   sort: urlField.enum(CUSTOMER_SORTS, "updated_at"),
   order: urlField.enum(["asc", "desc"], "desc"),
   page: urlField.int(1, 1, 1_000_000),
@@ -29,10 +31,11 @@ export function toApiQuery(state: CustomerListState): Record<string, string | nu
     q: state.q || undefined,
     status: state.status || undefined,
     source: state.source || undefined,
+    archived: state.archived === "true" ? "true" : undefined,
   };
 }
 
 /** True when any search or filter narrows the list (drives "no results" versus "no customers yet"). */
 export function hasActiveFilters(state: CustomerListState): boolean {
-  return Boolean(state.q || state.status || state.source);
+  return Boolean(state.q || state.status || state.source || state.archived === "true");
 }

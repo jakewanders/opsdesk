@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { notify } from "@/components/shared/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +23,7 @@ import { useApiQuery } from "@/lib/api-client/provider";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
 import { useState } from "react";
 import type { CustomerDetailDto } from "../schema";
+import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus } from "./customer-status";
 
 type Props = {
@@ -99,10 +99,6 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
     </time>
   );
 
-  const archive = useApiMutation<undefined, void>({
-    mutationFn: (_v, { call }) => call(`/customers/${customer.id}`, { method: "DELETE" }),
-    invalidate: [["customers"], ["dashboard"]],
-  });
   const restore = useApiMutation<unknown, void>({
     mutationFn: (_v, { call }) => call(`/customers/${customer.id}/restore`, { method: "POST" }),
     invalidate: [["customers"], ["dashboard"]],
@@ -115,7 +111,9 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
       router.refresh();
     } catch (error) {
       setProblem(
-        isClientApiError(error) ? error.message : "The customer was not restored. Try again.",
+        isClientApiError(error)
+          ? `${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`
+          : "The customer was not restored. Try again.",
       );
     }
   };
@@ -178,6 +176,12 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
               Archive
             </Button>
           ) : null}
+          {!canWrite && !archived ? (
+            <Button type="button" variant="outline" disabled aria-describedby="archive-note">
+              <Archive aria-hidden="true" />
+              Archive
+            </Button>
+          ) : null}
           {canWrite && archived ? (
             <Button type="button" onClick={() => void restoreNow()} disabled={restore.isPending}>
               <ArchiveRestore aria-hidden="true" />
@@ -188,6 +192,11 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
             Back to customers
           </Link>
         </div>
+        {!canWrite && !archived ? (
+          <p id="archive-note" className="text-sm text-muted-foreground">
+            You can view this customer but not archive it. Ask an owner or admin for edit access.
+          </p>
+        ) : null}
         {archived ? (
           <div role="status" className="rounded-lg border border-border bg-muted/50 p-3 text-sm">
             <p className="font-medium">This customer is archived.</p>
@@ -302,24 +311,10 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
         </TabsContent>
       </Tabs>
 
-      <ConfirmDialog
-        open={confirmArchive}
-        onOpenChange={setConfirmArchive}
-        title="Archive this customer?"
-        description={
-          <>
-            <strong>{customer.displayName}</strong> leaves the customer list. Their opportunities
-            and history are kept, and an archived customer can be restored.
-          </>
-        }
-        confirmLabel="Archive customer"
-        destructive
-        onConfirm={async () => {
-          await archive.mutateAsync();
-          notify.success("Customer archived", customer.displayName);
-          setConfirmArchive(false);
-          router.refresh();
-        }}
+      <ArchiveCustomerDialog
+        customer={confirmArchive ? { id: customer.id, displayName: customer.displayName } : null}
+        onClose={() => setConfirmArchive(false)}
+        onArchived={() => router.refresh()}
       />
     </div>
   );

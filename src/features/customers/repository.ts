@@ -159,10 +159,28 @@ export async function countRelated(supabase: Client, orgId: string, id: string) 
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("customer_id", id);
-  const [opportunities, tasks] = await Promise.all([count("opportunities"), count("tasks")]);
-  if (opportunities.error) throw opportunities.error;
-  if (tasks.error) throw tasks.error;
-  return { opportunities: opportunities.count ?? 0, tasks: tasks.count ?? 0, quotes: 0 };
+  const [opportunities, tasks, openOpportunities, openTasks] = await Promise.all([
+    count("opportunities"),
+    count("tasks"),
+    count("opportunities")
+      .in("stage", ["new", "qualified", "proposal", "negotiation"])
+      .is("archived_at", null),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("customer_id", id)
+      .neq("status", "done")
+      .is("archived_at", null),
+  ]);
+  for (const r of [opportunities, tasks, openOpportunities, openTasks]) if (r.error) throw r.error;
+  return {
+    opportunities: opportunities.count ?? 0,
+    tasks: tasks.count ?? 0,
+    quotes: 0,
+    openOpportunities: openOpportunities.count ?? 0,
+    openTasks: openTasks.count ?? 0,
+  };
 }
 
 const sameValue = (a: unknown, b: unknown) =>

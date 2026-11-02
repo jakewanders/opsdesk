@@ -29,6 +29,11 @@ type ConfirmDialogProps = {
    * and closes when it resolves.
    */
   onConfirm: () => void | Promise<void>;
+  /**
+   * Where focus goes on close when the element that opened the dialog is gone (a menu item closes with its menu). Return
+   * the control that owns the menu, for example the row's actions button.
+   */
+  fallbackFocus?: () => HTMLElement | null;
 };
 
 /**
@@ -46,6 +51,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = true,
   onConfirm,
+  fallbackFocus,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -86,7 +92,11 @@ export function ConfirmDialog({
         onEscapeKeyDown={(event) => pending && event.preventDefault()}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          returnFocusTo.current?.focus();
+          const opener = returnFocusTo.current;
+          opener?.focus();
+          // the opener can be gone, or hidden with its menu, in which case the focus call above does nothing
+          if (!opener || opener === document.body || document.activeElement !== opener)
+            fallbackFocus?.()?.focus();
         }}
       >
         <AlertDialogHeader>

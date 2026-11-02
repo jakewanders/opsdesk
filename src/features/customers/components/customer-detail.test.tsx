@@ -36,7 +36,7 @@ const customer = (over: Partial<CustomerDetailDto> = {}): CustomerDetailDto => (
   createdAt: "2026-10-01T12:00:00Z",
   updatedAt: NOW,
   archivedAt: null,
-  related: { opportunities: 3, tasks: 2, quotes: 0 },
+  related: { opportunities: 3, tasks: 2, quotes: 0, openOpportunities: 0, openTasks: 0 },
   ...over,
 });
 const events: ActivityEventDto[] = [
@@ -197,7 +197,7 @@ describe("CustomerDetail [SIT-226]", () => {
       screen.getByText("No activity has been recorded for this customer yet."),
     ).toBeInTheDocument();
   });
-  it("a writer sees Edit and Archive; a viewer sees neither", () => {
+  it("a writer sees Edit and Archive; a viewer sees no Edit and a disabled Archive with the reason", () => {
     const { unmount } = renderDetail();
     expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
       "href",
@@ -207,7 +207,10 @@ describe("CustomerDetail [SIT-226]", () => {
     unmount();
     renderDetail({ canWrite: false });
     expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Archive|Restore/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Restore" })).toBeNull();
+    const archive = screen.getByRole("button", { name: "Archive" });
+    expect(archive).toBeDisabled();
+    expect(archive).toHaveAccessibleDescription(/can view this customer but not archive it/);
     expect(screen.getByRole("link", { name: "Back to customers" })).toBeInTheDocument();
   });
   it("archiving asks first (Cancel changes nothing), then DELETEs, says so, refreshes the page's data and the list queries", async () => {

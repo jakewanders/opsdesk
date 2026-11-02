@@ -18,8 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { useMemo, useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorAlert } from "@/components/shared/error-alert";
 import { TableSkeleton } from "@/components/shared/skeletons";
@@ -47,6 +46,7 @@ import {
   type CustomerListState,
 } from "../list-state";
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES, type CustomerDto } from "../schema";
+import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus, STATUS_LABELS } from "./customer-status";
 
 type SortKey = CustomerListState["sort"];
@@ -113,6 +113,8 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
   const [state, setState] = useUrlState(customerListUrl);
   const [search, onSearch] = useDebouncedUrlParam(state.q, (q) => setState({ q }));
   const [archiving, setArchiving] = useState<CustomerDto | null>(null);
+  /** The row whose menu opened the archive dialog; focus goes back to that row's actions button. */
+  const openerId = useRef<string | null>(null);
 
   const apiQuery = toApiQuery(state);
   const sameAsServer =
@@ -124,10 +126,24 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
     // the server just read this page; don't read it again the moment the browser mounts
     staleTime: sameAsServer && initial ? 30_000 : undefined,
   });
-  const archive = useApiMutation<undefined, string>({
-    mutationFn: (id, { call }) => call(`/customers/${id}`, { method: "DELETE" }),
-    invalidate: [["customers"]],
+  const restore = useApiMutation<unknown, CustomerDto>({
+    mutationFn: (customer, { call }) =>
+      call(`/customers/${customer.id}/restore`, { method: "POST" }),
+    invalidate: [["customers"], ["dashboard"]],
   });
+  const restoreNow = async (customer: CustomerDto) => {
+    try {
+      await restore.mutateAsync(customer);
+      notify.success("Customer restored", customer.displayName);
+    } catch (error) {
+      notify.error(
+        "Customer not restored",
+        isClientApiError(error)
+          ? `${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`
+          : "Try again.",
+      );
+    }
+  };
 
   const items = useMemo(() => query.data?.data ?? [], [query.data]);
   const meta = query.data?.meta;
@@ -212,6 +228,7 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
                 variant="ghost"
                 size="icon"
                 aria-label={`Actions for ${row.original.displayName}`}
+                data-customer-actions={row.original.id}
               >
                 <MoreHorizontal aria-hidden="true" />
               </Button>
@@ -226,9 +243,22 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
                 </DropdownMenuItem>
               ) : null}
               {canWrite && !row.original.archivedAt ? (
-                <DropdownMenuItem onSelect={() => setArchiving(row.original)}>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    openerId.current = row.original.id;
+                    setArchiving(row.original);
+                  }}
+                >
                   Archive
                 </DropdownMenuItem>
+              ) : null}
+              {canWrite && row.original.archivedAt ? (
+                <DropdownMenuItem onSelect={() => void restoreNow(row.original)}>
+                  Restore
+                </DropdownMenuItem>
+              ) : null}
+              {!canWrite && !row.original.archivedAt ? (
+                <DropdownMenuItem disabled>Archive (needs edit access)</DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -318,11 +348,22 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Show
+          <select
+            value={state.archived}
+            onChange={(e) => setState({ archived: e.target.value })}
+            className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring"
+          >
+            <option value="false">Active customers</option>
+            <option value="true">Archived</option>
+          </select>
+        </label>
         {filtered ? (
           <Button
             type="button"
             variant="ghost"
-            onClick={() => setState({ q: "", status: "", source: "" })}
+            onClick={() => setState({ q: "", status: "", source: "", archived: "false" })}
           >
             Clear filters
           </Button>
@@ -373,7 +414,11 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
             <Button
               type="button"
               variant="outline"
-              onClick={() => setState(pastTheEnd ? { page: 1 } : { q: "", status: "", source: "" })}
+              onClick={() =>
+                setState(
+                  pastTheEnd ? { page: 1 } : { q: "", status: "", source: "", archived: "false" },
+                )
+              }
             >
               {pastTheEnd ? "Go to the first page" : "Clear filters"}
             </Button>
@@ -491,24 +536,12 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
         </>
       ) : null}
 
-      <ConfirmDialog
-        open={archiving !== null}
-        onOpenChange={(open) => {
-          if (!open) setArchiving(null);
-        }}
-        title="Archive this customer?"
-        description={
-          <>
-            <strong>{archiving?.displayName}</strong> leaves the customer list. Their opportunities
-            and history are kept, and an archived customer can be restored.
-          </>
+      <ArchiveCustomerDialog
+        customer={archiving}
+        onClose={() => setArchiving(null)}
+        fallbackFocus={() =>
+          document.querySelector<HTMLElement>(`[data-customer-actions="${openerId.current}"]`)
         }
-        confirmLabel="Archive customer"
-        onConfirm={async () => {
-          if (!archiving) return;
-          await archive.mutateAsync(archiving.id);
-          notify.success("Customer archived", archiving.displayName);
-        }}
       />
     </div>
   );

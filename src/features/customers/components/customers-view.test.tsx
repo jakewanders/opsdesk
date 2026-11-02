@@ -39,6 +39,7 @@ const defaults = {
   q: "",
   status: "",
   source: "",
+  archived: "false",
   sort: "updated_at",
   order: "desc",
   page: 1,
@@ -170,7 +171,7 @@ describe("CustomersView [SIT-219]", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Archive" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent("Customer 1");
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy.mock.calls.some(([, i]) => i?.method === "DELETE")).toBe(false);
     await userEvent.click(within(dialog).getByRole("button", { name: "Archive customer" }));
     await waitFor(() =>
       expect(

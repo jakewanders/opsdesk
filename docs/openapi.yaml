@@ -277,6 +277,8 @@ paths:
                               opportunities: { type: integer }
                               tasks: { type: integer }
                               quotes: { type: integer }
+                              openOpportunities: { type: integer }
+                              openTasks: { type: integer }
                   meta: { type: object }
         "400":
           {

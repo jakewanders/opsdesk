@@ -86,7 +86,14 @@ export const PATCH_COLUMNS = {
 
 /** A customer with the counts of what hangs off it (entities that do not exist yet count as zero). */
 export type CustomerDetailDto = CustomerDto & {
-  related: { opportunities: number; tasks: number; quotes: number };
+  /** `openOpportunities` and `openTasks` count what is still active (not won/lost/done, not archived); the archive warning uses them. */
+  related: {
+    opportunities: number;
+    tasks: number;
+    quotes: number;
+    openOpportunities: number;
+    openTasks: number;
+  };
 };
 
 export const CUSTOMER_SORTS = ["updated_at", "created_at", "display_name", "status"] as const;

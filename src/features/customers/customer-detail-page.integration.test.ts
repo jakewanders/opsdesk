@@ -107,14 +107,16 @@ describe("/app/customers/:id", () => {
       ),
     ).toBe("0");
   });
-  it("an owner sees Edit and Archive; a viewer sees the record and neither; both see the same data", async () => {
+  it("an owner sees Edit and Archive; a viewer sees the record, no Edit and a disabled Archive with the reason; both see the same data", async () => {
     const o = await page(`/app/customers/${customerA}`, owner);
     expect(o).toContain(`/app/customers/${customerA}/edit`);
     expect(o).toContain(">Archive<");
     const v = await page(`/app/customers/${customerA}`, viewer);
     expect(v).toContain("Acme Detail");
     expect(v).not.toContain(`/app/customers/${customerA}/edit`);
-    expect(v).not.toContain(">Archive<");
+    expect(v).toContain("You can view this customer but not archive it");
+    expect(v).toMatch(/<button[^>]*disabled=""[^>]*aria-describedby="archive-note"/);
+    expect(o).not.toContain("You can view this customer but not archive it");
     expect(v).not.toContain(">Restore<");
   });
   it("an archived customer says Archived and offers Restore to a writer only", async () => {
