@@ -219,6 +219,86 @@ export type Database = {
           },
         ];
       };
+      opportunities: {
+        Row: {
+          amount_cents: number;
+          archived_at: string | null;
+          assigned_to: string | null;
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string;
+          description: string | null;
+          expected_close_date: string | null;
+          id: string;
+          lost_reason: string | null;
+          organization_id: string;
+          probability_percent: number | null;
+          stage: string;
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_cents?: number;
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id: string;
+          description?: string | null;
+          expected_close_date?: string | null;
+          id?: string;
+          lost_reason?: string | null;
+          organization_id: string;
+          probability_percent?: number | null;
+          stage?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string;
+          description?: string | null;
+          expected_close_date?: string | null;
+          id?: string;
+          lost_reason?: string | null;
+          organization_id?: string;
+          probability_percent?: number | null;
+          stage?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_assigned_to_fkey";
+            columns: ["organization_id", "assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "memberships";
+            referencedColumns: ["organization_id", "user_id"];
+          },
+          {
+            foreignKeyName: "opportunities_customer_fkey";
+            columns: ["organization_id", "customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "opportunities_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       organizations: {
         Row: {
           created_at: string;

@@ -98,7 +98,7 @@ select tests.reset();
 update public.demo_workspaces set last_reset_at = now() - interval '2 minutes' where organization_id = tests.org_id('g1');
 update public.zz_probe set label = 'valuable guest work' where org_id = tests.org_id('g1') and n = 2;
 create function private.zz_seed_boom(org uuid) returns void language plpgsql as $$ begin raise exception 'seeder failed mid-reset'; end $$;
-select private.register_demo_seeder('zz_boom', 20, 'private.zz_seed_boom(uuid)'::regprocedure);
+select private.register_demo_seeder('zz_boom', 700, 'private.zz_seed_boom(uuid)'::regprocedure);
 create temp table sv_before as select seed_version, last_reset_at from public.demo_workspaces where organization_id = tests.org_id('g1');
 select tests.act_as('g1');
 select throws_ok($$select public.reset_demo_workspace(tests.org_id('g1'))$$, 'P0001', 'seeder failed mid-reset', 'a seeder that fails fails the whole reset');

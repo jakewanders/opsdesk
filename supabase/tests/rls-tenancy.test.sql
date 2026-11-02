@@ -64,14 +64,14 @@ select is(
   (select coalesce(string_agg(c.relname || ':' || p, ', ' order by c.relname, p), '')
      from pg_class c join pg_namespace n on n.oid = c.relnamespace
      cross join unnest(array['insert','delete','truncate','references','trigger']) p
-    where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, p) and not (p = 'insert' and c.relname = 'customers')),
+    where n.nspname = 'public' and c.relkind in ('r', 'p') and has_table_privilege('authenticated', c.oid, p) and not (p = 'insert' and c.relname in ('customers', 'opportunities'))),
   '', 'authenticated holds no insert, delete, truncate, references or trigger privilege on any table (insert only on entity tables)'
 );
 select is(
   (select coalesce(string_agg(c.relname || '.' || a.attname, ', ' order by c.relname, a.attname), '')
      from pg_class c join pg_namespace n on n.oid = c.relnamespace
      join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
-    where n.nspname = 'public' and c.relkind in ('r', 'p') and c.relname <> 'customers' and has_column_privilege('authenticated', c.oid, a.attnum, 'update')),
+    where n.nspname = 'public' and c.relkind in ('r', 'p') and c.relname not in ('customers', 'opportunities') and has_column_privilege('authenticated', c.oid, a.attnum, 'update')),
   'organizations.industry, organizations.name, organizations.timezone, profiles.avatar_url, profiles.display_name',
   'the only columns an API user may update are the approved settings and profile fields (entity tables are covered by their own tests)'
 );
@@ -213,7 +213,7 @@ reset role;
 -- =============================================================================================
 select is(
   (select string_agg(tablename || '.' || policyname || ':' || cmd, ', ' order by tablename, policyname) from pg_policies where schemaname = 'public' and policyname not like 'zz_%'),
-  'activity_events.activity_events_select_member:SELECT, customers.customers_insert_creator:INSERT, customers.customers_insert_writer:INSERT, customers.customers_select_member:SELECT, customers.customers_update_writer:UPDATE, demo_workspaces.demo_workspaces_no_delete:DELETE, demo_workspaces.demo_workspaces_no_insert:INSERT, demo_workspaces.demo_workspaces_no_update:UPDATE, demo_workspaces.demo_workspaces_select_owner:SELECT, memberships.memberships_no_delete:DELETE, memberships.memberships_no_insert:INSERT, memberships.memberships_no_update:UPDATE, memberships.memberships_select_same_org:SELECT, organizations.organizations_no_delete:DELETE, organizations.organizations_no_insert:INSERT, organizations.organizations_select_member:SELECT, organizations.organizations_update_admin:UPDATE, profiles.profiles_select_own:SELECT, profiles.profiles_update_own:UPDATE',
+  'activity_events.activity_events_select_member:SELECT, customers.customers_insert_creator:INSERT, customers.customers_insert_writer:INSERT, customers.customers_select_member:SELECT, customers.customers_update_writer:UPDATE, demo_workspaces.demo_workspaces_no_delete:DELETE, demo_workspaces.demo_workspaces_no_insert:INSERT, demo_workspaces.demo_workspaces_no_update:UPDATE, demo_workspaces.demo_workspaces_select_owner:SELECT, memberships.memberships_no_delete:DELETE, memberships.memberships_no_insert:INSERT, memberships.memberships_no_update:UPDATE, memberships.memberships_select_same_org:SELECT, opportunities.opportunities_insert_creator:INSERT, opportunities.opportunities_insert_writer:INSERT, opportunities.opportunities_select_member:SELECT, opportunities.opportunities_update_writer:UPDATE, organizations.organizations_no_delete:DELETE, organizations.organizations_no_insert:INSERT, organizations.organizations_select_member:SELECT, organizations.organizations_update_admin:UPDATE, profiles.profiles_select_own:SELECT, profiles.profiles_update_own:UPDATE',
   'exactly the documented policies exist');
 
 select * from finish();
