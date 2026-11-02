@@ -23,6 +23,7 @@
     "db:start": "node scripts/supabase.mjs start",
     "db:stop": "node scripts/supabase.mjs stop",
     "db:reset": "node scripts/db-reset.mjs",
+    "mutation:membership": "node scripts/mutation-membership.mjs",
     "db:types": "node scripts/supabase.mjs gen types typescript --local > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "demo:seed": "node scripts/demo-seed.mjs",
     "demo:cleanup": "node scripts/not-implemented.mjs demo:cleanup SIT-213 \"Expired-demo cleanup.\"",

@@ -1,7 +1,7 @@
 -- pgTAP tests for create_invitation, revoke_invitation, redeem_invitation and change_membership (SIT-202): who may call them,
 -- every reject case, the last-owner guard, no privilege escalation, hashed tokens, and the redemption rate limit.
 begin;
-select plan(102);
+select plan(104);
 select tests.create_fixtures();
 -- verified addresses for everyone except a_viewer
 update auth.users set email_confirmed_at = now() where email like '%@example.test' and email <> 'a_viewer@example.test';
@@ -41,6 +41,7 @@ select tests.reset();
 select set_config('request.jwt.claims', '', true);
 set local role authenticated;
 select is(tests.sqlstate_of(format($$select public.create_invitation(%L, 'x@example.com', 'member')$$, tests.org_id('a'))), 'OD403', 'a call with no identity is refused');
+select throws_ok(format($$select public.create_invitation(%L, 'x@example.com', 'member')$$, tests.org_id('a')), 'OD403', 'Sign in to continue.', 'and it is told to sign in (not that it is a guest)');
 select tests.reset();
 
 -- ---- create_invitation
@@ -189,6 +190,9 @@ select is(tests.sqlstate_of_as('a_owner', format($$select public.revoke_invitati
 select is(tests.sqlstate_of_as('b_member', format($$select public.revoke_invitation(%L)$$, (select id from made where label = 'for_someone_else'))), 'OD403', 'a member of the same workspace cannot revoke');
 select is(tests.sqlstate_of_as('b_owner', format($$select public.revoke_invitation(%L)$$, (select id from made where label = 'for_outsider'))), 'OD409', 'an accepted invitation cannot be revoked');
 select is(tests.sqlstate_of_as('b_owner', $$select public.revoke_invitation(gen_random_uuid())$$), 'OD404', 'an unknown invitation is not found');
+select tests.act_as('b_owner');
+select throws_ok($$select public.revoke_invitation(gen_random_uuid())$$, 'OD404', 'That invitation was not found.', 'and it says the invitation, not the workspace, was not found');
+select tests.reset();
 
 -- ---- change_membership: owners
 select tests.act_as('a_owner');
