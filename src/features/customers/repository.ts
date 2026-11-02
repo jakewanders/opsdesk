@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { updateIfCurrent } from "@/lib/api/concurrency";
 import { paginate } from "@/lib/validation";
 import type { Database } from "@/lib/supabase/database.types";
 import {
@@ -9,6 +10,7 @@ import {
   type CustomerListQuery,
   type CustomerRow,
 } from "./schema";
+import { PATCH_COLUMNS, type UpdateCustomerInput } from "./schema";
 
 type Client = SupabaseClient<Database>;
 
@@ -131,4 +133,86 @@ export async function findOtherCustomerWithEmail(
   if (error) throw error;
   const row = data?.[0];
   return row ? { id: row.id, displayName: row.display_name } : null;
+}
+
+/** One customer of the organization (archived included), or null: missing and cross-tenant look the same. */
+export async function findCustomer(
+  supabase: Client,
+  orgId: string,
+  id: string,
+): Promise<CustomerRow | null> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select(CUSTOMER_COLUMNS)
+    .eq("organization_id", orgId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as CustomerRow | null) ?? null;
+}
+
+/** What hangs off a customer. Tasks and quotes are counted by their own issues' tables once those exist (zero until then). */
+export async function countRelated(supabase: Client, orgId: string, id: string) {
+  const { count, error } = await supabase
+    .from("opportunities")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("customer_id", id);
+  if (error) throw error;
+  return { opportunities: count ?? 0, tasks: 0, quotes: 0 };
+}
+
+const sameValue = (a: unknown, b: unknown) =>
+  JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** The columns the patch would actually change, as `{ column: newValue }`. Empty when the patch is a no-op. */
+export function changedColumns(
+  current: CustomerRow,
+  patch: Omit<UpdateCustomerInput, "expectedUpdatedAt">,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [field, column] of Object.entries(PATCH_COLUMNS)) {
+    const value = (patch as Record<string, unknown>)[field];
+    if (value === undefined) continue;
+    if (!sameValue((current as unknown as Record<string, unknown>)[column], value))
+      out[column] = value;
+  }
+  return out;
+}
+
+/** Compare-and-set update: only matches the version the client saw (SIT-183). */
+export async function updateCustomer(
+  supabase: Client,
+  id: string,
+  expectedUpdatedAt: string,
+  columns: Record<string, unknown>,
+): Promise<CustomerDto> {
+  const row = await updateIfCurrent(supabase as never, {
+    table: "customers",
+    id,
+    expected: { updatedAt: expectedUpdatedAt },
+    patch: columns,
+    columns: CUSTOMER_COLUMNS,
+  });
+  return toCustomerDto(row as unknown as CustomerRow);
+}
+
+/** Archive (`archived_at = now()`) or restore (`null`). Idempotent: a row already in that state is left alone. */
+export async function setArchived(
+  supabase: Client,
+  orgId: string,
+  id: string,
+  archive: boolean,
+): Promise<CustomerDto | null> {
+  const query = supabase
+    .from("customers")
+    .update({ archived_at: archive ? new Date().toISOString() : null })
+    .eq("organization_id", orgId)
+    .eq("id", id);
+  const { data, error } = await (
+    archive ? query.is("archived_at", null) : query.not("archived_at", "is", null)
+  ).select(CUSTOMER_COLUMNS);
+  if (error) throw error;
+  const row = (data as unknown as CustomerRow[] | null)?.[0];
+  return row ? toCustomerDto(row) : null;
 }

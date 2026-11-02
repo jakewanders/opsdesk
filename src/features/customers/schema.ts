@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { expectedUpdatedAtField } from "@/lib/api/concurrency";
 import {
   choice,
   listQuery,
@@ -46,6 +47,47 @@ export const createCustomerSchema = z.strictObject({
   assignedTo: optional(uuid()).default(null),
 });
 export type CreateCustomerInput = z.output<typeof createCustomerSchema>;
+
+/**
+ * Body of PATCH /api/v1/customers/:id: the same field rules as create, every field optional (absent = unchanged,
+ * null or blank = cleared where the field is optional), plus the `updatedAt` the client last saw. Unknown fields are
+ * refused, so `organizationId`, `createdBy` and `id` can never be changed.
+ */
+export const updateCustomerSchema = z.strictObject({
+  ...expectedUpdatedAtField,
+  type: choice(CUSTOMER_TYPES).optional(),
+  displayName: singleLine(120, 2).optional(),
+  companyName: optionalSingleLine(120).optional(),
+  email: optionalEmail().optional(),
+  phone: optionalSingleLine(40).optional(),
+  website: optionalWebsite().optional(),
+  status: choice(CUSTOMER_STATUSES).optional(),
+  source: choice(CUSTOMER_SOURCES).optional(),
+  tags: tags().optional(),
+  notes: optionalMultiLine(5000).optional(),
+  assignedTo: optional(uuid()).optional(),
+});
+export type UpdateCustomerInput = z.output<typeof updateCustomerSchema>;
+
+/** The patch fields (everything but the version) mapped to column names. */
+export const PATCH_COLUMNS = {
+  type: "type",
+  displayName: "display_name",
+  companyName: "company_name",
+  email: "email",
+  phone: "phone",
+  website: "website",
+  status: "status",
+  source: "source",
+  tags: "tags",
+  notes: "notes",
+  assignedTo: "assigned_to",
+} as const;
+
+/** A customer with the counts of what hangs off it (entities that do not exist yet count as zero). */
+export type CustomerDetailDto = CustomerDto & {
+  related: { opportunities: number; tasks: number; quotes: number };
+};
 
 export const CUSTOMER_SORTS = ["updated_at", "created_at", "display_name", "status"] as const;
 

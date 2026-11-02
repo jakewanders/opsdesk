@@ -246,6 +246,174 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /customers/{id}:
+    get:
+      summary: One customer with the counts of its related records (opportunities, tasks, quotes)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The customer; `data.related` has `opportunities`, `tasks` and `quotes` counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    allOf:
+                      - { $ref: "#/components/schemas/Customer" }
+                      - type: object
+                        properties:
+                          related:
+                            type: object
+                            properties:
+                              opportunities: { type: integer }
+                              tasks: { type: integer }
+                              quotes: { type: integer }
+                  meta: { type: object }
+        "400":
+          {
+            description: "The id is not a valid UUID",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          {
+            description: "Missing, or in another workspace (the same answer)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+    patch:
+      summary: Partial update with optimistic concurrency (owner, admin, member). Send `expectedUpdatedAt` as last seen.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedUpdatedAt]
+              properties:
+                expectedUpdatedAt:
+                  {
+                    type: string,
+                    format: date-time,
+                    description: "The `updatedAt` last seen, exactly as returned.",
+                  }
+                type: { type: string, enum: [person, company] }
+                displayName: { type: string, minLength: 2, maxLength: 120 }
+                companyName: { type: [string, "null"], maxLength: 120 }
+                email: { type: [string, "null"] }
+                phone: { type: [string, "null"], maxLength: 40 }
+                website: { type: [string, "null"], maxLength: 255 }
+                status: { type: string, enum: [lead, active, inactive] }
+                source: { type: string, enum: [referral, website, outbound, other] }
+                tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
+                notes: { type: [string, "null"], maxLength: 5000 }
+                assignedTo: { type: [string, "null"], format: uuid }
+      responses:
+        "200":
+          description: The customer (unchanged and unwritten when the patch changes nothing). `meta.warnings` may hold `DUPLICATE_EMAIL`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Customer" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer, an expired demo (`DEMO_EXPIRED`) or another origin",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "Missing, or in another workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "409": { $ref: "#/components/responses/StaleEdit" }
+        "422":
+          {
+            description: "Validation failed, or the assignee is not a member of this workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+    delete:
+      summary: Archive (soft delete), idempotent. Nothing is hard-deleted.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "204": { description: Archived (or already archived) }
+        "400":
+          {
+            description: "The id is not a valid UUID",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer, or an expired demo (`DEMO_EXPIRED`)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "Missing, or in another workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+  /customers/{id}/restore:
+    post:
+      summary: Restore an archived customer (owner, admin, member). Idempotent.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The customer, active
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Customer" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer, or an expired demo (`DEMO_EXPIRED`)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "Missing, or in another workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
   /organizations:
     get:
       summary: "The caller's workspaces (RLS hides every other tenant)"
