@@ -1,7 +1,7 @@
 -- pgTAP tests for public.list_activity (SIT-245): shape, filters, stable order and paging, organization-time date ranges,
 -- actor names only through memberships, and tenant isolation.
 begin;
-select plan(34);
+select plan(37);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Olive Owner' where id = tests.uid('a_owner');
 update public.profiles set display_name = 'Mia Member' where id = tests.uid('a_member');
@@ -92,6 +92,21 @@ delete from public.customers where id = 'c5000000-0000-4000-8000-000000000001';
 select tests.act_as('g1');
 select is((select i ->> 'entityState' from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_id => 'c5000000-0000-4000-8000-000000000001') -> 'items') i where i ->> 'summary' = 'x'), 'missing', 'a deleted record is "missing" (its history stays, the link goes)');
 select is((select count(*)::int from jsonb_array_elements(public.list_activity(tests.org_id('g1')) -> 'items') i where i ->> 'entityState' is null), 0, 'every item has a state');
+select tests.reset();
+-- quotes resolve too (SIT-222): active, archived, a record of another organization, and one that does not exist
+insert into public.quotes (id, organization_id, customer_id, quote_number, title, archived_at) values
+  ('f5000000-0000-4000-8000-000000000001', tests.org_id('g1'), 'c5000000-0000-4000-8000-000000000002', 'Q-000901', 'Live quote', null),
+  ('f5000000-0000-4000-8000-000000000002', tests.org_id('g1'), 'c5000000-0000-4000-8000-000000000002', 'Q-000902', 'Archived quote', now()),
+  ('f5000000-0000-4000-8000-0000000000b1', tests.org_id('b'), 'c5000000-0000-4000-8000-0000000000b1', 'Q-000903', 'B quote', null);
+delete from public.activity_events where entity_type = 'quote' and organization_id = tests.org_id('g1');
+insert into public.activity_events (id, organization_id, entity_type, entity_id, action, summary, created_at) values
+  ('e6000000-0000-4000-8000-000000000001', tests.org_id('g1'), 'quote', 'f5000000-0000-4000-8000-000000000001', 'created', 'q', now() - interval '4 minutes'),
+  ('e6000000-0000-4000-8000-000000000002', tests.org_id('g1'), 'quote', 'f5000000-0000-4000-8000-000000000002', 'archived', 'q', now() - interval '3 minutes'),
+  ('e6000000-0000-4000-8000-000000000003', tests.org_id('g1'), 'quote', 'f5000000-0000-4000-8000-0000000000b1', 'updated', 'q', now() - interval '2 minutes');
+select tests.act_as('g1');
+select is((select string_agg(i ->> 'entityState', ',' order by i ->> 'createdAt') from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_type => 'quote') -> 'items') i where i ->> 'summary' = 'q'), 'active,archived,missing', 'an active quote is "active", an archived one "archived", another organization''s is "missing"');
+select is((select count(*)::int from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_type => 'quote') -> 'items') i where i ->> 'entityType' <> 'quote'), 0, 'the quote filter returns quote events only');
+select is((select i ->> 'entityState' from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_id => 'f5000000-0000-4000-8000-000000000001') -> 'items') i), 'active', 'one quote''s own history resolves too');
 select tests.reset();
 select * from finish();
 rollback;

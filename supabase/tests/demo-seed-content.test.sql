@@ -2,7 +2,7 @@
 -- a 90-day activity history consistent with the entities, determinism across guests and across a reset, and a lint over
 -- every seeded string for anything that could be a real person, number or inbox.
 begin;
-select plan(44);
+select plan(50);
 
 insert into auth.users (id, email, is_anonymous) values
   ('91000000-0000-0000-0000-000000000001', null, true),
@@ -20,7 +20,13 @@ grant select on g1, g2 to public;
 select is((select count(*) from public.customers where organization_id = (select org from g1)), 18::bigint, '18 customers');
 select is((select count(*) from public.opportunities where organization_id = (select org from g1)), 10::bigint, '10 opportunities');
 select is((select count(*) from public.tasks where organization_id = (select org from g1)), 24::bigint, '24 tasks');
-select is((select count(*) from public.activity_events where organization_id = (select org from g1)), 44::bigint, '44 activity events (about 40)');
+select is((select count(*) from public.quotes where organization_id = (select org from g1)), 4::bigint, '4 quotes');
+select is((select string_agg(quote_number || ':' || status, ', ' order by quote_number) from public.quotes where organization_id = (select org from g1)), 'Q-000001:draft, Q-000002:draft, Q-000003:sent, Q-000004:sent', 'two drafts and two sent, numbered Q-000001 to Q-000004');
+select is((select next_number from public.quote_sequences where organization_id = (select org from g1)), 5::bigint, 'the next quote number is 5');
+select is((select count(*) from public.quotes q where q.organization_id = (select org from g1) and q.subtotal_cents <> (select sum(i.quantity::numeric * i.unit_price_cents) from public.quote_items i where i.quote_id = q.id)), 0::bigint, 'every subtotal is the sum of its lines');
+select is((select count(*) from public.quotes q where q.organization_id = (select org from g1) and (q.total_cents <> (q.subtotal_cents - q.discount_cents) + floor(((q.subtotal_cents - q.discount_cents)::numeric * q.tax_rate_bps + 5000) / 10000))), 0::bigint, 'every total follows the shared formula (independent arithmetic)');
+select is((select string_agg(total_cents::text, ',' order by quote_number) from public.quotes where organization_id = (select org from g1)), '490780,529000,1742825,642789', 'the four totals are $4,907.80, $5,290.00, $17,428.25 and $6,427.89 (hand-computed from the line items)');
+select is((select count(*) from public.activity_events where organization_id = (select org from g1)), 50::bigint, '50 activity events (about 40: 44 for customers, deals and tasks, 4 quotes created, 2 sent)');
 select is((select count(*) from public.customers where organization_id = (select org from g1) and archived_at is not null), 3::bigint, 'a few archived customers (3)');
 
 -- ---- relationships
@@ -51,7 +57,7 @@ select cmp_ok((select count(distinct created_at::date) from public.activity_even
 select is((select count(*) from (select width_bucket(extract(epoch from (now() - created_at)) / 86400, 0, 90, 3) b from public.activity_events where organization_id = (select org from g1) group by 1) s), 3::bigint, 'events exist in each of the three 30-day periods');
 select is((select count(*) from public.activity_events where organization_id = (select org from g1) and actor_user_id is not null), 0::bigint, 'every seeded event is by the System');
 select is((select count(*) from public.activity_events where organization_id = (select org from g1) and summary !~ '^System '), 0::bigint, 'every summary names the System');
-select is((select count(*) from public.activity_events e where e.organization_id = (select org from g1) and not exists (select 1 from public.customers c where c.id = e.entity_id union all select 1 from public.opportunities o where o.id = e.entity_id union all select 1 from public.tasks t where t.id = e.entity_id)), 0::bigint, 'every event points at an existing record');
+select is((select count(*) from public.activity_events e where e.organization_id = (select org from g1) and not exists (select 1 from public.customers c where c.id = e.entity_id union all select 1 from public.opportunities o where o.id = e.entity_id union all select 1 from public.tasks t where t.id = e.entity_id union all select 1 from public.quotes q where q.id = e.entity_id)), 0::bigint, 'every event points at an existing record');
 select is((select count(*) from public.activity_events e join public.customers c on c.id = e.entity_id where e.organization_id = (select org from g1) and e.created_at < c.created_at), 0::bigint, 'no customer event is older than the customer');
 select is((select count(*) from public.activity_events e join public.opportunities o on o.id = e.entity_id where e.organization_id = (select org from g1) and e.created_at < o.created_at), 0::bigint, 'no opportunity event is older than the opportunity');
 select is((select count(*) from public.opportunities o where o.organization_id = (select org from g1) and o.stage in ('won','lost') and not exists (select 1 from public.activity_events e where e.entity_id = o.id and e.action = 'stage_changed' and e.created_at between o.created_at and o.closed_at)), 0::bigint, 'each won or lost deal has a stage_changed event after it was created and not after it closed');
@@ -75,7 +81,7 @@ select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001'
 select lives_ok(format($$select public.reset_demo_workspace(%L)$$, (select org from g1)), 'the guest can reset their demo');
 reset role;
 select is(pg_temp.fingerprint((select org from g1)), (select fp from fp_before), 'after a reset the content is identical to the first seed');
-select is((select count(*) from public.activity_events where organization_id = (select org from g1)), 44::bigint, 'and the reset history is still 44 events');
+select is((select count(*) from public.activity_events where organization_id = (select org from g1)), 50::bigint, 'and the reset history is still 50 events');
 
 -- ---- fixture lint over every seeded string
 select is((select count(*) from public.customers where organization_id = (select org from g1) and email !~ '^[a-z]+\.[a-z]+@example\.com$'), 0::bigint, 'every customer email is first.last@example.com');

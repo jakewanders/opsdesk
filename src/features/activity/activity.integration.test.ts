@@ -272,7 +272,7 @@ describe("GET /api/v1/activity [SIT-245]", () => {
 
   it("a guest reads their own seeded history", async () => {
     const body = await (await server.request("/api/v1/activity?limit=100", guest)).json();
-    expect(body.meta.total).toBe(44);
+    expect(body.meta.total).toBe(50); // 44 for customers, deals and tasks, plus 4 quotes created and 2 sent
     expect(body.data.every((e: { actorName: string }) => e.actorName === "System")).toBe(true);
     const stage = await (
       await server.request("/api/v1/activity?action=stage_changed", guest)

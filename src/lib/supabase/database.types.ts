@@ -415,6 +415,181 @@ export type Database = {
         };
         Relationships: [];
       };
+      quote_items: {
+        Row: {
+          description: string;
+          id: string;
+          organization_id: string;
+          position: number;
+          quantity: number;
+          quote_id: string;
+          unit_price_cents: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          description: string;
+          id?: string;
+          organization_id: string;
+          position: number;
+          quantity: number;
+          quote_id: string;
+          unit_price_cents: number;
+        };
+        Update: {
+          description?: string;
+          id?: string;
+          organization_id?: string;
+          position?: number;
+          quantity?: number;
+          quote_id?: string;
+          unit_price_cents?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quote_items_quote_fkey";
+            columns: ["organization_id", "quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      quote_sequences: {
+        Row: {
+          next_number: number;
+          organization_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          next_number?: number;
+          organization_id: string;
+        };
+        Update: {
+          next_number?: number;
+          organization_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_sequences_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: true;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      quotes: {
+        Row: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string;
+          discount_cents: number;
+          id: string;
+          issue_date: string;
+          notes: string | null;
+          opportunity_id: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id: string | null;
+          status: string;
+          subtotal_cents: number;
+          tax_cents: number;
+          tax_rate_bps: number;
+          title: string;
+          total_cents: number;
+          updated_at: string;
+          valid_until: string | null;
+          version: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_id: string;
+          discount_cents?: number;
+          id?: string;
+          issue_date?: string;
+          notes?: string | null;
+          opportunity_id?: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id?: string | null;
+          status?: string;
+          subtotal_cents?: number;
+          tax_cents?: number;
+          tax_rate_bps?: number;
+          title: string;
+          total_cents?: number;
+          updated_at?: string;
+          valid_until?: string | null;
+          version?: number;
+        };
+        Update: {
+          archived_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_id?: string;
+          discount_cents?: number;
+          id?: string;
+          issue_date?: string;
+          notes?: string | null;
+          opportunity_id?: string | null;
+          organization_id?: string;
+          quote_number?: string;
+          revises_quote_id?: string | null;
+          status?: string;
+          subtotal_cents?: number;
+          tax_cents?: number;
+          tax_rate_bps?: number;
+          title?: string;
+          total_cents?: number;
+          updated_at?: string;
+          valid_until?: string | null;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quotes_customer_fkey";
+            columns: ["organization_id", "customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "quotes_opportunity_fkey";
+            columns: ["organization_id", "opportunity_id"];
+            isOneToOne: false;
+            referencedRelation: "opportunities";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "quotes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_revises_fkey";
+            columns: ["organization_id", "revises_quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       tasks: {
         Row: {
           archived_at: string | null;
