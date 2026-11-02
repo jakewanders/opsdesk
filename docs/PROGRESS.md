@@ -888,7 +888,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue.
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -897,6 +897,14 @@ In progress. Entries are added per issue.
 - **pgTAP** `invitations.test.sql` (41): shape and exact columns, grants, defaults (7 days, open), an owner role and an unknown role rejected, admin and viewer allowed, mixed case / padded / non-address emails rejected, a plaintext or upper-case hash rejected, duplicate hash, expiry before creation, accepted and revoked together, the open-invitation uniqueness (refused for the same address and workspace, allowed in another workspace and after a revocation), a demo workspace refused, each protected column refused on update (role, address, hash, expiry extension, moving workspaces) with the outcome columns still writable, reads (owner and admin 4 of 4, member, viewer, non-member, the other workspace's owner, a guest and anon none), and no insert, update or delete for an owner, an admin or a guest. Two existing reviewed lists were extended (`rls-tenancy` policy list; `demo-acceptance` cap exemption, since invitations exist only in real workspaces).
 - `npm run check`: all 10 steps passed (unit 1628, pgTAP PASS, integration 433, Playwright 36). **Mutation check:** allowing `owner` in the role CHECK and letting any member read invitations failed tests 9 and 30 to 33; restored.
 - Not done here (SIT-202): the functions that create, redeem and revoke invitations and change memberships.
+
+### SIT-202 — create_invitation, redeem_invitation, revoke_invitation and change_membership with the last-owner guard (done)
+
+- Migration `20261101003300_membership_functions.sql`: four public functions (SECURITY DEFINER, `search_path = ''`, EXECUTE to `authenticated`, no actor argument) and three private helpers. `create_invitation(org, email, role)` returns `{id, token, expiresAt}` once; owners and admins only, `admin | member | viewer`, address normalized, per-organization advisory lock, existing member `OD409`, open duplicate `OD409`, stale expired invitation closed first, at most 100 open (`OD429`). `redeem_invitation(token)` returns `{ok, organizationId, role}` or `{ok:false, reason}` (`invalid`, `revoked`, `used`, `expired`, `email_unverified`, `email_mismatch`, `rate_limited`) so failed attempts persist for the 10-per-15-minutes limit; hashes compared in constant time. `revoke_invitation(id)`: owner/admin, accepted is `OD409`, repeating is a no-op. `change_membership(org, user, role | remove)`: organization row locked `FOR UPDATE`, admins cannot grant owner or touch owners, the last owner cannot be demoted or removed (`OD409`).
+- **pgTAP** `membership-functions.test.sql` (88): shape, grants and search_path, anon, guest and forged-claim refusals, every create / redeem / revoke / change reject case, token hashing (plaintext nowhere in the row), 7-day expiry, rate limiting with attempts surviving, last-owner and no-escalation rules, and no direct writes to `memberships`. `npm run test:db`: 32 files, 2,656 tests, PASS (the `demo-acceptance` callable-surface list now includes the four functions).
+- **Integration** `membership-concurrency.integration.test.ts` (7), real HTTP to PostgREST with each user's token: two owners demoting each other and two removing each other, 12 rounds each, never leave zero owners and exactly one call succeeds; the sole owner gets `OD409`; a viewer and a guest are refused (`OD403`); an anonymous call is refused; a full create, redeem, reuse flow. PostgREST answers a custom SQLSTATE with HTTP 400 and the code in the body, so the tests assert the code.
+- **Mutation checks:** admin owner-grant removed: 4 failures; function-level last-owner check disabled: failures from test 70 on; row lock removed: both concurrency tests fail. All restored.
+- Threat notes: `docs/SECURITY.md` ("Membership and invitation functions").
 
 ### SIT-174 — Money and quote calculation domain module (done)
 

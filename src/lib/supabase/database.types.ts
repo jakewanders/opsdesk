@@ -508,6 +508,10 @@ export type Database = {
     };
     Functions: {
       bootstrap_demo_workspace: { Args: Record<PropertyKey, never>; Returns: Json };
+      change_membership: {
+        Args: { p_new_role?: string; p_org_id: string; p_remove?: boolean; p_user_id: string };
+        Returns: Json;
+      };
       cleanup_enqueue_orphans: { Args: { min_age_hours?: number }; Returns: number };
       cleanup_next_users: {
         Args: { attempted_before: string; max_rows: number };
@@ -521,6 +525,10 @@ export type Database = {
         Returns: undefined;
       };
       cleanup_user_eligible: { Args: { uid: string }; Returns: boolean };
+      create_invitation: {
+        Args: { p_email: string; p_org_id: string; p_role: string };
+        Returns: Json;
+      };
       create_real_organization: {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;
@@ -592,7 +600,9 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      redeem_invitation: { Args: { p_token: string }; Returns: Json };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
+      revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
     };
     Enums: {
       [_ in never]: never;
