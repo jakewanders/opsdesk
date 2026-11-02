@@ -111,6 +111,141 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /customers:
+    get:
+      summary: One page of the workspace's customers (archived hidden by default)
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+            description: "Selects the workspace; required when the caller belongs to several. Always checked against membership.",
+          }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 25 },
+            description: "Over 100 is a 422, never clamped.",
+          }
+        - {
+            name: sort,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum: [updated_at, created_at, display_name, status],
+                default: updated_at,
+              },
+          }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - {
+            name: q,
+            in: query,
+            schema: { type: string, maxLength: 100 },
+            description: "Partial, case-insensitive match on display name, company and e-mail. Treated literally.",
+          }
+        - { name: status, in: query, schema: { type: string, enum: [lead, active, inactive] } }
+        - {
+            name: source,
+            in: query,
+            schema: { type: string, enum: [referral, website, outbound, other] },
+          }
+        - { name: assignedTo, in: query, schema: { type: string, format: uuid } }
+        - {
+            name: archived,
+            in: query,
+            schema: { type: string, enum: ["false", "true", all], default: "false" },
+          }
+      responses:
+        "200":
+          description: Customers with `meta.page`, `limit`, `total`, `totalPages` (a page past the end is empty with the real total)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Customer" }
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: The workspace is not one the caller belongs to
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: An invalid or unknown query parameter; `error.fieldErrors` names it
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: Create a customer (owner, admin and member). A duplicate e-mail returns a warning, not an error.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomer" }
+      responses:
+        "201":
+          description: The created customer. `meta.warnings` lists non-blocking problems such as `DUPLICATE_EMAIL`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Customer" }
+                  meta:
+                    type: object
+                    properties:
+                      warnings:
+                        type: array
+                        items:
+                          type: object
+                          required: [code, message]
+                          properties:
+                            code: { type: string, example: DUPLICATE_EMAIL }
+                            field: { type: string }
+                            message: { type: string }
+                            customerId: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A viewer (`FORBIDDEN`) or a request from another origin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The workspace is not one the caller belongs to
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Validation failed (`fieldErrors`), or the assignee is not a member of this workspace (`INVALID_REFERENCE`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: The demo workspace is at its customer cap (`DEMO_CAP`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /organizations:
     get:
       summary: "The caller's workspaces (RLS hides every other tenant)"
@@ -215,6 +350,42 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    Customer:
+      type: object
+      required: [id, type, displayName, status, source, tags, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [person, company] }
+        displayName: { type: string, minLength: 2, maxLength: 120 }
+        companyName: { type: [string, "null"], maxLength: 120 }
+        email: { type: [string, "null"], format: email, description: "Trimmed and lower-case." }
+        phone: { type: [string, "null"], maxLength: 40 }
+        website: { type: [string, "null"], description: "http or https only." }
+        status: { type: string, enum: [lead, active, inactive] }
+        source: { type: string, enum: [referral, website, outbound, other] }
+        tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        assignedTo: { type: [string, "null"], format: uuid }
+        createdBy: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+    CreateCustomer:
+      type: object
+      additionalProperties: false
+      required: [displayName]
+      properties:
+        type: { type: string, enum: [person, company], default: person }
+        displayName: { type: string, minLength: 2, maxLength: 120 }
+        companyName: { type: [string, "null"], maxLength: 120 }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"], maxLength: 40 }
+        website: { type: [string, "null"], maxLength: 255 }
+        status: { type: string, enum: [lead, active, inactive], default: lead }
+        source: { type: string, enum: [referral, website, outbound, other], default: other }
+        tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        assignedTo: { type: [string, "null"], format: uuid }
     Error:
       type: object
       required: [error]

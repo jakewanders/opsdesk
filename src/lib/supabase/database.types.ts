@@ -81,6 +81,7 @@ export type Database = {
           notes: string | null;
           organization_id: string;
           phone: string | null;
+          search_text: string | null;
           source: string;
           status: string;
           tags: string[];
@@ -101,6 +102,7 @@ export type Database = {
           notes?: string | null;
           organization_id: string;
           phone?: string | null;
+          search_text?: never;
           source?: string;
           status?: string;
           tags?: string[];
@@ -120,6 +122,7 @@ export type Database = {
           notes?: string | null;
           organization_id?: string;
           phone?: string | null;
+          search_text?: never;
           source?: string;
           status?: string;
           tags?: string[];

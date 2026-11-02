@@ -1,6 +1,6 @@
 -- pgTAP tests for public.customers (SIT-208, PRD 6.2, US-03): constraints, RLS by role, cap, immutability, activity, seed.
 begin;
-select plan(88);
+select plan(90);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Sam Member' where id = tests.uid('a_member');
 
@@ -13,6 +13,9 @@ select is((select array_agg(indexname::text order by indexname) from pg_indexes 
   array['customers_org_archived_updated_idx', 'customers_org_assigned_idx', 'customers_org_id_key', 'customers_org_status_idx', 'customers_pkey', 'customers_search_trgm_idx'], 'the list, status, assignee and trigram search indexes exist');
 select is((select indexdef like '%(organization_id, archived_at, updated_at DESC)' from pg_indexes where indexname = 'customers_org_archived_updated_idx'), true, 'the list index is newest first per organization');
 select is((select indexdef like '%gin_trgm_ops%' from pg_indexes where indexname = 'customers_search_trgm_idx'), true, 'the search index is a trigram index');
+
+select is((select is_generated from information_schema.columns where table_schema = 'public' and table_name = 'customers' and column_name = 'search_text'), 'ALWAYS', 'search_text is a generated column (never written)');
+select is((select indexdef like '%(search_text gin_trgm_ops)' from pg_indexes where indexname = 'customers_search_trgm_idx'), true, 'and the trigram index covers it');
 
 -- ---- grants
 select is((select string_agg(privilege_type, ',' order by privilege_type) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'customers' and grantee = 'authenticated'), 'INSERT,SELECT,UPDATE', 'authenticated may select, insert and update, never delete or truncate');
