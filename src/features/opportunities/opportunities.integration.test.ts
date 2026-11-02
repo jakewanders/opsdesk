@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { pipelineTotal, totalsByStage, weightedPipeline } from "@/lib/domain/pipeline";
+import {
+  DEFAULT_PROBABILITY,
+  STAGES,
+  pipelineTotal,
+  totalsByStage,
+  transitionStage,
+  weightedPipeline,
+  type Stage,
+} from "@/lib/domain/pipeline";
 import { psql } from "@/test/local-supabase";
 import { RealServer, type Actor } from "@/test/real-server";
 
@@ -620,5 +628,218 @@ describe("demo workspaces", () => {
     expect(res.status).toBe(403);
     expect((await res.json()).error.code).toBe("DEMO_EXPIRED");
     expect(count(demoOrg)).toBe(30);
+  });
+});
+
+describe("POST /opportunities/:id/stage", () => {
+  const move = (actor: Actor | null, id: string, body: unknown, org = orgA) =>
+    call(actor, "POST", `/${id}/stage`, body, org);
+  const fresh = async (title: string, stage: Stage = "new") => {
+    const d = (await (await post(owner, { customerId: acme, title })).json()).data;
+    if (stage !== "new") {
+      const closed = stage === "won" || stage === "lost";
+      psql(
+        `update public.opportunities set stage = '${stage}', probability_percent = ${DEFAULT_PROBABILITY[stage]}, closed_at = ${closed ? "now()" : "null"}, lost_reason = ${stage === "lost" ? "'Old reason'" : "null"} where id = '${d.id}'`,
+      );
+    }
+    return (await (await call(owner, "GET", `/${d.id}`)).json()).data as {
+      id: string;
+      updatedAt: string;
+    };
+  };
+  const events = (id: string) =>
+    psql(
+      `select coalesce(string_agg(action || ':' || summary, ' | ' order by created_at, id), '') from public.activity_events where entity_id = '${id}' and action <> 'created' and actor_user_id is not null`,
+    );
+
+  it("all 30 stage-to-stage transitions match the pipeline domain module (TS/SQL parity)", async () => {
+    let checked = 0;
+    for (const from of STAGES) {
+      for (const to of STAGES) {
+        if (from === to) continue;
+        const d = await fresh(`Parity ${from} to ${to}`, from);
+        const before = {
+          stage: from,
+          probability: DEFAULT_PROBABILITY[from],
+          closedAt: from === "won" || from === "lost" ? new Date() : null,
+          lostReason: from === "lost" ? "Old reason" : null,
+        };
+        const expected = transitionStage(before, to, { reason: "Price too high", now: new Date() });
+        expect(expected.ok).toBe(true);
+        if (!expected.ok) continue;
+        const res = await move(member, d.id, {
+          stage: to,
+          lostReason: "Price too high",
+          expectedUpdatedAt: d.updatedAt,
+        });
+        expect(res.status, `${from} to ${to}`).toBe(200);
+        const got = (await res.json()).data;
+        expect(got.stage).toBe(expected.next.stage);
+        expect(got.probabilityPercent).toBe(expected.next.probability);
+        expect(got.closedAt !== null).toBe(expected.next.closedAt !== null);
+        expect(got.lostReason).toBe(expected.next.lostReason);
+        checked++;
+      }
+    }
+    expect(checked).toBe(30);
+  }, 120_000);
+  it("lost without a reason is 422 for every kind of blank and nothing changes", async () => {
+    const d = await fresh("Needs a reason", "proposal");
+    for (const body of [
+      { stage: "lost" },
+      { stage: "lost", lostReason: "" },
+      { stage: "lost", lostReason: "   " },
+      { stage: "lost", lostReason: null },
+    ]) {
+      const res = await move(member, d.id, { ...body, expectedUpdatedAt: d.updatedAt });
+      expect(res.status, JSON.stringify(body)).toBe(422);
+      expect((await res.json()).error.code).toBe("LOST_REASON_REQUIRED");
+    }
+    const long = await move(member, d.id, {
+      stage: "lost",
+      lostReason: "r".repeat(501),
+      expectedUpdatedAt: d.updatedAt,
+    });
+    expect(long.status).toBe(422);
+    expect(
+      psql(
+        `select stage || ':' || updated_at::text from public.opportunities where id = '${d.id}'`,
+      ),
+    ).toMatch(/^proposal:/);
+    expect(events(d.id)).toBe("");
+  });
+  it("moving writes one stage_changed event that names the actor, the deal and both stages, with the probability reset", async () => {
+    const d = await fresh("Warehouse Retrofit", "proposal");
+    const res = await move(admin, d.id, { stage: "negotiation", expectedUpdatedAt: d.updatedAt });
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toMatchObject({
+      stage: "negotiation",
+      probabilityPercent: 75,
+      closedAt: null,
+    });
+    expect(events(d.id)).toMatch(
+      /^stage_changed:.* moved "Warehouse Retrofit" from Proposal to Negotiation$/,
+    );
+    expect(
+      psql(
+        `select count(*) from public.activity_events where entity_id = '${d.id}' and action = 'stage_changed' and actor_user_id = '${admin.id}'`,
+      ),
+    ).toBe("1");
+    expect(
+      psql(
+        `select changes::text from public.activity_events where entity_id = '${d.id}' and action = 'stage_changed'`,
+      ),
+    ).toContain('"probability_percent"');
+  });
+  it("lost stores the trimmed reason and closed_at; reopening clears both and the version moves", async () => {
+    const d = await fresh("Lost then reopened", "negotiation");
+    const lost = await (
+      await move(member, d.id, {
+        stage: "lost",
+        lostReason: "  Chose a competitor  ",
+        expectedUpdatedAt: d.updatedAt,
+      })
+    ).json();
+    expect(lost.data).toMatchObject({
+      stage: "lost",
+      probabilityPercent: 0,
+      lostReason: "Chose a competitor",
+    });
+    expect(lost.data.closedAt).not.toBeNull();
+    const reopened = await (
+      await move(member, d.id, {
+        stage: "qualified",
+        lostReason: "ignored",
+        expectedUpdatedAt: lost.data.updatedAt,
+      })
+    ).json();
+    expect(reopened.data).toMatchObject({
+      stage: "qualified",
+      probabilityPercent: 25,
+      closedAt: null,
+      lostReason: null,
+    });
+    expect(reopened.data.updatedAt).not.toBe(lost.data.updatedAt);
+  });
+  it("moving to the current stage is a 200 that changes nothing: same version, no event", async () => {
+    const d = await fresh("Already there", "qualified");
+    const res = await move(member, d.id, { stage: "qualified", expectedUpdatedAt: d.updatedAt });
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.updatedAt).toBe(d.updatedAt);
+    expect(events(d.id)).toBe("");
+  });
+  it("a stale version is 409 with the current one, and nothing is overwritten", async () => {
+    const d = await fresh("Stale move");
+    const first = await (
+      await move(member, d.id, { stage: "qualified", expectedUpdatedAt: d.updatedAt })
+    ).json();
+    const stale = await move(admin, d.id, { stage: "won", expectedUpdatedAt: d.updatedAt });
+    expect(stale.status).toBe(409);
+    const body = await stale.json();
+    expect(body.error.code).toBe("STALE_EDIT");
+    expect(body.error.meta.current.updatedAt).toBe(first.data.updatedAt);
+    expect(psql(`select stage from public.opportunities where id = '${d.id}'`)).toBe("qualified");
+  });
+  it("two simultaneous moves from the same version: one succeeds, one is 409", async () => {
+    const d = await fresh("Race move");
+    const [a, b] = await Promise.all([
+      move(member, d.id, { stage: "won", expectedUpdatedAt: d.updatedAt }),
+      move(admin, d.id, { stage: "qualified", expectedUpdatedAt: d.updatedAt }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    const winner = a.status === 200 ? "won" : "qualified";
+    expect(psql(`select stage from public.opportunities where id = '${d.id}'`)).toBe(winner);
+    expect(
+      psql(
+        `select count(*) from public.activity_events where entity_id = '${d.id}' and action = 'stage_changed'`,
+      ),
+    ).toBe("1");
+  });
+  it("viewer 403, signed out 401, outsider 404, another tenant's deal 404 (same as missing), bad id 400, nothing changes", async () => {
+    const d = await fresh("Guarded move");
+    const body = { stage: "qualified", expectedUpdatedAt: d.updatedAt };
+    expect((await move(viewer, d.id, body)).status).toBe(403);
+    expect((await move(null, d.id, body)).status).toBe(401);
+    expect((await move(outsider, d.id, body)).status).toBe(404);
+    const foreign = await move(other, d.id, body, orgB);
+    const missing = await move(owner, crypto.randomUUID(), body);
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect((await foreign.json()).error.code).toBe((await missing.json()).error.code);
+    expect((await move(owner, "nope", body)).status).toBe(400);
+    expect(psql(`select stage from public.opportunities where id = '${d.id}'`)).toBe("new");
+    expect(events(d.id)).toBe("");
+  });
+  it("validation: unknown stage, missing version, forged fields are 422", async () => {
+    const d = await fresh("Validated move");
+    for (const body of [
+      { stage: "archived" },
+      { stage: "won" },
+      { expectedUpdatedAt: d.updatedAt },
+      { stage: "won", expectedUpdatedAt: d.updatedAt, closedAt: "2026-01-01T00:00:00Z" },
+      { stage: "won", expectedUpdatedAt: d.updatedAt, organizationId: orgB },
+    ])
+      expect((await move(owner, d.id, body)).status, JSON.stringify(body)).toBe(422);
+    expect((await move(owner, d.id, { stage: "won", expectedUpdatedAt: "yesterday" })).status).toBe(
+      422,
+    );
+  });
+  it("an expired demo cannot move deals (403 DEMO_EXPIRED) and the deal is unchanged", async () => {
+    psql(
+      `update public.organizations set expires_at = now() - interval '1 minute' where id = '${demoOrg}'`,
+    );
+    const one = psql(
+      `select id || '|' || updated_at::text from public.opportunities where organization_id = '${demoOrg}' and stage = 'new' limit 1`,
+    ).split("|")[0];
+    expect(one).toMatch(/^[0-9a-f-]{36}$/);
+    const res = await move(
+      guest,
+      one,
+      { stage: "qualified", expectedUpdatedAt: new Date().toISOString() },
+      demoOrg,
+    );
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("DEMO_EXPIRED");
+    expect(psql(`select stage from public.opportunities where id = '${one}'`)).toBe("new");
   });
 });

@@ -11,11 +11,13 @@ import {
   findOpportunity,
   insertOpportunity,
   listOpportunities,
+  moveStage,
   updateOpportunity,
 } from "./repository";
 import {
   toOpportunityDto,
   type CreateOpportunityInput,
+  type MoveStageInput,
   type OpportunityDto,
   type OpportunityListQuery,
   type UpdateOpportunityInput,
@@ -91,4 +93,36 @@ export async function archiveForOrg(supabase: Client, ctx: OrgContext, id: strin
   assertCan(ctx.role, ctx.kind, "records.write");
   if (!(await findOpportunity(supabase, ctx.org.id, id))) throw notFound();
   await archiveOpportunity(supabase, ctx.org.id, id);
+}
+
+/**
+ * Moves a deal to another stage through the database function, the only path for stage changes. A stale `updatedAt` is
+ * 409 `STALE_EDIT` with the current version; moving to the stage the deal is already in is a 200 that writes nothing
+ * (no event, no new version). Lost needs a reason: the function answers 422 `LOST_REASON_REQUIRED`.
+ */
+export async function moveStageForOrg(
+  supabase: Client,
+  ctx: OrgContext,
+  id: string,
+  input: MoveStageInput,
+): Promise<OpportunityDto> {
+  assertCan(ctx.role, ctx.kind, "records.write");
+  const current = await findOpportunity(supabase, ctx.org.id, id);
+  if (!current) throw notFound();
+  if (current.updated_at !== input.expectedUpdatedAt)
+    throw new StaleEditError({ updatedAt: current.updated_at });
+
+  const moved = await moveStage(
+    supabase,
+    ctx.org.id,
+    id,
+    input.stage,
+    input.lostReason,
+    input.expectedUpdatedAt,
+  );
+  if (moved !== "stale") return moved;
+  // Someone got in between the read and the update: report the version that is there now.
+  const latest = await findOpportunity(supabase, ctx.org.id, id);
+  if (!latest) throw notFound();
+  throw new StaleEditError({ updatedAt: latest.updated_at });
 }

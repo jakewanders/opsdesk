@@ -764,6 +764,66 @@ paths:
             content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
           }
 
+  /opportunities/{id}/stage:
+    post:
+      summary: Move an opportunity to another stage (owner, admin, member). The only way to change a stage.
+      description: One transaction in the database function `move_opportunity_stage`. Won and lost set `closedAt`; lost requires `lostReason` (1 to 500 characters); reopening clears both; the probability resets to the stage's default; one `stage_changed` activity event is written. Moving to the current stage changes nothing.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [stage, expectedUpdatedAt]
+              properties:
+                stage: { type: string, enum: [new, qualified, proposal, negotiation, won, lost] }
+                lostReason:
+                  {
+                    type: [string, "null"],
+                    maxLength: 500,
+                    description: "Required when stage is lost; ignored otherwise.",
+                  }
+                expectedUpdatedAt:
+                  {
+                    type: string,
+                    format: date-time,
+                    description: "The `updatedAt` last seen, exactly as returned.",
+                  }
+      responses:
+        "200":
+          description: The opportunity in its new stage (unchanged when it was already there)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Opportunity" }
+                  meta: { type: object }
+        "400":
+          description: "The id is not a valid UUID"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A viewer, an expired demo (`DEMO_EXPIRED`) or another origin"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Missing, or in another workspace (the same answer)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409": { $ref: "#/components/responses/StaleEdit" }
+        "422":
+          description: "Lost without a reason (`LOST_REASON_REQUIRED`), a reason over 500 characters (`LOST_REASON_TOO_LONG`), or an unknown stage"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
 components:
   parameters:
     IdempotencyKey:

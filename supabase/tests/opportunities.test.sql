@@ -1,6 +1,6 @@
 -- pgTAP tests for public.opportunities (SIT-216, PRD 6.2, 6.4, US-04).
 begin;
-select plan(88);
+select plan(89);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Sam Member' where id = tests.uid('a_member');
 
@@ -108,12 +108,14 @@ select tests.act_as('a_admin');
 update public.opportunities set stage = 'qualified', amount_cents = 520000, description = 'another secret' where id = 'd1000000-0000-4000-8000-000000000010';
 select tests.reset();
 select is((select changes from public.activity_events where entity_id = 'd1000000-0000-4000-8000-000000000010' and action = 'updated'),
-  '{"stage": {"old": "new", "new": "qualified"}, "amount_cents": {"old": 480000, "new": 520000}, "probability_percent": {"old": 10, "new": 25}, "_content_changed": ["description"]}'::jsonb, 'editing logs the safe fields with old and new values and only the NAME of the description');
+  '{"amount_cents": {"old": 480000, "new": 520000}, "_content_changed": ["description"]}'::jsonb, 'editing logs the safe fields with old and new values and only the NAME of the description');
+select is((select changes from public.activity_events where entity_id = 'd1000000-0000-4000-8000-000000000010' and action = 'stage_changed'),
+  '{"stage": {"old": "new", "new": "qualified"}, "probability_percent": {"old": 10, "new": 25}}'::jsonb, 'and the stage change is its own stage_changed event with the probability reset');
 select tests.act_as('a_owner');
 update public.opportunities set archived_at = now() where id = 'd1000000-0000-4000-8000-000000000010';
 update public.opportunities set archived_at = null where id = 'd1000000-0000-4000-8000-000000000010';
 select tests.reset();
-select is((select string_agg(action, ',' order by created_at, id) from public.activity_events where entity_id = 'd1000000-0000-4000-8000-000000000010'), 'created,updated,archived,restored', 'created, updated, archived and restored are each logged');
+select is((select string_agg(action, ',' order by created_at, id) from public.activity_events where entity_id = 'd1000000-0000-4000-8000-000000000010'), 'created,updated,stage_changed,archived,restored', 'created, updated, stage_changed, archived and restored are each logged');
 select is((select count(*) from public.activity_events where changes::text ~* 'secret|4711' or summary ~* 'secret|4711'), 0::bigint, 'no description text reached the activity log');
 create temp table before_counts as select (select count(*) from public.opportunities) o, (select count(*) from public.activity_events) e;
 do $$ begin begin

@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { expectedUpdatedAtField } from "@/lib/api/concurrency";
-import { OPEN_STAGES, STAGES, type Stage } from "@/lib/domain/pipeline";
+import { LOST_REASON_MAX, OPEN_STAGES, STAGES, type Stage } from "@/lib/domain/pipeline";
 import {
   cents,
   choice,
   isoDate,
   listQuery,
+  multiLine,
   optionalMultiLine,
   singleLine,
   uuid,
@@ -77,6 +78,17 @@ export const PATCH_COLUMNS = {
   expectedCloseDate: "expected_close_date",
   assignedTo: "assigned_to",
 } as const;
+
+/**
+ * Body of POST /api/v1/opportunities/:id/stage: the stage to move to, the lost reason (required for `lost`, ignored
+ * otherwise) and the `updatedAt` the client last saw. The lost reason rules are enforced again by the database function.
+ */
+export const moveStageSchema = z.strictObject({
+  ...expectedUpdatedAtField,
+  stage: choice(STAGES),
+  lostReason: optional(multiLine(LOST_REASON_MAX)).default(null),
+});
+export type MoveStageInput = z.output<typeof moveStageSchema>;
 
 export const OPPORTUNITY_SORTS = [
   "updated_at",

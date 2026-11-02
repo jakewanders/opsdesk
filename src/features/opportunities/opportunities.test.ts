@@ -3,6 +3,7 @@ import { StaleEditError } from "@/lib/api/concurrency";
 import { ForbiddenError, NotFoundError } from "@/lib/api/errors";
 import {
   createOpportunitySchema,
+  moveStageSchema,
   opportunityListQuery,
   toOpportunityDto,
   updateOpportunitySchema,
@@ -15,6 +16,7 @@ const repo = vi.hoisted(() => ({
   archiveOpportunity: vi.fn(),
   insertOpportunity: vi.fn(),
   listOpportunities: vi.fn(),
+  moveStage: vi.fn(),
 }));
 const customers = vi.hoisted(() => ({ findCustomer: vi.fn() }));
 vi.mock("./repository", async (orig) => ({
@@ -26,7 +28,7 @@ vi.mock("@/features/customers/repository", async (orig) => ({
   ...customers,
 }));
 
-const { archiveForOrg, createForOrg, getForOrg, listForOrg, updateForOrg } =
+const { archiveForOrg, createForOrg, getForOrg, listForOrg, moveStageForOrg, updateForOrg } =
   await import("./service");
 const { changedColumns } = await import("./repository");
 
@@ -328,5 +330,69 @@ describe("service: archiveForOrg", () => {
     repo.findOpportunity.mockResolvedValue(row());
     await archiveForOrg(db, ctx("member"), ID);
     expect(repo.archiveOpportunity).toHaveBeenCalledWith(db, "org-1", ID);
+  });
+});
+
+describe("moveStageSchema", () => {
+  it("needs a known stage and the last-seen version; the reason is optional text", () => {
+    const base = { expectedUpdatedAt: UPDATED, stage: "lost" };
+    expect(moveStageSchema.safeParse(base).success).toBe(true);
+    expect(moveStageSchema.parse(base).lostReason).toBeNull();
+    expect(moveStageSchema.parse({ ...base, lostReason: "  Price  " }).lostReason).toBe("Price");
+    expect(moveStageSchema.parse({ ...base, lostReason: "   " }).lostReason).toBeNull();
+    expect(moveStageSchema.safeParse({ ...base, lostReason: "r".repeat(501) }).success).toBe(false);
+    expect(moveStageSchema.safeParse({ ...base, lostReason: "r".repeat(500) }).success).toBe(true);
+    for (const bad of [
+      { stage: "archived" },
+      { stage: undefined },
+      { expectedUpdatedAt: undefined },
+      { organizationId: CUSTOMER },
+      { closedAt: "2026-01-01" },
+    ])
+      expect(moveStageSchema.safeParse({ ...base, ...bad }).success).toBe(false);
+  });
+});
+
+describe("service: moveStageForOrg", () => {
+  const input = (over: object = {}) =>
+    moveStageSchema.parse({ expectedUpdatedAt: UPDATED, stage: "won", ...over });
+  it("a viewer is refused before any database call", async () => {
+    await expect(moveStageForOrg(db, ctx("viewer"), ID, input())).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    expect(repo.findOpportunity).not.toHaveBeenCalled();
+    expect(repo.moveStage).not.toHaveBeenCalled();
+  });
+  it("404 for a missing or foreign deal; 409 with the current version for a stale one; neither calls the function", async () => {
+    repo.findOpportunity.mockResolvedValue(null);
+    await expect(moveStageForOrg(db, ctx("member"), ID, input())).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+    repo.findOpportunity.mockResolvedValue(row({ updated_at: "2026-11-02T09:00:00.000001+00:00" }));
+    await expect(moveStageForOrg(db, ctx("member"), ID, input())).rejects.toMatchObject({
+      status: 409,
+      code: "STALE_EDIT",
+      current: { updatedAt: "2026-11-02T09:00:00.000001+00:00" },
+    });
+    expect(repo.moveStage).not.toHaveBeenCalled();
+  });
+  it("passes the stage, the reason and the version it saw to the function and returns its result", async () => {
+    repo.findOpportunity.mockResolvedValue(row());
+    repo.moveStage.mockResolvedValue({ id: ID, stage: "lost" });
+    await expect(
+      moveStageForOrg(db, ctx("admin"), ID, input({ stage: "lost", lostReason: "Price" })),
+    ).resolves.toEqual({ id: ID, stage: "lost" });
+    expect(repo.moveStage).toHaveBeenCalledWith(db, "org-1", ID, "lost", "Price", UPDATED);
+  });
+  it("a conflict found inside the function (a writer got in after the read) is a 409 with the version that is there now", async () => {
+    repo.findOpportunity
+      .mockResolvedValueOnce(row())
+      .mockResolvedValueOnce(row({ updated_at: "2026-11-02T09:30:00+00:00" }));
+    repo.moveStage.mockResolvedValue("stale");
+    await expect(moveStageForOrg(db, ctx("member"), ID, input())).rejects.toMatchObject({
+      status: 409,
+      code: "STALE_EDIT",
+      current: { updatedAt: "2026-11-02T09:30:00+00:00" },
+    });
   });
 });

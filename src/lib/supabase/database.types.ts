@@ -484,6 +484,38 @@ export type Database = {
         Args: { p_body: Json; p_key: string; p_route: string; p_status: number };
         Returns: boolean;
       };
+      move_opportunity_stage: {
+        Args: {
+          p_expected_updated_at: string;
+          p_id: string;
+          p_lost_reason: string;
+          p_new_stage: string;
+        };
+        Returns: {
+          amount_cents: number;
+          archived_at: string | null;
+          assigned_to: string | null;
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string;
+          description: string | null;
+          expected_close_date: string | null;
+          id: string;
+          lost_reason: string | null;
+          organization_id: string;
+          probability_percent: number | null;
+          stage: string;
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "opportunities";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
     };
     Enums: {

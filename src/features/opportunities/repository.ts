@@ -251,3 +251,32 @@ export async function archiveOpportunity(
     .is("archived_at", null);
   if (error) throw error;
 }
+
+/**
+ * Calls the database function that performs a stage change (one transaction: checks, update, probability reset,
+ * `closed_at` and `lost_reason` rules, and the `stage_changed` event). Returns "stale" when the deal changed between the
+ * caller's read and the update (the function's compare-and-set), otherwise the updated deal with its customer's name.
+ */
+export async function moveStage(
+  supabase: Client,
+  orgId: string,
+  id: string,
+  stage: string,
+  lostReason: string | null,
+  expectedUpdatedAt: string,
+): Promise<OpportunityDto | "stale"> {
+  const { error } = await supabase.rpc("move_opportunity_stage", {
+    p_id: id,
+    p_new_stage: stage,
+    // the generated type says string; the function accepts null (no reason)
+    p_lost_reason: lostReason as string,
+    p_expected_updated_at: expectedUpdatedAt,
+  });
+  if (error) {
+    if (error.code === "OD409" && error.details === "STALE_EDIT") return "stale";
+    throw error;
+  }
+  const row = await findOpportunity(supabase, orgId, id);
+  if (!row) throw new Error("The opportunity disappeared after its stage changed.");
+  return toOpportunityDto(row);
+}
