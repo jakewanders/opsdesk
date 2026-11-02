@@ -8,6 +8,10 @@ import { isClientApiError } from "./api-fetch";
  * Defaults: data is fresh for 30 seconds and kept 5 minutes after the last use; a request that failed because of
  * the caller (4xx) is never retried, a transient failure (no answer, 5xx) at most twice; mutations never retry
  * (a retry of a write is the caller's decision, with its idempotency key).
+ *
+ * `networkMode: "always"`: TanStack Query's default PAUSES a request while the browser reports "offline", so a form sat on
+ * "Saving..." and a list on its skeleton forever. Here the request is sent and, if there is no network, fails with the
+ * client's own "We could not reach the server" error, which every screen already shows with a way to try again (SIT-262).
  */
 export function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -15,11 +19,12 @@ export function makeQueryClient(): QueryClient {
       queries: {
         staleTime: 30_000,
         gcTime: 5 * 60_000,
+        networkMode: "always",
         refetchOnWindowFocus: true,
         retry: (failureCount, error) =>
           failureCount < 2 && (!isClientApiError(error) || error.isTransient),
       },
-      mutations: { retry: false },
+      mutations: { retry: false, networkMode: "always" },
     },
   });
 }

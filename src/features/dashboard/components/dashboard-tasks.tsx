@@ -96,14 +96,24 @@ function Section({
  * complete. Both lists live under the `["tasks", ...]` query prefix, so completing a task here, or anywhere, updates them
  * and refetches the dashboard's numbers.
  */
-export function DashboardTasks({ today, timeZone, canWrite }: Props) {
-  const complete = useCompleteTask(timeZone);
-  const overdueQuery = { overdue: "true", sort: "due_date", order: "asc", limit: LIMIT };
-  const soonQuery = { dueSoon: "true", sort: "due_date", order: "asc", limit: LIMIT };
+const overdueQuery = { overdue: "true", sort: "due_date", order: "asc", limit: LIMIT };
+const soonQuery = { dueSoon: "true", sort: "due_date", order: "asc", limit: LIMIT };
+
+/**
+ * The two task lists. The dashboard calls this at the top of the page too, so they load at the same time as the numbers
+ * instead of after them (one query each, shared by key).
+ */
+export function useDashboardTasks() {
   const overdue = useApiQuery<TaskDto[]>(["tasks", overdueQuery], "/tasks", {
     query: overdueQuery,
   });
   const soon = useApiQuery<TaskDto[]>(["tasks", soonQuery], "/tasks", { query: soonQuery });
+  return { overdue, soon };
+}
+
+export function DashboardTasks({ today, timeZone, canWrite }: Props) {
+  const complete = useCompleteTask(timeZone);
+  const { overdue, soon } = useDashboardTasks();
   const failed = overdue.isError ? overdue : soon.isError ? soon : null;
 
   return (

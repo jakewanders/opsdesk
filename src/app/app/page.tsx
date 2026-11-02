@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { DashboardView } from "@/features/dashboard/components/dashboard-view";
+import { getDashboard } from "@/features/dashboard/service";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 
@@ -15,9 +16,12 @@ export default async function DashboardPage() {
   await connection();
   const page = await getPageOrgContext();
   if (!page) redirect("/app/workspaces");
-  const { ctx } = page;
+  const { ctx, supabase } = page;
+  // read on the server with the caller's own session so the numbers are in the first paint; the client takes over for refreshes
+  const initial = await getDashboard(supabase, ctx).catch(() => null);
   return (
     <DashboardView
+      initial={initial}
       canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
       currentUserId={ctx.user.id}
       timeZone={ctx.org.timezone}

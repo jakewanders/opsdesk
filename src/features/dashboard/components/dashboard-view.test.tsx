@@ -163,8 +163,9 @@ describe("DashboardView [SIT-255]", () => {
 
   it("is labelled as current state with a full timestamp", async () => {
     view();
-    const time = await screen.findByText(/Nov 2, 2026/);
-    expect(time.closest("time")).toHaveAttribute("datetime", "2026-11-02T15:30:00.000Z");
+    await screen.findByRole("region", { name: "Key numbers" });
+    const time = document.querySelector('time[datetime="2026-11-02T15:30:00.000Z"]')!;
+    expect(time).toHaveTextContent("Nov 2, 2026");
     expect(screen.getByText(/Where things stand now/)).toBeInTheDocument();
   });
 

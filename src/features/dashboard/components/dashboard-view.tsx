@@ -19,12 +19,14 @@ import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { formatUsd } from "@/lib/money/format";
 import type { DashboardDto } from "../service";
-import { DashboardTasks } from "./dashboard-tasks";
+import { DashboardTasks, useDashboardTasks } from "./dashboard-tasks";
 import { KpiCard } from "./kpi-card";
 import { RecentActivity } from "./recent-activity";
 import { StageChart } from "./stage-chart";
 
 type Props = {
+  /** The dashboard as the server read it for this request, so the numbers are in the first paint. Null when it could not. */
+  initial?: DashboardDto | null;
   canWrite: boolean;
   currentUserId: string;
   timeZone: string;
@@ -53,8 +55,13 @@ function Skeleton() {
  * mutation that can change a number invalidates (customers, opportunities, stage moves and tasks do). The numbers are
  * current state, not trends: there are no percentages or sparklines because nothing stored could support them.
  */
-export function DashboardView({ canWrite, currentUserId, timeZone }: Props) {
-  const query = useApiQuery<DashboardDto>(["dashboard"], "/dashboard");
+export function DashboardView({ initial = null, canWrite, currentUserId, timeZone }: Props) {
+  const query = useApiQuery<DashboardDto>(["dashboard"], "/dashboard", {
+    initialData: initial ? { data: initial, meta: {} } : undefined,
+    // the server just read it; do not read it again the moment the browser mounts (mutations still refetch it)
+    staleTime: initial ? 30_000 : undefined,
+  });
+  useDashboardTasks(); // start the task lists now, in parallel with the numbers
   const [taskDrawer, setTaskDrawer] = useState(false);
   const data = query.data?.data;
 

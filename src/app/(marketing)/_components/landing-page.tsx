@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { preconnect } from "react-dom";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,8 @@ const DESIGN_NOTES = [
 const linkButton = "h-10 px-4 text-sm";
 
 export function LandingPage({ repoUrl }: LandingPageProps) {
+  // "Try Live Demo" is the main action and its page runs a Cloudflare Turnstile check: open that connection while the visitor reads
+  preconnect("https://challenges.cloudflare.com");
   return (
     <>
       <a
