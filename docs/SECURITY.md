@@ -182,6 +182,10 @@ Hard caps per demo workspace are enforced by a SECURITY DEFINER `BEFORE INSERT` 
 
 Expiry is enforced by the database, not the UI: `private.org_is_writable` (strictly `expires_at > now()`) is part of `private.can_write`, which every standard tenant policy created by `private.attach_tenant_rls` requires for insert, update and delete, so an expired demo is read-only even to a client using the Supabase SDK directly; a catalog test fails if any permissive write policy on a table with `organization_id` omits it. The guest cannot extend `expires_at` (no column grant, immutability trigger). The API answers `403 DEMO_EXPIRED`, the proxy sends expired guests to `/demo`, and the UI never relies on a client clock. Details and the test hooks: `docs/DEMO.md`.
 
+## Expired-demo cleanup (SIT-207)
+
+Cleanup uses the admin (secret-key) client, so its scope is enforced twice. Phase 1 is SQL that deletes only `kind = 'demo'` organizations past `expires_at` (real organizations cannot have an expiry: constraint) and never touches a user. Phase 2 deletes a user through the Auth Admin API only after `private.cleanup_user_eligible` proves the user is anonymous, belongs to no organization and created no real organization; anything else, or any error while checking, leaves the account alone (fail closed). Every cleanup function is executable by `service_role` only; the retry queue has no client privileges. The module logs counts and error codes only. Runbook: `docs/DEMO.md`.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.

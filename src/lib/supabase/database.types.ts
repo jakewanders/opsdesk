@@ -169,6 +169,19 @@ export type Database = {
     };
     Functions: {
       bootstrap_demo_workspace: { Args: Record<PropertyKey, never>; Returns: Json };
+      cleanup_enqueue_orphans: { Args: { min_age_hours?: number }; Returns: number };
+      cleanup_next_users: {
+        Args: { attempted_before: string; max_rows: number };
+        Returns: string[];
+      };
+      cleanup_purge_expired_demos: { Args: { batch_size?: number }; Returns: Json };
+      cleanup_purge_expired_keys: { Args: Record<PropertyKey, never>; Returns: number };
+      cleanup_queue_size: { Args: Record<PropertyKey, never>; Returns: number };
+      cleanup_record_user: {
+        Args: { error_code?: string; outcome: string; uid: string };
+        Returns: undefined;
+      };
+      cleanup_user_eligible: { Args: { uid: string }; Returns: boolean };
       create_real_organization: {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;

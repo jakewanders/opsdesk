@@ -37,6 +37,7 @@ const eslintConfig = defineConfig([
     files: [
       "src/lib/supabase/admin*.{ts,tsx}",
       "src/features/demo/cleanup/**",
+      "src/lib/cleanup/**",
       "src/app/api/v1/demo/**",
       "netlify/functions/**",
       "scripts/**",

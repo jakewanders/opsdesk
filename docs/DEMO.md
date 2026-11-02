@@ -164,3 +164,21 @@ A demo lasts 24 hours from creation. Expiry is computed from the database `expir
 - SQL: `select private.set_demo_expiry('<org uuid>', now() - interval '1 minute');` (or `update public.organizations set expires_at = now() - interval '1 minute' where id = '<org uuid>'` as `postgres`).
 - pgTAP: the same call inside the test transaction (see `supabase/tests/demo-expiry.test.sql`); boundary cases are one second before and exactly at `expires_at`.
 - Integration and browser runs: `psql`/`update` through the local container, as `src/test/demo-expiry.integration.test.ts` and `src/lib/demo/restart.integration.test.ts` do. Cleanup of expired data is SIT-207.
+
+## Cleanup of expired demos: runbook (SIT-207)
+
+Migration `20261101001300_demo_cleanup.sql` and `src/lib/cleanup/` (`cleanup.ts` the core, `run.ts` the entry point that builds the admin client). The Netlify scheduled function and `npm run demo:cleanup` that call it are SIT-213.
+
+**What it does, in two phases**
+
+1. **Database (phase 1).** In batches (default 50, `batchSize`), `public.cleanup_purge_expired_demos` finds `kind = 'demo'` organizations with `expires_at < now()`, oldest first, runs each organization's registered **clear functions** (the privileged path for append-only tables, scoped per organization), then deletes the organization (memberships and the demo mapping cascade). Each owner is queued first in `private.demo_cleanup_users`. Idempotent: a second run finds nothing.
+2. **Auth (phase 2).** For each queued user the module asks the database safety predicate (`cleanup_user_eligible`) and only then calls the Auth Admin API `deleteUser`. **Eligible means: the user is anonymous, belongs to no organization any more, and created no real organization.** Not eligible (an active demo, any real membership, a registered user, an unknown id, or any doubt) is removed from the queue and never touched: it fails closed. An Admin API failure is recorded (attempt count and an error _code_) and the user stays queued; the next run retries it. A phase-2 failure never blocks phase 1.
+3. **Also:** anonymous users older than 48 hours with no organization (a bootstrap that never finished, leftovers) are queued as orphans; expired idempotency keys are purged (`public.cleanup_purge_expired_keys` deletes from `private.idempotency_keys(expires_at)` once SIT-183 creates it, and is a no-op until then).
+
+**Limits.** `timeBudgetMs` (default 20 000 ms) stops new work, `batchSize` bounds each call, and a batch where every user fails stops the run instead of spinning; the result says `truncated: true` and `retryCandidates` tells how many users are still queued.
+
+**Result and logs.** `{ orgsDeleted, usersDeleted, usersSkipped, orphansQueued, retryCandidates, expiredKeysPurged, batches, errors, errorCodes, truncated, durationMs }`, logged as one JSON line. Counts and error codes only: never ids, emails or messages.
+
+**Operating it.** Run a pass from a trusted shell (local only until SIT-213 wires the command): call `runDemoCleanup()` from `src/lib/cleanup/run.ts`. Safe to run repeatedly and concurrently with live demos. To see the queue: `select user_id, attempts, last_error from private.demo_cleanup_users;` as `postgres`. A user stuck with a growing `attempts` is an orphan candidate to investigate (an Auth outage shows up as the same error code on many rows).
+
+**Entity issues** must register a clear function (`register_demo_seeder(..., clear_fn)`) so cleanup and reset delete their rows; tables that cascade from `organizations` are removed by the delete itself.

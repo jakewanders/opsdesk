@@ -32,6 +32,7 @@ describe("the admin Supabase client import boundary (lint)", () => {
 
   it.each([
     "src/features/demo/cleanup/purge.ts",
+    "src/lib/cleanup/run.ts",
     "src/app/api/v1/demo/bootstrap/route.ts",
     "netlify/functions/cleanup-demo.mts",
     "scripts/demo-cleanup.mjs",
