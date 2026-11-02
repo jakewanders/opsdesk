@@ -498,6 +498,272 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /opportunities:
+    get:
+      summary: One page of the workspace's opportunities (archived hidden by default), with per-stage totals for the whole filtered set
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 25 },
+            description: "Over 100 is a 422, never clamped.",
+          }
+        - {
+            name: sort,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum: [updated_at, created_at, title, amount_cents, expected_close_date, stage],
+                default: updated_at,
+              },
+          }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - {
+            name: q,
+            in: query,
+            schema: { type: string, maxLength: 100 },
+            description: "Partial, case-insensitive match on the deal title and the customer's name, company or e-mail. Treated literally.",
+          }
+        - {
+            name: stage,
+            in: query,
+            schema: { type: string, enum: [new, qualified, proposal, negotiation, won, lost] },
+          }
+        - { name: assignedTo, in: query, schema: { type: string, format: uuid } }
+        - { name: customerId, in: query, schema: { type: string, format: uuid } }
+        - {
+            name: closeFrom,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Expected close date on or after.",
+          }
+        - {
+            name: closeTo,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Expected close date on or before.",
+          }
+        - {
+            name: archived,
+            in: query,
+            schema: { type: string, enum: ["false", "true", all], default: "false" },
+          }
+      responses:
+        "200":
+          description: Opportunities. `meta` has `page`, `limit`, `total`, `totalPages` and, for the whole filtered set, `stageTotals` (count and cents for every stage), `openPipelineCents`, `weightedPipelineCents` and `aggregatesComplete`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Opportunity" }
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
+                      stageTotals:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            count: { type: integer }
+                            amountCents: { type: integer }
+                      openPipelineCents: { type: integer }
+                      weightedPipelineCents: { type: integer }
+                      aggregatesComplete: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          {
+            description: "The workspace is not one the caller belongs to",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "422":
+          {
+            description: "An invalid or unknown query parameter; `error.fieldErrors` names it",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+    post:
+      summary: Create an opportunity in an open stage (owner, admin and member)
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOpportunity" }
+      responses:
+        "201":
+          description: The created opportunity. The probability defaults from the stage unless sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Opportunity" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer (`FORBIDDEN`), an expired demo (`DEMO_EXPIRED`) or another origin",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "The workspace is not one the caller belongs to, or the customer is not in it (`CUSTOMER_NOT_FOUND`)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "422":
+          {
+            description: "Validation failed (`fieldErrors`), or the assignee is not a member of this workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "429":
+          {
+            description: "The demo workspace is at its opportunity cap (`DEMO_CAP`)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+  /opportunities/{id}:
+    get:
+      summary: One opportunity with its customer's name
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The opportunity
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Opportunity" }
+                  meta: { type: object }
+        "400":
+          {
+            description: "The id is not a valid UUID",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          {
+            description: "Missing, or in another workspace (the same answer)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+    patch:
+      summary: Partial update with optimistic concurrency (owner, admin, member). Send `expectedUpdatedAt` as last seen. `stage` is refused; use the stage endpoint.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedUpdatedAt]
+              properties:
+                expectedUpdatedAt:
+                  {
+                    type: string,
+                    format: date-time,
+                    description: "The `updatedAt` last seen, exactly as returned.",
+                  }
+                customerId: { type: string, format: uuid }
+                title: { type: string, minLength: 2, maxLength: 150 }
+                description: { type: [string, "null"], maxLength: 5000 }
+                amountCents: { type: integer, minimum: 0, maximum: 100000000000 }
+                probabilityPercent: { type: integer, minimum: 0, maximum: 100 }
+                expectedCloseDate: { type: [string, "null"], format: date }
+                assignedTo: { type: [string, "null"], format: uuid }
+      responses:
+        "200":
+          description: The opportunity (unchanged and unwritten when the patch changes nothing)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { $ref: "#/components/schemas/Opportunity" }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer, an expired demo (`DEMO_EXPIRED`) or another origin",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "Missing, or in another workspace; also a new customer that is not in this workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "409": { $ref: "#/components/responses/StaleEdit" }
+        "422":
+          {
+            description: "Validation failed, `stage` was sent (change it with the stage endpoint), or the assignee is not a member of this workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+    delete:
+      summary: Archive (soft delete), idempotent. Nothing is hard-deleted.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "204": { description: Archived (or already archived) }
+        "400":
+          {
+            description: "The id is not a valid UUID",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          {
+            description: "A viewer, or an expired demo (`DEMO_EXPIRED`)",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+        "404":
+          {
+            description: "Missing, or in another workspace",
+            content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } },
+          }
+
 components:
   parameters:
     IdempotencyKey:
@@ -553,6 +819,47 @@ components:
         source: { type: string, enum: [referral, website, outbound, other], default: other }
         tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
         notes: { type: [string, "null"], maxLength: 5000 }
+        assignedTo: { type: [string, "null"], format: uuid }
+    Opportunity:
+      type: object
+      required:
+        [id, customerId, title, stage, amountCents, probabilityPercent, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        customerName: { type: [string, "null"] }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        description: { type: [string, "null"], maxLength: 5000 }
+        stage: { type: string, enum: [new, qualified, proposal, negotiation, won, lost] }
+        amountCents: { type: integer, minimum: 0, description: "Whole cents, never a float." }
+        probabilityPercent: { type: integer, minimum: 0, maximum: 100 }
+        expectedCloseDate: { type: [string, "null"], format: date }
+        assignedTo: { type: [string, "null"], format: uuid }
+        lostReason: { type: [string, "null"], maxLength: 500 }
+        closedAt: { type: [string, "null"], format: date-time }
+        createdBy: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+    CreateOpportunity:
+      type: object
+      additionalProperties: false
+      required: [customerId, title]
+      properties:
+        customerId: { type: string, format: uuid }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        description: { type: [string, "null"], maxLength: 5000 }
+        stage:
+          {
+            type: string,
+            enum: [new, qualified, proposal, negotiation],
+            default: new,
+            description: "Won and lost are set through the stage endpoint.",
+          }
+        amountCents: { type: integer, minimum: 0, maximum: 100000000000, default: 0 }
+        probabilityPercent:
+          { type: integer, minimum: 0, maximum: 100, description: "Defaults from the stage." }
+        expectedCloseDate: { type: [string, "null"], format: date }
         assignedTo: { type: [string, "null"], format: uuid }
     Error:
       type: object
