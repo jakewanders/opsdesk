@@ -117,3 +117,21 @@ Migration `20261101000700_demo_seed_registry.sql`. One mechanism seeds a demo wo
 ### Local use
 
 `npm run demo:seed` creates a throwaway demo organization in the **local** database (it refuses any non-local target) and seeds it; it prints the SQL to remove it. With no entity seeders registered yet it records the framework seed version (1).
+
+## Demo caps (SIT-200)
+
+Migration `20261101001000_demo_caps.sql`. Demo data is capped in the database, not only in the UI.
+
+| Entity          | Cap per demo workspace | Limit key (`private.app_limits`) |
+| --------------- | ---------------------- | -------------------------------- |
+| customers       | 50                     | `demo_cap_customers`             |
+| opportunities   | 30                     | `demo_cap_opportunities`         |
+| tasks           | 75                     | `demo_cap_tasks`                 |
+| quotes          | 20                     | `demo_cap_quotes`                |
+| activity events | 300 (non-essential)    | `demo_cap_activity_events`       |
+
+- **Attach in one line**, in the entity's migration right after creating the table and its `organization_id` index: `select private.attach_demo_cap('public.customers', 'demo_cap_customers');`. **Every entity issue lists "attach cap trigger" in its acceptance criteria** (customers SIT-208, opportunities SIT-216, tasks SIT-220, quotes SIT-222, activity SIT-195/201). The activity table passes a count filter that leaves essential audit events out: `select private.attach_demo_cap('public.activity_events', 'demo_cap_activity_events', 'not is_essential');`.
+- The trigger (`private.enforce_demo_cap`, a SECURITY DEFINER BEFORE INSERT trigger) applies only to organizations of `kind = 'demo'`, counts that organization's rows (**all rows, archived included**, so archiving cannot bypass a cap) through the `organization_id` index, and refuses the insert past the cap with `OD429` / `DEMO_CAP` and a `retry-after=60` hint. A per-workspace-per-table advisory lock serializes concurrent inserts so two cannot both pass at cap - 1. Real organizations are never counted.
+- **429 in the standard envelope:** the API error mapper turns `OD429` into HTTP 429 with code `DEMO_CAP`, the message "Demo limit reached for customers. Reset the demo to start over." and a `Retry-After` header (verified end to end in `demo-caps.integration.test.ts`).
+- **Activity ceiling blocks the mutation.** The activity insert happens inside the same transaction as the change that caused it, so when the activity cap refuses the event the originating mutation fails with it: no change is ever saved without its audit event. Deleting rows (reset, cleanup) is never capped, so they stay available.
+- Change a cap with `update private.app_limits set value = N where key = '...'` (no client access); tests lower them the same way.

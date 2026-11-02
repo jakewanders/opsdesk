@@ -355,6 +355,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: no stored-user check (2 pgTAP), no limit (2 + 1 integration), no advisory lock (1 + 2 integration), name length unchecked (5 + 1), markup allowed (2), time zone unchecked (3 + 1), owner role changed to admin (2 + 3), `created_by` left null (6 + 1).
 - Found while writing: `normalize(x, nfc)` is SQL syntax and cannot be schema-qualified.
 
+### SIT-200 — Database-enforced demo caps with 429 mapping (done)
+
+- Migration `20261101001000_demo_caps.sql`: `private.enforce_demo_cap()` (definer, pinned `search_path`, per-workspace advisory lock), one-line `private.attach_demo_cap(table, key[, count_filter])`, default caps as `private.app_limits` rows (customers 50, opportunities 30, tasks 75, quotes 20, activity events 300). Attach convention and the per-entity checklist in `docs/DEMO.md`; decisions logged.
+- `supabase/tests/demo-caps.test.sql` (33 assertions, caps lowered via `app_limits`, probe tables): defaults, one-line attach with guards, row 4 of 3 refused with `OD429`/`DEMO_CAP`/retry-after, archived rows still count, delete frees room, other workspaces independent, **real organizations never capped (10 rows past a cap of 3)**, multi-row insert that crosses the cap fails whole, lowered and raised caps apply at once, count filter leaves essential events out, and **a refused activity event blocks its originating mutation (no row saved)**, advisory lock held.
+- `src/lib/demo/demo-caps.integration.test.ts` (3, real guest and member through PostgREST): the guest hits the cap and the error maps to **HTTP 429 in the standard envelope** (code `DEMO_CAP`, message, `requestId`, `Retry-After: 60`); an insert queues behind another session holding the workspace lock; a real organization is unaffected (6 rows past a cap of 2).
+- `npm run test:db`: 13 files, 535 tests PASS. `npm run check`: all 9 steps passed (unit 751, integration 68).
+- Mutations caught and reverted: real orgs capped too (2 + 1 integration), off by one (5 + 1), archived rows excluded (6 + 1), wrong errcode (8 + 1), count filter ignored (5), invoker instead of definer (13 + 1), **no advisory lock (not caught at first; added a lock-held assertion and a two-session blocking test, now 1 pgTAP + 1 integration failure)**.
+- No entity table exists yet; each entity issue (SIT-208, 216, 220, 222, 195/201) must call `attach_demo_cap` (listed in `docs/DEMO.md`).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

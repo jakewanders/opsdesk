@@ -170,6 +170,10 @@ This is the template every business table copies.
 - **Abuse limit.** At most **5 real organizations per user** (`private.app_limits.max_real_orgs_per_user`, adjustable without a deploy; no client access): the sixth is `OD429 ORG_LIMIT`. A per-user advisory lock serializes a user's creations, so a burst of parallel calls cannot get past the limit (12 simultaneous API calls produced exactly 5 organizations; a call queues behind another session holding the lock).
 - `private.demo_limits` was renamed `private.app_limits` (it now holds all application limits).
 
+## Demo caps (SIT-200)
+
+Hard caps per demo workspace are enforced by a SECURITY DEFINER `BEFORE INSERT` trigger (`private.enforce_demo_cap`, attached with `private.attach_demo_cap`): customers 50, opportunities 30, tasks 75, quotes 20, activity events 300. It reads the organization kind and counts rows as the function owner, so a caller who cannot see the organization row cannot slip past it; it counts archived rows too; real organizations are never counted; a per-workspace advisory lock makes the cap strict under concurrency; the refusal is `OD429 DEMO_CAP` (HTTP 429 in the standard envelope, `Retry-After: 60`). The limits are rows in `private.app_limits` (no client access). Details and the attach convention for entity migrations are in `docs/DEMO.md`.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.
