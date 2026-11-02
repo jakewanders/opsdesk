@@ -888,7 +888,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -905,6 +905,16 @@ In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202 done).
 - **Integration** `membership-concurrency.integration.test.ts` (7), real HTTP to PostgREST with each user's token: two owners demoting each other and two removing each other, 12 rounds each, never leave zero owners and exactly one call succeeds; the sole owner gets `OD409`; a viewer and a guest are refused (`OD403`); an anonymous call is refused; a full create, redeem, reuse flow. PostgREST answers a custom SQLSTATE with HTTP 400 and the code in the body, so the tests assert the code.
 - **Mutation checks:** admin owner-grant removed: 4 failures; function-level last-owner check disabled: failures from test 70 on; row lock removed: both concurrency tests fail. All restored.
 - Threat notes: `docs/SECURITY.md` ("Membership and invitation functions").
+
+### SIT-224 — Invitation and member endpoints (done)
+
+- Routes: `GET`/`POST /api/v1/invitations`, `DELETE /api/v1/invitations/:id` (revoke; a documented addition to the endpoint inventory), `POST /api/v1/invitations/accept`, `PATCH`/`DELETE /api/v1/members/:userId`. Service in `src/features/members/service.ts`, schemas in `schema.ts` (strict objects: no organization or inviter can be injected; `owner` is not an invitable role).
+- Each handler runs `assertCan(members.manage)` for an early, clear 403 (guests get `DEMO_RESTRICTED`), then the RPC from SIT-202 re-checks everything. `GET /invitations` lists open invitations as metadata only (id, address, role, inviter, created, expiry, `expired`); no token or hash is selected.
+- `POST /invitations` is the only response with the plaintext `token` and the `link` (`<NEXT_PUBLIC_APP_URL>/invite#token=...`; the token sits in the fragment so it never reaches a server log or `Referer`). `accept` does not need `X-Organization-Id` (the caller may belong to no workspace yet).
+- Error codes (all in `docs/openapi.yaml`): accept: 404 `INVITATION_INVALID`; 409 `INVITATION_REVOKED`, `INVITATION_USED`, `INVITATION_EXPIRED`; 403 `EMAIL_UNVERIFIED`, `EMAIL_MISMATCH`, `ACCOUNT_REQUIRED`; 429 `RATE_LIMITED` with `Retry-After`. Members: 403 `OWNER_GRANT`, `OWNER_PROTECTED`, `FORBIDDEN`, `DEMO_RESTRICTED`; 409 `LAST_OWNER`, `ALREADY_MEMBER`; 404 for a non-member target or a workspace the caller is not in (`ORG_NOT_FOUND`).
+- **Integration** `members-api.integration.test.ts` (21, real HTTP, production build, local Supabase): create (201 with token and link, hash-only storage, expiry about 7 days, admin invites all three roles, 422 for owner/unknown role/bad address/extra fields, 409 duplicate and `ALREADY_MEMBER`, 403 member/viewer/guest, 404 non-member, 401); list (metadata keys exactly, no 64-hex string anywhere in the body, owner and admin only, other workspace's invitations never listed); revoke (204 idempotent, 403/404/400); accept (success, second use, mismatch, invalid/malformed/upper-case, revoked, expired, unverified, guest 403, signed out 401, missing token 422, 429 after 12 failed guesses with `Retry-After`); members (member/viewer/guest 403, non-member 404, admin cannot grant owner/touch owner/self-promote, last owner 409 on demote and on remove, role change 200, removal 204, two owners then one may step down, bad id 400, unknown role 422).
+- **Mutation check:** removing the early permission check from `listInvitations` failed the 403 assertions (a member got an empty 200 from RLS); restored. The RPC-level guards were mutation-checked in SIT-202.
+- `npx tsc`, ESLint and Prettier clean; `openapi.test.ts` passes with the new paths. The logger already redacts any key named `token` or containing `invit`, and request bodies are never logged.
 
 ### SIT-174 — Money and quote calculation domain module (done)
 

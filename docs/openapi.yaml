@@ -1142,6 +1142,239 @@ paths:
           description: "The workspace is not one the caller belongs to"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /members/{userId}:
+    patch:
+      summary: Change a member's role (owner and admin only)
+      description: >
+        An admin cannot make an owner, change or remove an owner, or promote themselves (403 `OWNER_GRANT` or
+        `OWNER_PROTECTED`). The last owner cannot be demoted (409 `LAST_OWNER`), also under concurrent requests. Members,
+        viewers and demo guests get 403. A person who is not a member, and anyone outside the workspace, get 404.
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { type: string, enum: [owner, admin, member, viewer] }
+      responses:
+        "200":
+          description: The member's new role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      userId: { type: string, format: uuid }
+                      role: { type: string }
+        "403":
+          description: "Not allowed (FORBIDDEN, OWNER_GRANT, OWNER_PROTECTED, DEMO_RESTRICTED)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not a member, or the workspace is not the caller's"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "LAST_OWNER"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Unknown role"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    delete:
+      summary: Remove a member (owner and admin only)
+      description: Same rules as the role change. The last owner cannot be removed (409 `LAST_OWNER`).
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "204": { description: Removed }
+        "403":
+          description: "Not allowed"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not a member"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "LAST_OWNER"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /invitations:
+    get:
+      summary: Open invitations of the active workspace (owner and admin only)
+      description: Metadata only. A token or its hash is never returned.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: Invitations, newest first. `expired` is true after the 7 days.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        email: { type: string }
+                        role: { type: string, enum: [admin, member, viewer] }
+                        invitedBy: { type: string, format: uuid, nullable: true }
+                        createdAt: { type: string, format: date-time }
+                        expiresAt: { type: string, format: date-time }
+                        expired: { type: boolean }
+        "403":
+          description: "Not allowed (members, viewers, demo guests)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    post:
+      summary: Invite an address as admin, member or viewer (owner and admin only)
+      description: >
+        The 201 response is the only place the plaintext `token` and the `link` appear; only a hash is stored, so it cannot
+        be shown again. The link carries the token in the URL fragment. 409 `ALREADY_MEMBER`, or an open invitation
+        already exists for the address; 429 when the workspace has 100 open invitations. Demo workspaces are 403.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [admin, member, viewer] }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      email: { type: string }
+                      role: { type: string }
+                      expiresAt: { type: string, format: date-time }
+                      token: { type: string }
+                      link: { type: string }
+        "403":
+          description: "Not allowed"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not the caller's workspace"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "ALREADY_MEMBER or an open invitation exists"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Bad email, or the owner role"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "Too many open invitations"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /invitations/{id}:
+    delete:
+      summary: Withdraw an open invitation (owner and admin only; a documented addition to the endpoint inventory)
+      description: Idempotent. An accepted invitation cannot be withdrawn (409).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "204": { description: Withdrawn }
+        "403":
+          description: "Not allowed"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not found in this workspace"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "Already accepted"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /invitations/accept:
+    post:
+      summary: Join the workspace an invitation names
+      description: >
+        Requires a signed-in user with a confirmed email equal to the invited address; no `X-Organization-Id` is needed.
+        Refusals have stable codes: 404 `INVITATION_INVALID`; 409 `INVITATION_REVOKED`, `INVITATION_USED`,
+        `INVITATION_EXPIRED`; 403 `EMAIL_UNVERIFIED`, `EMAIL_MISMATCH`, `ACCOUNT_REQUIRED` (a demo guest); 429
+        `RATE_LIMITED` (10 attempts in 15 minutes, failures included).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      organizationId: { type: string, format: uuid }
+                      role: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "EMAIL_UNVERIFIED, EMAIL_MISMATCH or ACCOUNT_REQUIRED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "INVITATION_INVALID"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "INVITATION_REVOKED, INVITATION_USED or INVITATION_EXPIRED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "RATE_LIMITED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /dashboard:
     get:
       summary: The active workspace's current-state KPIs and its 10 newest activity events
