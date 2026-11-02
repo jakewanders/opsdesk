@@ -194,3 +194,11 @@ The path from "Try the live demo" to a seeded dashboard is one click: the landin
 5. **No account on a failed check.** A failed or missing CAPTCHA is refused by Supabase before any user exists (tested in `anonymous-signin.integration.test.ts`); a guest that signed in but never got a workspace is an orphan and the cleanup removes it after 48 hours (SIT-207).
 
 Tests: `src/lib/demo/failure.test.ts`, `src/components/demo/demo-entry.test.tsx` (flow, double tokens, each failure, retry with the same key, axe), `src/lib/demo/bootstrap.integration.test.ts` (endpoint and page against the production build and local Supabase).
+
+## Resetting from the app: `POST /api/v1/demo/reset` and "Reset Demo" (SIT-210)
+
+The guest banner has a **Reset Demo** button. It opens a confirmation that says exactly what happens ("Your demo changes will be replaced with the original sample data. This cannot be undone. The 24-hour timer does not restart. You can reset once a minute."), and the destructive button is "Reset demo". On confirm the client calls `POST /api/v1/demo/reset` with an `Idempotency-Key`; on success it clears the client cache, shows a "Demo reset" toast and re-reads the page's server data, so the sample data is back without a manual refresh.
+
+- **Endpoint** (`src/app/api/v1/demo/reset/route.ts`, core in `src/lib/demo/reset-core.ts`): no body, because the workspace is the caller's own (found with their own session), so there is no id to tamper with. Registered users get `403 GUEST_ONLY`; a guest with no demo gets `404 DEMO_NOT_FOUND`; an expired demo `403 DEMO_EXPIRED`. The database function does the ownership check, the throttle, the atomic clear and re-seed, and never extends the expiry.
+- **Throttle.** One reset a minute: a faster one is `429 DEMO_RESET_THROTTLED` with "You can reset the demo once a minute. Try again in N seconds." and a `Retry-After` header. The dialog stays open and shows that message; the confirm button is disabled while a request runs, so spamming it sends one request.
+- **Retries.** A failed attempt keeps its idempotency key (the retry is the same request); a replay of a finished key returns the stored answer without resetting again; a success drops the key.

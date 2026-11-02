@@ -473,6 +473,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 996 / 69 files, integration 157 / 20 files, pgTAP PASS).
 - Mutations caught: no timeout, errors reported as ok. Not caught, equivalent: counting a non-2xx as ok (the body check still says unavailable).
 
+### SIT-210 — POST /api/v1/demo/reset and the Reset Demo confirmation UI (done)
+
+- `POST /api/v1/demo/reset` (guest only, own workspace, idempotency key, 429 with seconds and `Retry-After`), `DemoResetButton` in the guest banner with the shared `ConfirmDialog` (destructive "Reset demo"), cache clear, toast and `router.refresh()`. OpenAPI entry and `docs/DEMO.md` section added.
+- Tests: `demo-reset-button.test.tsx` (7: exact confirmation text, nothing sent before confirming, Cancel, success path with cache cleared and refresh and toast, throttle keeps the dialog open with the message, key reuse on retry and renewal after success, spam sends one request, axe closed and open), `reset-endpoint.integration.test.ts` (6, real production build and a scratch seeded entity): edits and deletions undone with the expiry unchanged; five rapid calls all 429 with the message and `Retry-After` and no reset; key replay returns 200 with the stored answer and no second reset; registered user 403; no demo 404, signed out 401, foreign origin 403, GET 405; another guest's data untouched even when its id is sent.
+- Real browser (production build, local Supabase, 375px viewport): `/demo` to `/app`, Reset Demo opened the confirmation, confirming showed the "Demo reset" toast, an immediate second reset showed "You can reset the demo once a minute. Try again in 60 seconds." in the dialog (screenshots reviewed).
+- `npm run check`: all 9 steps passed (unit 1003 / 70 files, integration 163 / 21 files, pgTAP PASS).
+- Mutations caught: cache not cleared, no refresh, new key every attempt, throttle message not rewritten. The route's guest check is covered by the database function (same `GUEST_ONLY` 403), as for bootstrap.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

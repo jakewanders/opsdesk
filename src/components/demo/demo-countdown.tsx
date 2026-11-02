@@ -2,7 +2,7 @@
 
 import { Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { announceBand, bandLabel, formatRemaining } from "@/lib/demo/time-remaining";
 
 type DemoCountdownProps = {
@@ -10,6 +10,8 @@ type DemoCountdownProps = {
   expiresAt: string;
   /** The server's clock (ISO) at render time; elapsed time in this tab is added from a monotonic clock. */
   serverNow: string;
+  /** Guest actions shown at the end of the banner (Reset Demo). */
+  actions?: ReactNode;
 };
 
 /**
@@ -18,7 +20,7 @@ type DemoCountdownProps = {
  * updates every 5 s; a separate polite live region speaks only at 60, 10, 5 and 1 minute and at expiry. At zero
  * the page refreshes, and the proxy sends an expired guest to the "Your demo has ended" page.
  */
-export function DemoCountdown({ expiresAt, serverNow }: DemoCountdownProps) {
+export function DemoCountdown({ expiresAt, serverNow, actions }: DemoCountdownProps) {
   const router = useRouter();
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -39,7 +41,7 @@ export function DemoCountdown({ expiresAt, serverNow }: DemoCountdownProps) {
   return (
     <div
       role="note"
-      className="flex items-center gap-2 border-b border-warning/40 bg-warning-subtle px-4 py-2 text-sm text-foreground"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning/40 bg-warning-subtle px-4 py-2 text-sm text-foreground"
     >
       <Clock aria-hidden="true" className="size-4 shrink-0" />
       <p>
@@ -53,6 +55,7 @@ export function DemoCountdown({ expiresAt, serverNow }: DemoCountdownProps) {
           </>
         )}
       </p>
+      {actions ? <div className="ml-auto">{actions}</div> : null}
       <span className="sr-only" role="status" aria-live="polite">
         {band === null ? "" : bandLabel(band)}
       </span>

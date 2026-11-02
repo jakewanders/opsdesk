@@ -68,6 +68,49 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /demo/reset:
+    post:
+      summary: Restore the signed-in guest's own demo workspace to the original sample data (once a minute; never extends the expiry)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: The workspace was reset (or this is a replay of an earlier answer for the same key)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required: [organizationId, resetAt, expiresAt]
+                    properties:
+                      organizationId: { type: string, format: uuid }
+                      resetAt: { type: string, format: date-time }
+                      expiresAt: { type: string, format: date-time }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A registered (non-anonymous) session (`GUEST_ONLY`), an expired demo (`DEMO_EXPIRED`), or a request from another origin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The guest has no demo workspace yet (`DEMO_NOT_FOUND`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The same Idempotency-Key is still being processed (`IDEMPOTENCY_IN_PROGRESS`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429":
+          description: Reset less than a minute ago (`DEMO_RESET_THROTTLED`); the message says how many seconds to wait and `Retry-After` carries them
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /organizations:
     get:
       summary: "The caller's workspaces (RLS hides every other tenant)"

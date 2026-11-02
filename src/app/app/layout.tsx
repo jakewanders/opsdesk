@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { getNavItems } from "@/components/layout/nav-config";
 import { getFeatureFlags } from "@/lib/env/public";
 import { DemoCountdown } from "@/components/demo/demo-countdown";
+import { DemoResetButton } from "@/components/demo/demo-reset-button";
 import { loadMemberships } from "@/lib/api/org-context";
 import { toWorkspaces } from "@/lib/api/organizations";
 import { getCurrentUser } from "@/lib/supabase/current-user";
@@ -70,7 +71,11 @@ async function DynamicShell({ children }: { children: ReactNode }) {
   );
   const displayName = user ? await loadDisplayName(user.id) : null;
   const banner = demoExpiresAt ? (
-    <DemoCountdown expiresAt={demoExpiresAt} serverNow={new Date().toISOString()} />
+    <DemoCountdown
+      expiresAt={demoExpiresAt}
+      serverNow={new Date().toISOString()}
+      actions={<DemoResetButton />}
+    />
   ) : null;
   const activeOrgId = active.status === "selected" ? active.workspace.id : null;
   return (
