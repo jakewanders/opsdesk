@@ -5,6 +5,7 @@ import { NOINDEX_VALUE, shouldNoindex } from "@/lib/robots";
 import { decideRoute } from "@/lib/auth/route-guard";
 import { applyPrivateNoStore, isPrivateRoute } from "@/lib/http/cache-control";
 import { resolveWorkspaceState } from "@/lib/auth/workspace-state";
+import { ACTIVE_ORG_COOKIE } from "@/lib/org/active-org";
 import { needsSession, updateSession } from "@/lib/supabase/middleware";
 
 function withRobots<T extends NextResponse>(response: T, pathname?: string): T {
@@ -53,7 +54,14 @@ export async function proxy(request: NextRequest) {
       search: request.nextUrl.search,
       user,
       workspace: () =>
-        user ? resolveWorkspaceState(supabase, user.id) : Promise.resolve("unknown"),
+        user
+          ? resolveWorkspaceState(
+              supabase,
+              user.id,
+              new Date(),
+              request.cookies.get(ACTIVE_ORG_COOKIE)?.value ?? null,
+            )
+          : Promise.resolve("unknown"),
     });
     if (redirectTo) {
       const target = request.nextUrl.clone();

@@ -12,11 +12,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type ShellUser = { name?: string | null; email?: string | null };
+export type ShellUser = {
+  name?: string | null;
+  email?: string | null;
+  /** Account state shown in the menu: a guest explores a demo; a member has an account. */
+  isGuest?: boolean;
+};
 
 /** Account menu. Renders without data; the workspace issues pass the real user and actions. */
 export function UserMenu({ user }: { user?: ShellUser | null }) {
-  const label = user?.name || user?.email || "Not signed in";
+  const label = user?.name || user?.email || (user?.isGuest ? "Guest" : "Not signed in");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -26,9 +31,11 @@ export function UserMenu({ user }: { user?: ShellUser | null }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-52">
         <DropdownMenuLabel className="truncate">{label}</DropdownMenuLabel>
-        {user?.name && user.email ? (
+        {user ? (
           <DropdownMenuLabel className="truncate pt-0 font-normal text-muted-foreground">
-            {user.email}
+            {user.isGuest
+              ? "Guest: exploring a demo"
+              : `Member${user.email ? `: ${user.email}` : ""}`}
           </DropdownMenuLabel>
         ) : null}
         <DropdownMenuSeparator />

@@ -4,16 +4,19 @@ import { DEFAULT_AFTER_LOGIN, safeNextPath } from "./safe-redirect";
 export const ORG_SETUP_PATH = "/app/setup";
 export const DEMO_PATH = "/demo";
 export const LOGIN_PATH = "/login";
+/** Where a member with several workspaces and no valid selection chooses one (no silent default). */
+export const CHOOSE_WORKSPACE_PATH = "/app/workspaces";
 
 /**
  * What the database says about the signed-in user's workspaces:
  * - `ready`: at least one usable workspace;
  * - `none`: no membership at all;
+ * - `choose`: several usable workspaces and no valid selection yet (the user must pick one);
  * - `expired-demo`: only demo workspaces, all past their expiry;
  * - `unknown`: could not be determined (query refused or failed). Routing then does not redirect:
  *   this layer only routes, and every handler and RLS policy still authorizes on its own.
  */
-export type WorkspaceState = "ready" | "none" | "expired-demo" | "unknown";
+export type WorkspaceState = "ready" | "none" | "choose" | "expired-demo" | "unknown";
 
 export type GuardUser = { isAnonymous: boolean } | null;
 
@@ -60,6 +63,12 @@ export async function decideRoute(input: GuardInput): Promise<string | null> {
 
   const state = await input.workspace();
   if (state === "expired-demo") return DEMO_PATH;
+  if (state === "choose") {
+    // Choosing (or creating another workspace) must stay reachable, or the user could never leave this state.
+    return pathname === CHOOSE_WORKSPACE_PATH || pathname === ORG_SETUP_PATH
+      ? null
+      : CHOOSE_WORKSPACE_PATH;
+  }
   if (state === "none") {
     if (user.isAnonymous) return DEMO_PATH;
     return pathname === ORG_SETUP_PATH ? null : ORG_SETUP_PATH;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHOOSE_WORKSPACE_PATH,
   decideRoute,
   DEMO_PATH,
   ORG_SETUP_PATH,
@@ -122,10 +123,22 @@ describe("workspace rules on /app/*", () => {
   });
 });
 
+describe("choosing a workspace", () => {
+  it("sends a member with several workspaces and no selection to the chooser, from every /app page", async () => {
+    expect(await decide("/app", member, "choose")).toBe(CHOOSE_WORKSPACE_PATH);
+    expect(await decide("/app/customers", member, "choose")).toBe(CHOOSE_WORKSPACE_PATH);
+    expect(await decide("/app/settings/members", member, "choose")).toBe(CHOOSE_WORKSPACE_PATH);
+  });
+  it("leaves the chooser and workspace setup reachable (or the user could never leave this state)", async () => {
+    expect(await decide(CHOOSE_WORKSPACE_PATH, member, "choose")).toBeNull();
+    expect(await decide(ORG_SETUP_PATH, member, "choose")).toBeNull();
+  });
+});
+
 describe("no redirect loops", () => {
   it("every start path settles within two hops for every user and workspace state", async () => {
     const users: GuardUser[] = [null, member, guest];
-    const states: WorkspaceState[] = ["ready", "none", "expired-demo", "unknown"];
+    const states: WorkspaceState[] = ["ready", "none", "choose", "expired-demo", "unknown"];
     const paths = [
       "/",
       "/login",
@@ -163,9 +176,9 @@ describe("resolveWorkspaceState", () => {
       from: () => ({ select: () => ({ eq: () => ({ limit: async () => result }) }) }),
     }) as unknown as Parameters<typeof resolveWorkspaceState>[0];
   const now = new Date("2026-11-01T12:00:00Z");
-  const live = { organizations: { kind: "demo", expires_at: "2026-11-02T12:00:00Z" } };
-  const dead = { organizations: { kind: "demo", expires_at: "2026-11-01T11:59:59Z" } };
-  const real = { organizations: { kind: "real", expires_at: null } };
+  const live = { organizations: { id: "live", kind: "demo", expires_at: "2026-11-02T12:00:00Z" } };
+  const dead = { organizations: { id: "dead", kind: "demo", expires_at: "2026-11-01T11:59:59Z" } };
+  const real = { organizations: { id: "real", kind: "real", expires_at: null } };
 
   it("none when the user has no membership", async () => {
     expect(await resolveWorkspaceState(client({ data: [], error: null }), "u", now)).toBe("none");
@@ -185,6 +198,50 @@ describe("resolveWorkspaceState", () => {
     expect(await resolveWorkspaceState(client({ data: [dead], error: null }), "u", now)).toBe(
       "expired-demo",
     );
+  });
+  const named = (...ids: string[]) =>
+    ids.map((id) => ({ organizations: { id, kind: "real", expires_at: null } }));
+  it("choose: several usable workspaces and no valid selection", async () => {
+    expect(
+      await resolveWorkspaceState(client({ data: named("o1", "o2"), error: null }), "u", now),
+    ).toBe("choose");
+    expect(
+      await resolveWorkspaceState(client({ data: named("o1", "o2"), error: null }), "u", now, "o3"),
+    ).toBe("choose");
+    expect(
+      await resolveWorkspaceState(
+        client({ data: named("o1", "o2"), error: null }),
+        "u",
+        now,
+        "garbage",
+      ),
+    ).toBe("choose");
+  });
+  it("ready: several workspaces with a selection that names one of them", async () => {
+    expect(
+      await resolveWorkspaceState(client({ data: named("o1", "o2"), error: null }), "u", now, "o2"),
+    ).toBe("ready");
+    expect(
+      await resolveWorkspaceState(client({ data: named("o1", "o2"), error: null }), "u", now, "O2"),
+    ).toBe("ready");
+  });
+  it("one usable workspace never needs a choice, even with a stale selection", async () => {
+    expect(
+      await resolveWorkspaceState(client({ data: named("o1"), error: null }), "u", now, "other"),
+    ).toBe("ready");
+    expect(
+      await resolveWorkspaceState(
+        client({
+          data: [
+            ...named("o1"),
+            { organizations: { id: "d", kind: "demo", expires_at: "2026-11-01T11:00:00Z" } },
+          ],
+          error: null,
+        }),
+        "u",
+        now,
+      ),
+    ).toBe("ready");
   });
   it("treats expiry at exactly now as expired", async () => {
     const edge = { organizations: { kind: "demo", expires_at: now.toISOString() } };

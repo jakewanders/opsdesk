@@ -403,6 +403,13 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: no time budget, no eligibility check, unknown eligibility treated as eligible, phase-2 failure aborting everything, batch size ignored, anonymity not required, membership check ignored, live demos purged. Not caught as equivalent mutants: dropping `kind = 'demo'` from the expired-org query (real organizations cannot carry an expiry: constraint) and ignoring the real-organization creator (the membership rule already blocks it; covered separately by a pgTAP case).
 - Not done here (SIT-213): the Netlify scheduled function and `npm run demo:cleanup`. The idempotency-key purge is wired but has nothing to purge until SIT-183 creates the table.
 
+### SIT-209 — Organization setup, workspace selector and user menu (done)
+
+- Setup page and form (name, optional industry, time zone defaulting to the browser's, fixed USD), workspace selector in the shell, chooser page `/app/workspaces`, user menu (name, guest or member label, sign out). Proxy `choose` state for members with several workspaces and no valid selection.
+- Tests: `org.test.ts` and route-guard/workspace-state additions (org/auth unit: 69 passed), `org-ui.test.tsx` (15 component tests incl. axe and keyboard), `workspace.integration.test.ts` (4 real-session tests).
+- Real browser (Playwright, production build, local Supabase): signup, Mailpit confirm, redirected to setup, validation summary, create, dashboard with selector; second workspace, switch, reload persists; cleared cookie sends a multi-org user to the chooser; tampered cookie lands on the chooser with no leak.
+- Mutations caught and reverted: silent default among several workspaces, cookie trusted without membership, guest reaching the database, no explicit choice required, chooser redirecting to itself.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

@@ -207,3 +207,7 @@ Cleanup uses the admin (secret-key) client, so its scope is enforced twice. Phas
 | `demo.reset`           | demo only              | no                     | no     | no     | yes                          |
 
 <!-- permissions-matrix:end -->
+
+### Active-workspace cookie (SIT-209)
+
+`od_active_org` stores which workspace the member last opened. It is a preference only: `resolveActiveWorkspace` ignores it unless it is a UUID naming a workspace the caller belongs to, `selectWorkspaceAction` re-checks membership before setting it, and a tampered value lands on the chooser with nothing leaked. Guests cannot create workspaces (blocked in the core and the database function).
