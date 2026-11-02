@@ -63,6 +63,13 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Server code logs through src/lib/logger, which redacts secrets and free text (PRD 11.6). A bare console call
+    // bypasses redaction, so it is banned in application code. Tests and CLI scripts are exempt.
+    files: ["src/**/*.{ts,tsx}", "netlify/functions/**/*.{ts,mts}"],
+    ignores: ["**/*.test.{ts,tsx}", "src/test/**"],
+    rules: { "no-console": "error" },
+  },
   prettier,
   globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"]),
 ]);

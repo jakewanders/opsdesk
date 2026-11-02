@@ -13,7 +13,8 @@ import type { CurrentUser } from "@/lib/supabase/resolve-user";
 import { resolveOrg, type OrgContext, type SelectOptions } from "./org-context";
 import { UnauthorizedError } from "./errors";
 import { assertJsonRequest } from "./json-body";
-import { logUnexpectedError } from "./log";
+import { logger as defaultLogger, type Logger, type LogFields } from "@/lib/logger/logger";
+import { routeLabel } from "@/lib/logger/route-label";
 import { resolveRequestId } from "./request-id";
 import {
   assertContentLengthWithin,
@@ -35,6 +36,10 @@ export type ApiHandlerArgs<P> = {
   params: P;
   /** The verified user. Always set when `auth` is `"required"` (the default); null when signed out under `"optional"`. */
   user: CurrentUser | null;
+  /** Logger bound to this request (`requestId`, `route`). Log counts and codes, never record contents. */
+  log: Logger;
+  /** Adds identifiers (for example `orgId`) to this request's final log line. */
+  trace: (fields: LogFields) => void;
 };
 
 export type ApiOptions = {
@@ -50,6 +55,8 @@ export type ApiOptions = {
   trustedOrigins?: () => readonly string[];
   /** Verifies the caller with Supabase Auth. Default: the cookie session. Injectable for tests. */
   resolveUser?: () => Promise<CurrentUser | null>;
+  /** Where request and error lines go. Default: the process logger. Injectable for tests. */
+  logger?: Logger;
   /** Opt out of the Origin check. Only for signature-verified webhooks (Stripe, if P2 is built). */
   skipOriginCheck?: boolean;
 };
@@ -93,6 +100,27 @@ export function withApi<P = Record<string, never>>(
   const { auth = "required", maxBodyBytes = DEFAULT_MAX_BODY_BYTES } = options;
   return async (request: NextRequest, context?: RouteContext<P>): Promise<Response> => {
     const requestId = resolveRequestId(request.headers);
+    const log = options.logger ?? defaultLogger;
+    const started = performance.now();
+    const route = routeLabel(request.nextUrl?.pathname ?? new URL(request.url).pathname);
+    const traced: LogFields = {};
+    const requestLog = log.child({ requestId, route });
+    // One line per request: identifiers, status and duration. No query string, headers, cookies or body.
+    const finish = (response: Response, userId?: string): Response => {
+      const status = response.status;
+      const line = {
+        method: request.method,
+        status,
+        durationMs: Math.round(performance.now() - started),
+        ...(userId ? { userId } : {}),
+        ...traced,
+      };
+      if (status >= 500) requestLog.error("api.request", line);
+      else if (status >= 400) requestLog.warn("api.request", line);
+      else requestLog.info("api.request", line);
+      return response;
+    };
+    let userId: string | undefined;
     try {
       if (isMutation(request.method) && !options.skipOriginCheck) {
         assertTrustedOrigin(request, options.trustedOrigins?.() ?? (await defaultTrustedOrigins()));
@@ -105,16 +133,27 @@ export function withApi<P = Record<string, never>>(
         user = await (options.resolveUser ?? defaultResolveUser)();
         if (auth === "required" && user === null) throw new UnauthorizedError();
       }
+      userId = user?.id;
       const params = (context ? await context.params : {}) as P;
-      const output = await handler({ request, requestId, params, user });
-      return isApiResult(output)
-        ? successResponse(output, requestId)
-        : withBaseHeaders(output, requestId);
+      const output = await handler({
+        request,
+        requestId,
+        params,
+        user,
+        log: requestLog,
+        trace: (fields) => void Object.assign(traced, fields),
+      });
+      return finish(
+        isApiResult(output)
+          ? successResponse(output, requestId)
+          : withBaseHeaders(output, requestId),
+        userId,
+      );
     } catch (error) {
       try {
         const { apiError, unexpected } = toApiError(error);
-        if (unexpected) logUnexpectedError(requestId, error);
-        return errorResponse(apiError, requestId);
+        if (unexpected) requestLog.error("api.unhandled_error", { error });
+        return finish(errorResponse(apiError, requestId), userId);
       } catch {
         // Conversion or logging itself failed: still return the envelope.
         return internalErrorResponse(requestId);
@@ -157,6 +196,7 @@ export function withOrgApi<P = Record<string, never>>(
       if (!user) throw new UnauthorizedError();
       const supabase = await (createSupabase ?? defaultCreateSupabase)();
       const org = await resolveOrg(args.request, user, supabase, { allowExpired, now });
+      args.trace({ orgId: org.org.id });
       return handler({ ...args, user, org, supabase });
     },
     { ...apiOptions, auth: "required" },

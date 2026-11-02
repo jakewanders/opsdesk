@@ -13,6 +13,7 @@ import {
 } from "./errors";
 import { created, noContent, okItem, okList } from "./envelope";
 import { withApi as withApiRaw, type ApiHandler, type ApiOptions } from "./handler";
+import { createLogger } from "@/lib/logger/logger";
 import { readJson } from "./json-body";
 import { isApiErrorResponse } from "./types";
 
@@ -188,12 +189,16 @@ describe("contract: one test per status code", () => {
   });
 
   it("500: an unhandled exception returns a request ID and no internals", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const written: string[] = [];
+    const logger = createLogger({ sink: (_l, line) => written.push(line) });
     const secret = new Error('relation "secret_tenants" does not exist at /srv/app/db.ts:42');
     secret.stack = "Error: boom\n    at /srv/app/db.ts:42:7\n    at password=hunter2";
-    const res = await withApi(() => {
-      throw secret;
-    })(get({ headers: { "x-request-id": "trace-me-12345678" } }));
+    const res = await withApi(
+      () => {
+        throw secret;
+      },
+      { logger },
+    )(get({ headers: { "x-request-id": "trace-me-12345678" } }));
     expect(res.status).toBe(500);
     const text = await res.text();
     expect(text).not.toMatch(/secret_tenants|db\.ts|hunter2|stack|at \/srv/);
@@ -205,15 +210,15 @@ describe("contract: one test per status code", () => {
     });
     expect(res.headers.get("x-request-id")).toBe("trace-me-12345678");
     // The cause is logged server-side against the same ID.
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(spy.mock.calls[0][0]))).toMatchObject({
-      requestId: "trace-me-12345678",
-      event: "api.unhandled_error",
-    });
+    const unhandled = written
+      .map((l) => JSON.parse(l))
+      .find((l) => l.event === "api.unhandled_error");
+    expect(unhandled).toMatchObject({ requestId: "trace-me-12345678", level: "error" });
+    expect(unhandled.error.message).toContain("secret_tenants"); // the operator sees the cause...
+    expect(unhandled.error).not.toHaveProperty("stack"); // ...but never the stack
   });
 
   it("500: throwing a non-Error (a string, null) is still the envelope", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     for (const thrown of ["a string", null, undefined, 42]) {
       const res = await withApi(() => {
         throw thrown;
@@ -224,7 +229,6 @@ describe("contract: one test per status code", () => {
   });
 
   it("500: still returns the envelope if converting the error itself blows up", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     const hostile = {
       get code(): string {
         throw new Error("getter exploded");
@@ -276,7 +280,6 @@ describe("Postgres errors thrown from a handler", () => {
   });
 
   it("an unrecognized database error is a generic 500", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await raise("XX000")(get());
     expect(res.status).toBe(500);
     expect(await res.text()).not.toMatch(/customers_pkey/);

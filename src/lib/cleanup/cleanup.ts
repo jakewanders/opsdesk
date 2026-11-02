@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger/logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -71,7 +72,7 @@ export async function cleanupExpiredDemos(
   );
   const budget = options.timeBudgetMs ?? DEFAULTS.timeBudgetMs;
   const clock = options.clock ?? (() => performance.now());
-  const log = options.log ?? ((event) => console.info(JSON.stringify(event)));
+  const log = options.log ?? ((event) => logger.info(String(event.event ?? "demo_cleanup"), event));
   const started = clock();
   const outOfTime = () => clock() - started >= budget;
 

@@ -211,3 +211,12 @@ Cleanup uses the admin (secret-key) client, so its scope is enforced twice. Phas
 ### Active-workspace cookie (SIT-209)
 
 `od_active_org` stores which workspace the member last opened. It is a preference only: `resolveActiveWorkspace` ignores it unless it is a UUID naming a workspace the caller belongs to, `selectWorkspaceAction` re-checks membership before setting it, and a tampered value lands on the chooser with nothing leaked. Guests cannot create workspaces (blocked in the core and the database function).
+
+## Server logging and redaction (SIT-185)
+
+All server logs go through `src/lib/logger` (`logger.info/warn/error(event, fields)`, `logger.child({ requestId })`): one JSON line per event with `ts`, `level`, `event` and the fields. `console.*` is banned in application code by ESLint, because it bypasses redaction.
+
+- **What is logged.** `withApi` writes one `api.request` line per request: `requestId`, `method`, `route` (ids become `:id`, no query string), `status`, `durationMs`, and `userId` and `orgId` when known. 5xx is `error`, 4xx `warn`, otherwise `info`. Unexpected failures add `api.unhandled_error` with the error's name, code and a redacted, truncated message (no stack). Handlers get `log` (bound to the request) and `trace({ orgId })`. Cleanup and import jobs log counts and error codes only.
+- **What is never logged.** Request and response bodies, headers, cookies, query strings, e-mail addresses.
+- **Redaction (`redact.ts`), applied to every field of every line.** By key, at any depth: token, secret, password, authorization, cookie, API key, credential, session, JWT, bearer, invitation, signature, captcha, nonce, `notes`, `description`, `body`, `content`, `comment`, `email`, `phone`, `address` and similar. By pattern in any string: JWTs, `Bearer` and `Basic` credentials, provider key prefixes (Supabase, Stripe, Resend, GitHub, Slack, Turnstile), connection-string passwords, `name=value` pairs with secret-looking names, e-mail addresses, and long opaque tokens (UUIDs are kept). Output is bounded (depth 6, 20 array items, 500 characters) and cycles are cut. A logging failure never breaks a request.
+- **Levels.** `LOG_LEVEL` is `debug`, `info` (default), `warn`, `error` or `silent` (the unit-test setup).

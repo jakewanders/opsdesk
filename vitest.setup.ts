@@ -1,3 +1,5 @@
+// Server logs would drown test output; tests that assert on logging inject their own logger.
+process.env.LOG_LEVEL ??= "silent";
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";

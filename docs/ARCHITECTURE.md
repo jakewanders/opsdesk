@@ -104,7 +104,7 @@ Files in `src/lib/supabase/`:
 
 ## API layer (SIT-170)
 
-`src/lib/api/` holds the one contract every `/api/v1` handler uses: `types.ts` (envelope types shared with the future typed client and with `ErrorAlert`), `errors.ts` (`ApiError` and its subclasses), `envelope.ts` (`okItem`, `okList`, `created`, `noContent`, and the response builders), `request-id.ts`, `json-body.ts` (content-type check, `readJson`), `postgres-errors.ts` (database error mapping and the `OD` SQLSTATE convention), `to-api-error.ts` (Zod and database conversion), `log.ts` (interim server error log until SIT-185), and `handler.ts` (`withApi`). The full contract, the status table, and how to write a handler are in `docs/API.md`.
+`src/lib/api/` holds the one contract every `/api/v1` handler uses: `types.ts` (envelope types shared with the future typed client and with `ErrorAlert`), `errors.ts` (`ApiError` and its subclasses), `envelope.ts` (`okItem`, `okList`, `created`, `noContent`, and the response builders), `request-id.ts`, `json-body.ts` (content-type check, `readJson`), `postgres-errors.ts` (database error mapping and the `OD` SQLSTATE convention), `to-api-error.ts` (Zod and database conversion), and `handler.ts` (`withApi`, which logs one line per request through `src/lib/logger`). The full contract, the status table, and how to write a handler are in `docs/API.md`.
 
 ## Permissions (SIT-171)
 

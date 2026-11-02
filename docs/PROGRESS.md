@@ -457,6 +457,13 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 912 / 63 files, integration 150 / 19 files, pgTAP PASS).
 - Mutations caught and reverted: cache clear as a no-op, no double-submit guard, no rollback, mutation keys not workspace-scoped, sensitive URL names allowed, lint rule disabled.
 
+### SIT-185 — Structured server logger with secret and note redaction (done)
+
+- `src/lib/logger/{logger,redact,route-label}.ts`; `withApi` logs one `api.request` line per request (request id, method, route with ids as `:id`, status, duration, user id, org id) and `api.unhandled_error` for unexpected failures; handlers get `log` and `trace`; the interim `src/lib/api/log.ts` is gone; the cleanup default log uses the logger. ESLint bans `console.*` in `src` and `netlify/functions` (tests and scripts exempt). Documented in `docs/SECURITY.md`.
+- Tests: `redact.test.ts` (28 sensitive keys, nested and in arrays, JWT including a short one, bearer, basic, provider key prefixes, query-string and cookie pairs, connection-string passwords, e-mail, long opaque tokens but not UUIDs, bounds, cycles, errors without stack), `logger.test.ts` (JSON line shape, redaction, fields cannot overwrite `level`/`event`/`ts`, child loggers, levels, never throws, route labels, the console lint rule), `handler-logging.test.ts` (**a forced error logs the request id, route and error with none of the body, query string, cookie, bearer token or e-mail**, success, 4xx, 401, wrong origin, `log` and `trace`, org id).
+- `npm run check`: all 9 steps passed (unit 978 / 66 files, integration 150 / 19 files, pgTAP PASS).
+- Mutations caught and reverted: content keys not redacted, no recursion into nested objects, JWT pattern removed, query string kept in the route, lint rule off, fields overriding `level`.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.
