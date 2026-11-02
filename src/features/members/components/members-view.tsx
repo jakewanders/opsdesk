@@ -132,7 +132,7 @@ export function MembersView({ initialMembers, actorId, actorRole, canManage }: P
                   const canChange = rules.assignableRoles.length > 0;
                   return (
                     <tr key={m.userId}>
-                      <th scope="row" className={`${TD} font-medium`}>
+                      <th scope="row" className={`${TD} text-left font-medium`}>
                         {m.displayName}
                         {isSelf ? (
                           <Badge variant="secondary" className="ml-2">
@@ -235,7 +235,7 @@ export function MembersView({ initialMembers, actorId, actorRole, canManage }: P
                 <tbody className="divide-y divide-border">
                   {invitations.data!.data.map((i) => (
                     <tr key={i.id}>
-                      <th scope="row" className={`${TD} font-medium break-all`}>
+                      <th scope="row" className={`${TD} text-left font-medium break-all`}>
                         {i.email}
                       </th>
                       <td className={TD}>{ROLE_LABELS[i.role as Role] ?? i.role}</td>
