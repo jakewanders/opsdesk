@@ -155,6 +155,10 @@ This is the template every business table copies.
 - **Isolation.** Two guests get separate organizations and separate record ids with identical seed content; each sees only their own organization, membership and mapping through RLS (tested in SQL and over the API).
 - **Residual risks / notes.** (1) The deployment's anonymous sign-in rate limits and Turnstile (SIT-168, SIT-204) are what stop mass creation of guests; the ceiling only bounds the damage. (2) The idempotency token from the API layer (SIT-183) is not used: the function is idempotent by construction. (3) Per-entity quotas arrive with SIT-200.
 
+## Active organization resolution (SIT-193)
+
+`withOrgApi` / `resolveOrg` (`src/lib/api/org-context.ts`) choose the organization for tenant API calls from the `X-Organization-Id` header and **prove membership on every request** (convention and result table in `docs/API.md`). Properties: a forged or foreign id and an unknown id are indistinguishable (404 `ORG_NOT_FOUND`); the role is read from the caller's own membership row, never from the request; the memberships read uses the caller's session so RLS applies (a client that claims another user's identity still only sees its own rows); several memberships require an explicit choice; an expired demo is refused with a distinct `DEMO_EXPIRED`. The database remains the final authority: RLS and the RPCs check tenancy again.
+
 ## Permission matrix (SIT-171)
 
 `src/lib/permissions` encodes PRD 5.1 once (`matrix.ts`); `can(role, kind, action)`, the UI helpers (`allowedActions`, `permissionsFor`), `assertCan` for route handlers, and the membership rules (`grantableRoles`, `canChangeMembership`) are all derived from it. The database (RLS) remains the final authority and must agree; hiding a control in the UI is cosmetic only. An unknown role, workspace kind, or action is denied. In a demo workspace the guest is the owner, and the "demo guest" column applies on top of the role. A "yes" can carry constraints that the caller and the database must still honor.

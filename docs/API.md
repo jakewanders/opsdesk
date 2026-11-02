@@ -134,3 +134,28 @@ Everything lives in `src/lib/validation` (`import { ... } from "@/lib/validation
 - **`listQuery({ sortable, defaultSort, defaultOrder?, filters? })`** builds a list endpoint's query schema: `page` (>= 1, default 1), `limit` (default 25), `sort` (enum of the whitelist), `order` (`asc`/`desc`, default `desc`) plus the endpoint's own filters. `parseQuery(schema, searchParams)` validates it; empty values count as absent, unknown and repeated parameters are 422. **`limit` above 100 is rejected with 422, not clamped**, so a client always knows what it received.
 - **Sort is never SQL text.** `sort` can only be a whitelisted key; map it to a column with a constant record at the call site.
 - `paginate({ page, limit }, total)` returns `{ offset, from, to, meta }`; `meta` is `{ page, limit, total, totalPages }` (`totalPages` is 0 for an empty collection). Pass `from`/`to` to Supabase `.range()`.
+
+## Choosing the organization: `X-Organization-Id` (SIT-193)
+
+Every tenant endpoint takes the workspace in the **`X-Organization-Id` request header** (a UUID), not in the path. The PRD's endpoint inventory is unprefixed (`/api/v1/customers`), and a header keeps one URL per resource. Use `withOrgApi` for such routes; it hands the handler a verified, typed context.
+
+```ts
+// src/app/api/v1/things/route.ts
+export const GET = withOrgApi(async ({ org, supabase }) => {
+  // org.org.id, org.role, org.kind, org.expired; supabase acts as the caller, RLS applies
+  return okList(await listThings(supabase, org.org.id));
+});
+```
+
+| Situation                                                      | Result                                                                                                                                                                |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header names an organization the caller belongs to             | that organization; `role` and `kind` come from the database                                                                                                           |
+| Header names another tenant's id, or an id that does not exist | **404** `ORG_NOT_FOUND`, the same message for both, so existence never leaks                                                                                          |
+| Header is not a UUID                                           | 400 `BAD_REQUEST` (no database read)                                                                                                                                  |
+| No header, exactly one membership                              | that organization                                                                                                                                                     |
+| No header, several memberships                                 | **422** `ORG_SELECTION_REQUIRED` (no silent default)                                                                                                                  |
+| No header, no membership                                       | 404 `NO_WORKSPACE`                                                                                                                                                    |
+| Demo workspace past `expires_at`                               | **403** `DEMO_EXPIRED` (a distinct code); `withOrgApi(..., { allowExpired: true })` lets a route such as the session endpoint still answer, with `org.expired = true` |
+
+- The id is a **selector, never an authorization**. Each request re-proves membership with a read of the caller's own memberships under their session (RLS applies, never the admin client), and the role is taken from that row. A user id or role sent by a client is ignored. An id kept in a cookie or local storage is only a UI preference that is sent as this header and re-verified every time.
+- `resolveOrg(request, user, supabase)` and the pure `selectOrg(user, memberships, header)` are in `src/lib/api/org-context.ts`.

@@ -328,6 +328,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Found: `demo_ts(0, 9)` could be in the future before 09:00 database time (fixed and tested); `LEAST` cannot be schema-qualified.
 - Not done here (by design): the HTTP route and Turnstile failure paths (SIT-204), per-entity quotas (SIT-200), reset (SIT-205).
 
+### SIT-193 — Active-organization resolution (done)
+
+- `src/lib/api/org-context.ts` (`ORG_HEADER`, `selectOrg`, `resolveOrg`, `loadMemberships`, `DemoExpiredError`, typed `OrgContext`) and `withOrgApi` in `src/lib/api/handler.ts` (verified user, org, role, session-scoped client). Convention and result table in `docs/API.md`; security notes in `docs/SECURITY.md`; decisions logged.
+- Unit tests (23): header match with DB-sourced role, case/whitespace normalization, forged-tenant and unknown ids give an identical 404, hidden RLS rows never match, malformed ids 400, single membership default, several memberships 422 `ORG_SELECTION_REQUIRED`, none 404 `NO_WORKSPACE`, demo expiry (live, expired, exactly-now, null expiry fails closed, `allowExpired`), `withOrgApi` (401, 404, 422, 400, 403 `DEMO_EXPIRED`, DB error is a generic 500).
+- Integration tests (7, real sessions and RLS): single membership default, forged header 404 identical to unknown, lying about identity still sees only own rows, no-membership user, multi-org choice with per-org roles (viewer/admin), live vs expired demo, malformed header never reaches the database.
+- `npm run check`: all 9 steps passed (unit: 45 files, 751 tests; integration: 8 files, 60 tests).
+- Mutations caught and reverted: forged header falls back to first membership, expiry not enforced, memberships read not limited to the caller (the integration test caught it: RLS shows other members' rows of the same org), role hard-coded to owner, null/boundary expiry fail-open.
+- No existing route uses `withOrgApi` yet (customers, tasks and the others arrive in M2; SIT-203 builds the session endpoints), so the header convention is covered by tests, not by a live route.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

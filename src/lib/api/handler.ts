@@ -7,7 +7,10 @@ import {
   withBaseHeaders,
   type ApiResult,
 } from "./envelope";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import type { CurrentUser } from "@/lib/supabase/resolve-user";
+import { resolveOrg, type OrgContext, type SelectOptions } from "./org-context";
 import { UnauthorizedError } from "./errors";
 import { assertJsonRequest } from "./json-body";
 import { logUnexpectedError } from "./log";
@@ -118,4 +121,49 @@ export function withApi<P = Record<string, never>>(
       }
     }
   };
+}
+
+export type OrgApiHandlerArgs<P> = Omit<ApiHandlerArgs<P>, "user"> & {
+  user: CurrentUser;
+  /** The verified organization, role and kind for this request. */
+  org: OrgContext;
+  /** Supabase client acting as the caller (RLS applies). Never the admin client. */
+  supabase: SupabaseClient<Database>;
+};
+
+export type OrgApiOptions = Omit<ApiOptions, "auth"> &
+  SelectOptions & {
+    /** Test seam: replaces the cookie-session client. */
+    createSupabase?: () => Promise<SupabaseClient<Database>>;
+  };
+
+/**
+ * `withApi` for tenant routes: the caller is verified (401), the organization is resolved from the
+ * `X-Organization-Id` header and proven against the caller's memberships (404 / 422 / 403 `DEMO_EXPIRED`),
+ * and the handler receives a typed `org`, the verified `user` and a session-scoped Supabase client.
+ *
+ * ```ts
+ * export const GET = withOrgApi(async ({ org, supabase }) => okList(await listThings(supabase, org.org.id)));
+ * ```
+ */
+export function withOrgApi<P = Record<string, never>>(
+  handler: (args: OrgApiHandlerArgs<P>) => Promise<ApiResult | Response> | ApiResult | Response,
+  options: OrgApiOptions = {},
+) {
+  const { allowExpired, now, createSupabase, ...apiOptions } = options;
+  return withApi<P>(
+    async (args) => {
+      const user = args.user;
+      if (!user) throw new UnauthorizedError();
+      const supabase = await (createSupabase ?? defaultCreateSupabase)();
+      const org = await resolveOrg(args.request, user, supabase, { allowExpired, now });
+      return handler({ ...args, user, org, supabase });
+    },
+    { ...apiOptions, auth: "required" },
+  );
+}
+
+async function defaultCreateSupabase(): Promise<SupabaseClient<Database>> {
+  const { createClient } = await import("@/lib/supabase/server");
+  return createClient();
 }
