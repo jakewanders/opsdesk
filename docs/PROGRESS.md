@@ -706,6 +706,14 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1499 / 94 files, integration 401 / 36 files, pgTAP PASS). Mutation caught: the writer guard removed from Edit (1 failure).
 - Not done: the Playwright flow and a real-browser look; the related-opportunities and related-tasks tabs (SIT-243), the active-opportunity warning in the archive dialog (SIT-234).
 
+### SIT-228 — Opportunity list view with search, filters and the board/list toggle (done)
+
+- `/app/opportunities` now renders `OpportunitiesView`: `?view=board|list` picks the view; with no `view` a screen 768px and wider gets the board and a narrower one the list (`useViewport`, `matchMedia`). Until the width is known the server sends a loading state and nothing is fetched. The Board / List toggle (`aria-pressed` buttons in a labelled group) is in both headers and writes `view` to the URL.
+- One URL schema (`opportunityPageUrl`) serves both views, so changing the view never drops a filter. List: TanStack Table with title (whole-row link to the detail page), customer, stage as icon + word, amount through `formatUsd` from integer cents, probability, owner (You / name / Unassigned) and expected close date; search, stage, owner and close-date range filters, sorting and paging, all in the URL and answered by the API. The strip above shows count and total per stage from the API's `meta.stageTotals` (the whole filtered set, not the visible page). Loading skeleton, "Create your first opportunity" (writers only), "No opportunities match" with Clear filters, a past-the-end page with a way back, and an error alert with retry.
+- Tests: `filter-state.test.ts` (5), `opportunity-list.test.tsx` (10: columns and money, API-sourced totals, filters and sort to the URL, URL to API query with an invalid date dropped, toggle, empty for writer and viewer, no results, past-the-end page, error and retry, paging, axe), `opportunities-view.test.tsx` (3), plus a page test in `pipeline-page.integration.test.ts` for `?view=list` and the loading state without a view.
+- `npm run check`: all steps passed (unit 1517 / 97 files, integration 402 / 36 files, pgTAP PASS). Mutation checks caught: the strip's amount replaced by a constant (1 failure); invalid-date filtering removed from `toListQuery` (1).
+- Not done: the Playwright toggle scenario (no Playwright suite exists yet) and a real-browser look at the mobile default.
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.

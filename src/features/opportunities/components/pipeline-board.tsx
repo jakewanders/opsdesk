@@ -16,12 +16,13 @@ import { OPEN_STAGES, STAGES, STAGE_LABELS, type Stage } from "@/lib/domain/pipe
 import { formatUsd } from "@/lib/money/format";
 import { cn } from "@/lib/utils";
 import type { MemberDto } from "@/features/members/service";
-import { opportunityFilterUrl } from "../filter-state";
+import { opportunityPageUrl } from "../filter-state";
 import type { PipelineTotals } from "../pipeline-model";
 import type { OpportunityDto } from "../schema";
 import { BOARD_KEY, useMoveStage, type Move } from "../use-move-stage";
 import { BoardDnd, DragHandle, useStageDrop } from "./board-dnd";
 import { LostReasonDialog } from "./lost-reason-dialog";
+import { ViewToggle } from "./view-toggle";
 
 const PAGE = 10;
 const SELECT =
@@ -41,7 +42,7 @@ const formatDay = (value: string) =>
  * at once and rolls everything back if the API refuses.
  */
 export function PipelineBoard({ canWrite, currentUserId }: Props) {
-  const [filters, setFilters] = useUrlState(opportunityFilterUrl);
+  const [filters, setFilters] = useUrlState(opportunityPageUrl);
   const [search, onSearch] = useDebouncedUrlParam(filters.q, (q) => setFilters({ q }));
   const [lostFor, setLostFor] = useState<OpportunityDto | null>(null);
   const [wonFor, setWonFor] = useState<OpportunityDto | null>(null);
@@ -83,12 +84,15 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-        {canWrite ? (
-          <Link href="/app/opportunities/new" className={buttonVariants()}>
-            <Plus aria-hidden="true" />
-            Add opportunity
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewToggle view="board" onChange={(view) => setFilters({ view })} />
+          {canWrite ? (
+            <Link href="/app/opportunities/new" className={buttonVariants()}>
+              <Plus aria-hidden="true" />
+              Add opportunity
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <form

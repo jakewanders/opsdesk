@@ -26,8 +26,11 @@ beforeAll(async () => {
 }, 400_000);
 afterAll(() => server.stop());
 
-const html = async (actor: Actor) =>
-  (await (await server.request("/app/opportunities", actor)).text()).replace(/<!-- -->/g, "");
+const html = async (actor: Actor, query = "?view=board") =>
+  (await (await server.request(`/app/opportunities${query}`, actor)).text()).replace(
+    /<!-- -->/g,
+    "",
+  );
 
 describe("/app/opportunities", () => {
   it("renders the board shell with the filters and the totals area for an owner, a viewer and a demo guest", async () => {
@@ -37,6 +40,17 @@ describe("/app/opportunities", () => {
       expect(body).toContain("Pipeline totals");
       expect(body).toContain('role="search"');
       expect(body).toContain("Open pipeline");
+    }
+  });
+  it("[SIT-228] ?view=list renders the list shell with its filters; with no view chosen the server sends a loading state (the width decides in the browser)", async () => {
+    for (const actor of [owner, viewer, guest]) {
+      const list = await html(actor, "?view=list");
+      expect(list).toContain("Filter opportunities");
+      expect(list).toContain("Closes from");
+      expect(list).toContain('aria-pressed="true"');
+      const none = await html(actor, "");
+      expect(none).toContain("Loading the pipeline");
+      expect(none).not.toContain("Pipeline totals");
     }
   });
   it("the board's data source returns the demo seed's totals: 10 deals, 5 open, and per-stage counts that add up", async () => {
