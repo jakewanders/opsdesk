@@ -15,7 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:db": "node scripts/test-db.mjs",
     "test:integration": "vitest run --config vitest.integration.config.mts",
-    "test:e2e": "node scripts/not-implemented.mjs test:e2e SIT-251 \"Playwright suite.\"",
+    "test:e2e": "node scripts/e2e.mjs",
     "test": "node scripts/run-steps.mjs test",
     "check": "node scripts/run-steps.mjs check",
     "check:env": "node scripts/check-env-names.mjs",
@@ -52,6 +52,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

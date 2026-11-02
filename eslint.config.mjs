@@ -71,7 +71,16 @@ const eslintConfig = defineConfig([
     rules: { "no-console": "error" },
   },
   prettier,
-  globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    ".next-e2e/**",
+    "test-results/**",
+    "playwright-report/**",
+    "out/**",
+    "build/**",
+    "coverage/**",
+    "next-env.d.ts",
+  ]),
 ]);
 
 export default eslintConfig;

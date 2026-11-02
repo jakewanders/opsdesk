@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The end-to-end run builds into its own directory (scripts/e2e.mjs): its browser bundle bakes in the LOCAL Supabase
+  // settings and the e2e origin, which must not leak into the build that the integration tests start.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   /* config options here */
   // Netlify's CONTEXT (production, deploy-preview, branch-deploy) is a build-time variable and is
   // not guaranteed at runtime, so inline it into the bundle. src/proxy.ts uses it to send
