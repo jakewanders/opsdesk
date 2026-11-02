@@ -408,6 +408,7 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Setup page and form (name, optional industry, time zone defaulting to the browser's, fixed USD), workspace selector in the shell, chooser page `/app/workspaces`, user menu (name, guest or member label, sign out). Proxy `choose` state for members with several workspaces and no valid selection.
 - Tests: `org.test.ts` and route-guard/workspace-state additions (org/auth unit: 69 passed), `org-ui.test.tsx` (15 component tests incl. axe and keyboard), `workspace.integration.test.ts` (4 real-session tests).
 - Real browser (Playwright, production build, local Supabase): signup, Mailpit confirm, redirected to setup, validation summary, create, dashboard with selector; second workspace, switch, reload persists; cleared cookie sends a multi-org user to the chooser; tampered cookie lands on the chooser with no leak.
+- `npm run check`: all 9 steps passed (unit 814 tests/52 files, integration 113/16 files, pgTAP PASS).
 - Mutations caught and reverted: silent default among several workspaces, cookie trusted without membership, guest reaching the database, no explicit choice required, chooser redirecting to itself.
 
 ## M2 — Core CRM, Pipeline & Task Management
