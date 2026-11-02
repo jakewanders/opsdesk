@@ -488,6 +488,22 @@ export type Database = {
         Args: { p_body: Json; p_key: string; p_route: string; p_status: number };
         Returns: boolean;
       };
+      list_activity: {
+        Args: {
+          p_action?: string;
+          p_actor?: string;
+          p_entity_id?: string;
+          p_entity_type?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_newest_first?: boolean;
+          p_offset?: number;
+          p_org_id: string;
+          p_system_only?: boolean;
+          p_to?: string;
+        };
+        Returns: Json;
+      };
       list_workspace_members: {
         Args: { p_org_id: string };
         Returns: {

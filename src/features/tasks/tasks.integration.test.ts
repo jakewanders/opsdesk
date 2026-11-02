@@ -629,6 +629,7 @@ describe("GET/PATCH/DELETE /tasks/:id and POST /tasks/:id/complete", () => {
     expect((await read.json()).data.archivedAt).not.toBeNull();
     expect(events(t.id)).toBe("archived");
   });
+  // The patterns are whole phrases: bare digits like 4711 or 9999 can appear by chance in a test user's generated name.
   it("editing never leaks description text into the activity log", async () => {
     const t = await fresh("Private task", { description: "secret gate code 4711" });
     await call(owner, "PATCH", `/${t.id}`, {
@@ -637,7 +638,7 @@ describe("GET/PATCH/DELETE /tasks/:id and POST /tasks/:id/complete", () => {
     });
     expect(
       psql(
-        `select count(*) from public.activity_events where entity_id = '${t.id}' and (changes::text ~* 'secret|4711|9999' or summary ~* 'secret|4711|9999')`,
+        `select count(*) from public.activity_events where entity_id = '${t.id}' and (changes::text ~* 'secret gate|another secret|gate code 4711|secret 9999' or summary ~* 'secret gate|another secret|gate code 4711|secret 9999')`,
       ),
     ).toBe("0");
   });

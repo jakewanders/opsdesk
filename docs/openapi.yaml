@@ -1235,6 +1235,131 @@ paths:
           description: "The workspace is not one the caller belongs to"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /activity:
+    get:
+      summary: One page of the workspace's activity feed, newest first
+      description: >
+        Any member (viewers included) can read it. Events of other workspaces are never returned. `actorName` is `System`
+        for automatic events, the member's display name, or `Former member` for a person who is no longer in the
+        workspace. `changes` holds only whitelisted plain fields (old and new); free-text fields appear by name in
+        `contentChanged`, never with their content. `from` and `to` are inclusive calendar days in the organization's time
+        zone. Ordering is by time, then id, so pages never repeat or skip an event.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 25 },
+          }
+        - {
+            name: sort,
+            in: query,
+            schema: { type: string, enum: [created_at], default: created_at },
+          }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - {
+            name: entityType,
+            in: query,
+            schema: { type: string, enum: [customer, opportunity, task, quote] },
+          }
+        - { name: entityId, in: query, schema: { type: string, format: uuid } }
+        - {
+            name: action,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum:
+                  [
+                    created,
+                    updated,
+                    archived,
+                    restored,
+                    deleted,
+                    stage_changed,
+                    completed,
+                    reopened,
+                    sent,
+                    approved,
+                    rejected,
+                    imported,
+                  ],
+              },
+          }
+        - {
+            name: actor,
+            in: query,
+            description: A member's user id,
+            or `system` for automatic events,
+            schema: { type: string },
+          }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: A page of events with the standard pagination meta
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          id,
+                          entityType,
+                          entityId,
+                          action,
+                          summary,
+                          actorUserId,
+                          actorName,
+                          changes,
+                          contentChanged,
+                          createdAt,
+                        ]
+                      properties:
+                        id: { type: string, format: uuid }
+                        entityType: { type: string, enum: [customer, opportunity, task, quote] }
+                        entityId: { type: string, format: uuid }
+                        action: { type: string }
+                        summary: { type: string }
+                        actorUserId: { type: string, format: uuid, nullable: true }
+                        actorName: { type: string }
+                        changes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              field: { type: string }
+                              old: {}
+                              new: {}
+                        contentChanged: { type: array, items: { type: string } }
+                        createdAt: { type: string, format: date-time }
+                  meta:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+                      totalPages: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "The workspace is not one the caller belongs to"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Invalid parameter (field errors keyed by parameter name)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
 components:
   parameters:
     IdempotencyKey:

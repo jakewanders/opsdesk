@@ -584,7 +584,7 @@ describe("GET/PATCH/DELETE /opportunities/:id", () => {
     });
     expect(
       psql(
-        `select count(*) from public.activity_events where entity_id = '${d.id}' and (changes::text ~* 'secret|4711|9999' or summary ~* 'secret|4711|9999')`,
+        `select count(*) from public.activity_events where entity_id = '${d.id}' and (changes::text ~* 'secret gate|another secret|gate code 4711|secret 9999' or summary ~* 'secret gate|another secret|gate code 4711|secret 9999')`,
       ),
     ).toBe("0");
     expect(

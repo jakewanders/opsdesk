@@ -30,7 +30,7 @@ type Row = {
   changes: unknown;
 };
 
-function readChanges(raw: unknown): { changes: FieldChange[]; contentChanged: string[] } {
+export function readChanges(raw: unknown): { changes: FieldChange[]; contentChanged: string[] } {
   if (typeof raw !== "object" || raw === null) return { changes: [], contentChanged: [] };
   const entries = Object.entries(raw as Record<string, unknown>);
   const content = (raw as Record<string, unknown>)._content_changed;

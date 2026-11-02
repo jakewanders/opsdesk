@@ -30,7 +30,7 @@ select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.prona
 select is(tests.denied_as('a_owner', format('select private.log_activity(%L, ''customer'', gen_random_uuid(), ''created'', ''forged'')', tests.org_id('a'))), true, 'a signed-in user cannot call log_activity');
 select is(tests.denied_as('g1', format('select private.log_activity(%L, ''customer'', gen_random_uuid(), ''created'', ''forged'')', tests.org_id('g1'))), true, 'nor a guest');
 select is(tests.denied_as_anon('select private.log_activity(gen_random_uuid(), ''customer'', gen_random_uuid(), ''created'', ''forged'')'), true, 'nor a visitor');
-select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like '%activity%'), 0::bigint, 'and there is no function in the API schema to call');
+select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like '%activity%' and p.proname <> 'list_activity'), 0::bigint, 'and there is no function in the API schema to WRITE activity (list_activity, the read-only feed from SIT-245, is the only one)');
 select is(tests.denied_as('a_owner', format('insert into public.activity_events (organization_id, entity_type, entity_id, action, summary) values (%L, ''customer'', gen_random_uuid(), ''created'', ''forged'')', tests.org_id('a'))), true, 'direct inserts are still refused');
 
 -- ---- create: one event, the right actor, the PRD summary shape
