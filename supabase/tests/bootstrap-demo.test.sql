@@ -15,7 +15,7 @@ create function private.zz_seed(org uuid) returns void language plpgsql as $$
 begin
   insert into public.zz_seed_probe (org_id, n, label) select org, i, private.demo_company(i) || ' / ' || private.demo_email(i) from generate_series(1, 5) i;
 end $$;
-select private.register_demo_seeder('zz_probe', 10, 'private.zz_seed(uuid)'::regprocedure);
+select private.register_demo_seeder('zz_probe', 500, 'private.zz_seed(uuid)'::regprocedure);
 
 -- ---- shape and privileges
 select is((select pronargs from pg_proc where oid = 'public.bootstrap_demo_workspace()'::regprocedure), 0::smallint, 'the function takes no parameters: nothing identity-like can be passed');

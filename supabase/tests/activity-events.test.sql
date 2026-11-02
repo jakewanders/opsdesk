@@ -1,6 +1,6 @@
 -- pgTAP tests for the append-only activity store (SIT-195, PRD 5.3 and 11.2: no untrusted client can write audit events).
 begin;
-select plan(53);
+select plan(54);
 select tests.create_fixtures();
 
 -- Seed events as the trusted server role (what the SIT-201 logging functions will do).
@@ -90,7 +90,8 @@ select is((select count(*) from public.activity_events where organization_id = t
 select tests.act_as('g1');
 select lives_ok(format('select public.reset_demo_workspace(%L)', tests.org_id('g1')), 'a guest resets their demo');
 select tests.reset();
-select is((select count(*) from public.activity_events where organization_id = tests.org_id('g1')), 0::bigint, 'the reset removed that demo''s events');
+select is((select count(*) from public.activity_events where id = 'e1000000-0000-4000-8000-000000000004'), 0::bigint, 'the reset removed that demo''s old events');
+select is((select count(*) from public.activity_events where organization_id = tests.org_id('g1') and actor_user_id is not null), 0::bigint, 'what remains is the new seed''s System events only');
 select is((select count(*) from public.activity_events where organization_id = tests.org_id('a')) > 0, true, 'and left organization A''s alone');
 
 -- ---- deleting an organization removes its events (cleanup of an expired demo)

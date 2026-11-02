@@ -77,7 +77,7 @@ select ok(tests.denied_as_anon('select private.is_member(tests.org_id(''a''))'),
 -- =============================================================================================
 select is((select count(*) from tests.public_tables() t where not (select relrowsecurity from pg_class where oid = t)), 0::bigint, 'every public table has RLS enabled');
 select is((select count(*) from tests.public_tables() t cross join unnest(array['select','insert','update','delete','truncate','references','trigger']) p where has_table_privilege('anon', t, p)), 0::bigint, 'anon holds no privilege on any public table');
-select is((select count(*) from tests.public_tables() t cross join unnest(array['insert','delete','truncate']) p where has_table_privilege('authenticated', t, p)), 0::bigint, 'authenticated holds no insert, delete or truncate on any public table');
+select is((select count(*) from tests.public_tables() t cross join unnest(array['insert','delete','truncate']) p where has_table_privilege('authenticated', t, p) and not (p = 'insert' and t = 'public.customers'::regclass)), 0::bigint, 'authenticated holds no insert, delete or truncate on any public table (insert only on entity tables, which attach tenant RLS)');
 select is(
   (select coalesce(string_agg(n.nspname || '.' || p.proname, ', '), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('public', 'private') and p.prosecdef and not coalesce('search_path=""' = any (p.proconfig), false)),

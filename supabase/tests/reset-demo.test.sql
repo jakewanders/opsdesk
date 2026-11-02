@@ -9,7 +9,7 @@ begin
   insert into public.zz_probe (org_id, n, label) select org, i, private.demo_company(i) || ' / ' || private.demo_email(i) from generate_series(1, 6) i;
 end $$;
 create function private.zz_clear(org uuid) returns void language plpgsql as $$ begin delete from public.zz_probe where org_id = org; end $$;
-select private.register_demo_seeder('zz_probe', 10, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
+select private.register_demo_seeder('zz_probe', 500, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
 
 select tests.create_fixtures();
 -- fixtures registered the demos without seeding; seed the two live ones and a real tenant's rows

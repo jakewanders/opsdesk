@@ -523,6 +523,14 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1105 / 73 files, integration 171 / 23 files, pgTAP PASS).
 - Mutations caught and reverted: content keys stored, no-op suppression off, actor not cleared in system mode, summary not truncated, `log_activity` granted to `authenticated`.
 
+### SIT-208 — Customers table with constraints, search indexes, RLS, demo cap, activity and seed (done)
+
+- Migration `20261101001800_customers.sql` (table, constraints, normalization trigger, four indexes including trigram search, RLS with no delete, restrictive creator policy, protect/updated_at/cap/activity triggers, the 18-customer seed and its clear function). Types regenerated. The pattern is documented in `docs/SECURITY.md`.
+- `supabase/tests/customers.test.sql` (88): shape and indexes; every constraint boundary (name 1/2/120/121, company, e-mail format and normalization, duplicate e-mail allowed, phone, website schemes, type/status/source, tags count and length and trimming, notes 5,000/5,001); **cross-org `assigned_to` refused** (other organization, no membership, unknown user) and removal of the assignee clearing only the assignment; **RLS by role** (members read; outsider, other organization, visitor, viewer cannot; cross-tenant update changes nothing and delete and insert fail; viewer insert/update/delete fail; nobody can delete or truncate; forged `created_by` refused); **create, edit, archive and restore each log in the same transaction** with the right actor and no note or e-mail text in any event; immutable columns; atomic rollback; **the demo cap** (archived rows count; real organizations are free; default 50); expired demo refuses writes; **the seed: exactly 18 customers, 3 archived, all statuses and sources, example.com and 555-01xx only, 6 assigned, identical across workspaces with separate ids, 18 System events, no double seed, reset restores 18 and drops the guest's edit while another guest's workspace is untouched**.
+- Existing pgTAP suites adjusted for the first entity table: probe seeders moved off position 10; the catalog tests allow insert and update on `customers`, list its policies, and name `valid_tags`; the activity reset test expects the new seed's System events.
+- `npm run check`: all 9 steps passed (unit 1106 / 73 files, integration 171 / 23 files, pgTAP PASS).
+- Mutations caught and reverted: DELETE granted, creator policy dropped, assignee foreign key dropped, cap trigger disabled, activity trigger disabled, normalization disabled, immutability disabled, website check dropped.
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.

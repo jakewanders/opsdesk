@@ -37,7 +37,7 @@ beforeAll(() => {
     create table public.zz_reset_probe (id uuid primary key default gen_random_uuid(), org_id uuid not null, n integer not null, label text not null);
     create function private.zz_reset_seed(org uuid) returns void language sql as $$ insert into public.zz_reset_probe (org_id, n, label) select org, i, private.demo_company(i) from generate_series(1, 4) i $$;
     create function private.zz_reset_clear(org uuid) returns void language sql as $$ delete from public.zz_reset_probe where org_id = org $$;
-    select private.register_demo_seeder('zz_reset', 10, 'private.zz_reset_seed(uuid)'::regprocedure, 1, 'private.zz_reset_clear(uuid)'::regprocedure);
+    select private.register_demo_seeder('zz_reset', 600, 'private.zz_reset_seed(uuid)'::regprocedure, 1, 'private.zz_reset_clear(uuid)'::regprocedure);
   `);
 });
 afterAll(() => {

@@ -68,6 +68,82 @@ export type Database = {
           },
         ];
       };
+      customers: {
+        Row: {
+          archived_at: string | null;
+          assigned_to: string | null;
+          company_name: string | null;
+          created_at: string;
+          created_by: string | null;
+          display_name: string;
+          email: string | null;
+          id: string;
+          notes: string | null;
+          organization_id: string;
+          phone: string | null;
+          source: string;
+          status: string;
+          tags: string[];
+          type: string;
+          updated_at: string;
+          website: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          company_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          display_name: string;
+          email?: string | null;
+          id?: string;
+          notes?: string | null;
+          organization_id: string;
+          phone?: string | null;
+          source?: string;
+          status?: string;
+          tags?: string[];
+          type?: string;
+          updated_at?: string;
+          website?: string | null;
+        };
+        Update: {
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          company_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          display_name?: string;
+          email?: string | null;
+          id?: string;
+          notes?: string | null;
+          organization_id?: string;
+          phone?: string | null;
+          source?: string;
+          status?: string;
+          tags?: string[];
+          type?: string;
+          updated_at?: string;
+          website?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customers_assigned_to_fkey";
+            columns: ["organization_id", "assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "memberships";
+            referencedColumns: ["organization_id", "user_id"];
+          },
+          {
+            foreignKeyName: "customers_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       demo_workspaces: {
         Row: {
           created_at: string;

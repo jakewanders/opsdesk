@@ -7,7 +7,7 @@ select tests.create_fixtures();
 create table public.zz_cleanup_probe (id uuid primary key default gen_random_uuid(), org_id uuid not null, note text);
 create function private.zz_clear(org uuid) returns void language plpgsql as $$ begin delete from public.zz_cleanup_probe where org_id = org; insert into public.zz_cleanup_probe (org_id, note) values ('00000000-0000-0000-0000-00000000c1ea', 'cleared ' || org); end $$;
 create function private.zz_seed(org uuid) returns void language plpgsql as $$ begin null; end $$;
-select private.register_demo_seeder('zz_cleanup', 10, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
+select private.register_demo_seeder('zz_cleanup', 500, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
 
 -- fixtures: g1/g2 live demos, g3 an expired demo. Add four more expired demos (guests e1..e4) and data in each
 insert into auth.users (id, email, is_anonymous) select ('e000000' || i || '-0000-4000-8000-00000000000' || i)::uuid, null, true from generate_series(1, 4) i;

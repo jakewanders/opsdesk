@@ -17,8 +17,8 @@ select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.prona
   'no cleanup or administrator function is callable by a guest or a visitor');
 select is((select string_agg(p.oid::regprocedure::text, ', ' order by p.oid::regprocedure::text) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'private' and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))),
-  'private.can_write(uuid), private.current_user_id(), private.has_role(uuid,text[]), private.is_anonymous(), private.is_member(uuid), private.is_valid_timezone(text), private.org_is_writable(uuid)',
-  'only the row-level-security helpers are callable in the private schema (no seed, cleanup or admin function)');
+  'private.can_write(uuid), private.current_user_id(), private.has_role(uuid,text[]), private.is_anonymous(), private.is_member(uuid), private.is_valid_timezone(text), private.org_is_writable(uuid), private.valid_tags(text[])',
+  'only the row-level-security helpers (and the tags CHECK helper) are callable in the private schema (no seed, cleanup or admin function)');
 
 -- ---- the health probe (SIT-186) reads nothing and is callable by a visitor
 select is((select public.health_ping()), true, 'health_ping answers true');
@@ -69,7 +69,7 @@ create policy zz_member on public.zz_seeded for all to authenticated using (priv
 grant select, insert, update, delete on public.zz_seeded to authenticated;
 create function private.zz_seed(org uuid) returns void language plpgsql as $$ begin insert into public.zz_seeded (organization_id, name) values (org, 'Acme Plumbing'), (org, 'Riverbend Roofing'); end $$;
 create function private.zz_clear(org uuid) returns void language plpgsql as $$ begin delete from public.zz_seeded where organization_id = org; end $$;
-select private.register_demo_seeder('zz_seeded', 10, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
+select private.register_demo_seeder('zz_seeded', 500, 'private.zz_seed(uuid)'::regprocedure, 1, 'private.zz_clear(uuid)'::regprocedure);
 insert into auth.users (id, email, is_anonymous) values ('aa000000-0000-4000-8000-0000000000a1', null, true), ('aa000000-0000-4000-8000-0000000000b2', null, true);
 select tests.act_as_uid('aa000000-0000-4000-8000-0000000000a1', true);
 create temp table boot_a as select public.bootstrap_demo_workspace() r;

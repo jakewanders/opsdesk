@@ -216,6 +216,20 @@ begin
   return refused;
 end $$;
 
+-- The SQLSTATE a statement fails with when run as the fixture user `label`, or 'ok' if it succeeds.
+create or replace function tests.sqlstate_of_as(label text, stmt text) returns text language plpgsql as $$
+declare state text := 'ok';
+begin
+  perform tests.act_as(label);
+  begin
+    execute stmt;
+  exception when others then
+    get stacked diagnostics state = returned_sqlstate;
+  end;
+  perform tests.reset();
+  return state;
+end $$;
+
 create or replace function tests.visible_count_as(label text, tbl regclass, where_sql text default 'true') returns bigint language plpgsql as $$
 declare n bigint;
 begin
