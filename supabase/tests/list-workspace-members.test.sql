@@ -11,7 +11,7 @@ select is((select prosecdef from pg_proc where oid = 'public.list_workspace_memb
 select is((select proconfig from pg_proc where oid = 'public.list_workspace_members(uuid)'::regprocedure), array['search_path=""'], 'search_path is pinned');
 select is(has_function_privilege('anon', 'public.list_workspace_members(uuid)', 'execute'), false, 'anon cannot call it');
 select is(has_function_privilege('authenticated', 'public.list_workspace_members(uuid)', 'execute'), true, 'a signed-in user can');
-select is(pg_get_function_result('public.list_workspace_members(uuid)'::regprocedure), 'TABLE(user_id uuid, role text, display_name text)', 'it returns only id, role and display name (no e-mail, no avatar)');
+select is(pg_get_function_result('public.list_workspace_members(uuid)'::regprocedure), 'TABLE(user_id uuid, role text, display_name text, joined_at timestamp with time zone)', 'it returns only id, role, display name and join date (no e-mail, no avatar)');
 
 create function pg_temp.members_as(who text, org uuid) returns text language plpgsql as $$
 declare out text;

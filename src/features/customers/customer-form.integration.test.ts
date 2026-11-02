@@ -59,14 +59,14 @@ beforeAll(async () => {
 afterAll(() => server.stop());
 
 describe("GET /api/v1/members", () => {
-  it("lists exactly this workspace's people with id, role and display name, sorted by name, and nothing else", async () => {
+  it("lists exactly this workspace's people with id, role, display name and join date, sorted by name, and nothing else", async () => {
     const res = await server.request("/api/v1/members", viewer, { headers: hdr(orgA) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(
       body.data.map((m: { displayName: string; role: string }) => `${m.displayName}:${m.role}`),
     ).toEqual(["Olivia Owner:owner", "Vic Viewer:viewer"]);
-    expect(Object.keys(body.data[0]).sort()).toEqual(["displayName", "role", "userId"]);
+    expect(Object.keys(body.data[0]).sort()).toEqual(["displayName", "joinedAt", "role", "userId"]);
     expect(body.meta.total).toBe(2);
     expect(JSON.stringify(body)).not.toMatch(/@example\.test|Otto/);
   });

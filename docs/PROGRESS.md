@@ -888,7 +888,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224, SIT-233 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -905,6 +905,14 @@ In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224 don
 - **Integration** `membership-concurrency.integration.test.ts` (7), real HTTP to PostgREST with each user's token: two owners demoting each other and two removing each other, 12 rounds each, never leave zero owners and exactly one call succeeds; the sole owner gets `OD409`; a viewer and a guest are refused (`OD403`); an anonymous call is refused; a full create, redeem, reuse flow. PostgREST answers a custom SQLSTATE with HTTP 400 and the code in the body, so the tests assert the code.
 - **Mutation checks:** admin owner-grant removed: 4 failures; function-level last-owner check disabled: failures from test 70 on; row lock removed: both concurrency tests fail. All restored.
 - Threat notes: `docs/SECURITY.md` ("Membership and invitation functions").
+
+### SIT-233 — Members settings page (done)
+
+- `/app/settings/members` (server page + `members-view.tsx`): people table (name, role, joined, actions), pending invitations table (address, role, expiry, Revoke), **Invite someone** dialog (email + admin/member/viewer; owner is not offered), a one-time **Copy invite link** step ("This link will not be shown again. Copy it now."; a copy confirmation announced in a live region; a manual-select fallback when the browser blocks the clipboard; the link is dropped from state when the dialog closes), a **Change role** dialog listing only roles the actor may assign, and confirmation dialogs for **Remove member** and **Revoke invitation** (Cancel focused first; a refusal stays in the dialog in words).
+- Presentation rules live in `member-rules.ts` (unit-tested, 5): viewers and members get a read-only list ("Read only", no invitations section, no invitations request); an admin gets no controls on an owner and the reason ("Only an owner can change or remove an owner."); the only owner gets none and "A workspace needs at least one owner."; nobody can remove themselves from the page. These only hide or disable; the API and database (SIT-202, SIT-224) decide, and their messages (409 `LAST_OWNER`, 403 `OWNER_GRANT`...) are shown plainly. A demo guest sees an explanation instead of controls.
+- Migration `20261101003400_list_workspace_members_joined_at.sql`: `list_workspace_members` also returns `joined_at` (same authority: members of that workspace only; still no e-mail). `GET /api/v1/members` and `docs/openapi.yaml` gained `joinedAt`; the pgTAP column-shape assertion was updated.
+- **Tests:** component tests `members-view.test.tsx` (12: columns and joined date, read-only list for viewers, admin vs owner, sole owner, invite flow with the one-time link and clipboard, bad address sends nothing, assignable roles only, the server's last-owner refusal shown in the dialog, removal asks first with Cancel focused, revoke, expired invitation in words, no self-removal) and `member-rules.test.ts` (5). **E2E** `e2e/members.spec.ts` (4, real browser against the local stack): an owner invites by keyboard, copies the link (clipboard read back equals the link, which is `/invite#token=` plus 64 hex), the link is not on the page after closing, changes a role, removes a member after a confirmation, revokes the invitation; the API refuses to demote the last owner (409 `LAST_OWNER`); a viewer sees the list with no controls; a demo guest sees why invitations are unavailable. **axe** (WCAG 2.2 AA, desktop) is clean on the page, the invite form, the link step, the role dialog, the viewer view and the guest view.
+- Not covered here: the accept page that opens the link (SIT-240); the full viewer scenario (SIT-265).
 
 ### SIT-224 — Invitation and member endpoints (done)
 

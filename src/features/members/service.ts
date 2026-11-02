@@ -4,7 +4,7 @@ import { ConflictError, ForbiddenError, NotFoundError, RateLimitError } from "@/
 import { assertCan } from "@/lib/permissions";
 import type { Database } from "@/lib/supabase/database.types";
 
-export type MemberDto = { userId: string; role: string; displayName: string };
+export type MemberDto = { userId: string; role: string; displayName: string; joinedAt: string };
 
 /**
  * The members of the active workspace (for owner and assignee pickers). Everyone who can read the workspace may see
@@ -21,6 +21,7 @@ export async function listMembers(
     userId: m.user_id,
     role: m.role,
     displayName: m.display_name,
+    joinedAt: m.joined_at,
   }));
 }
 

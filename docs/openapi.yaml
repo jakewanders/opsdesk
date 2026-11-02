@@ -1128,11 +1128,12 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [userId, role, displayName]
+                      required: [userId, role, displayName, joinedAt]
                       properties:
                         userId: { type: string, format: uuid }
                         role: { type: string, enum: [owner, admin, member, viewer] }
                         displayName: { type: string }
+                        joinedAt: { type: string, format: date-time }
                   meta:
                     type: object
                     properties:

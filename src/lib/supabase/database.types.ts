@@ -564,6 +564,7 @@ export type Database = {
         Args: { p_org_id: string };
         Returns: {
           display_name: string;
+          joined_at: string;
           role: string;
           user_id: string;
         }[];
