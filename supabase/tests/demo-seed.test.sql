@@ -123,7 +123,7 @@ select ok(
   not has_function_privilege('authenticated', 'private.seed_demo_workspace(uuid)', 'execute')
   and not has_function_privilege('anon', 'private.seed_demo_workspace(uuid)', 'execute')
   and not has_function_privilege('authenticated', 'private.clear_demo_seed_marker(uuid)', 'execute')
-  and not has_function_privilege('authenticated', 'private.register_demo_seeder(text, integer, regprocedure, integer)', 'execute')
+  and not has_function_privilege('authenticated', 'private.register_demo_seeder(text, integer, regprocedure, integer, regprocedure)', 'execute')
   and not has_function_privilege('authenticated', 'private.demo_email(integer)', 'execute')
   and has_function_privilege('service_role', 'private.seed_demo_workspace(uuid)', 'execute'),
   'browser roles cannot run the seeder or the fixtures; service_role can');

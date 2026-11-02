@@ -373,6 +373,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations: loose body schema (4 integration failures), `allowExpired` removed (1; first attempt silently did not apply because Prettier had reflowed the code, re-done with a regex). Removing the route's own guest check is **not** caught, by design: the database function returns the same `ACCOUNT_REQUIRED` 403, so the route check is defense in depth.
 - Found: the cache-policy source test hard-coded `withApi(`; it now accepts a type argument and `withOrgApi`.
 
+### SIT-205 — reset_demo_workspace RPC (done)
+
+- Migration `20261101001100_reset_demo_workspace.sql`: `public.reset_demo_workspace(org_id)` (definer, pinned `search_path`, EXECUTE for authenticated only), clear-function support in the seed registry (`register_demo_seeder` gained an optional fifth parameter; `private.clear_demo_data`), throttle via `begin_demo_reset`, advisory lock. Behaviour in `docs/DEMO.md`, security notes in `docs/SECURITY.md`, decisions logged, DB types regenerated.
+- `supabase/tests/reset-demo.test.sql` (40 assertions, shared `tests.*` helpers, probe seeder and clearer): rejections (anon key, no identity, registered user, forged claim, another guest's org, a real org, unknown id and null all identical not-found, own expired demo `DEMO_EXPIRED`) none of which changed any data or used a throttle slot; **after a reset a messy workspace (edited row, junk, deleted row) matches the original seed in both directions with new row ids**; organization row, `expires_at`, owner membership and user accounts unchanged; other guests and the real tenant untouched; 429 at 59 s and allowed at 61 s; **a failing seeder mid-reset leaves the guest's work intact and the throttle unused**; advisory lock held.
+- `src/lib/demo/reset.integration.test.ts` (5, real guests via PostgREST): restore plus unchanged expiry plus the second reset mapped to **HTTP 429 `DEMO_RESET_THROTTLED` with Retry-After**; two simultaneous resets let exactly one through; another guest's id and an unknown id are the same not-found and change nothing; a registered user is rejected and a real organization's data is untouched; an expired demo and the anon key are refused.
+- `npm run test:db`: 14 files, 575 tests PASS. `npm run check`: all 9 steps passed (unit 766, integration 92).
+- Mutations caught and reverted by `db:reset`: ownership not checked (23 failed), expired demo resettable (2), no throttle (3 + 2 integration), no clearing (7 + 2), marker not cleared so no reseed (4 + 2), expiry extended (1), no advisory lock (1 pgTAP; the race test still passes because the throttle's atomic UPDATE already serializes, so the lock is a second line of defense). Not caught, as an equivalent mutant: dropping `kind = 'demo'` from the ownership join, because `demo_workspaces` can only reference demo organizations.
+- Not done here: the HTTP route and confirmation UI (SIT-210); the idempotency token (not needed, see DEMO.md).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

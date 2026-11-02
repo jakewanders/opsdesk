@@ -173,6 +173,7 @@ export type Database = {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;
       };
+      reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;
