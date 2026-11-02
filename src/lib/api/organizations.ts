@@ -1,18 +1,10 @@
 import { z } from "zod";
+import { isIanaTimeZone } from "@/lib/domain/timezone";
 import { optionalSingleLine, singleLine } from "@/lib/validation";
+
 import type { MembershipRow, OrgKind, OrgRole } from "./org-context";
 
-/** Same rule as the database (`private.is_valid_timezone`): `UTC` or an IANA `Area/City` name, no posix/right aliases. */
-export function isIanaTimeZone(value: string): boolean {
-  if (value === "UTC") return true;
-  if (!value.includes("/") || /^(posix|right)\//.test(value)) return false;
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
+export { isIanaTimeZone };
 
 /** Body of `POST /api/v1/organizations` (US-02). Unknown fields are rejected. */
 export const createOrganizationSchema = z.strictObject({

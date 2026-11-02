@@ -501,6 +501,14 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1061 / 72 files, integration 167 / 22 files, pgTAP PASS).
 - Mutations caught and reverted: floor instead of half-up, won counted in the pipeline, no reason required for lost, reopening keeping `closedAt`, reason limit off by one.
 
+### SIT-173 — Overdue and due-soon computation in the organization's time zone (done)
+
+- `src/lib/domain/tasks.ts` (`todayInZone`, `addDays`, `isIsoDate`, `isOverdue`, `isDueSoon`, `dueState`, `InvalidTimeZoneError`) and `src/lib/domain/timezone.ts` (`isIanaTimeZone`, moved out of `src/lib/api/organizations.ts`, which re-exports it: one definition for settings and date logic). Overdue: not done and due before today in the org zone (due today is not overdue). Due soon: not done and due from today through today + 7, both included. Dates are calendar dates, so DST cannot move them; an invalid zone throws, never falling back to UTC.
+- `src/lib/domain/tasks.test.ts` (42): local-midnight rollover in eight zones (UTC, New York in EDT and EST, Auckland in NZST and NZDT, Kolkata +5:30, Kiritimati +14, Pago Pago -11), New York spring forward (2026-03-08) and fall back (2026-11-01, including the repeated hour), Auckland spring forward and fall back, overdue and due-soon boundaries, month, year and leap-day crossings, zone-dependence of the same instant and task, invalid zones (12 forms) and dates, mutual exclusion of overdue and due soon. Found and fixed: `Date.UTC` maps years 0 to 99 to 1900 to 1999 (`0001-01-01` was rejected); a helper uses `setUTCFullYear`.
+- `src/lib/domain/tasks.integration.test.ts` (4): **TypeScript and SQL parity** against the local Postgres, eight zones including a 30-minute DST shift (Lord Howe), every 30 minutes across eight windows (US, NZ, Europe and Lord Howe DST changes, a leap day, year end), checking `(ts at time zone tz)::date`, overdue and due soon for due dates from two days ago to nine days ahead, thousands of instants with zero mismatches. The dashboard issue (SIT-244) reuses this SQL.
+- `npm run check`: all 9 steps passed (unit 1103 / 73 files, integration 171 / 23 files, pgTAP PASS).
+- Mutations caught and reverted: overdue including today, a 6-day window, today computed in UTC, done tasks counted overdue, the zone not validated.
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.
