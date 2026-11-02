@@ -76,6 +76,9 @@ describe("GET /api/v1/customers/:id", () => {
     psql(
       `insert into public.opportunities (organization_id, customer_id, title, created_by) select '${orgA}', '${c.id}', 'Deal ' || i, null from generate_series(1, 3) i`,
     );
+    psql(
+      `insert into public.tasks (organization_id, customer_id, title, created_by) select '${orgA}', '${c.id}', 'Task ' || i, null from generate_series(1, 2) i`,
+    );
     const res = await call(viewer, "GET", `/${c.id}`);
     expect(res.status).toBe(200);
     expect((await res.json()).data).toMatchObject({
@@ -84,7 +87,7 @@ describe("GET /api/v1/customers/:id", () => {
       email: "d@s.example.com",
       tags: ["a"],
       archivedAt: null,
-      related: { opportunities: 3, tasks: 0, quotes: 0 },
+      related: { opportunities: 3, tasks: 2, quotes: 0 },
     });
   });
   it("404 for an id that does not exist and for another tenant's customer (the same answer); 400 for a malformed id", async () => {

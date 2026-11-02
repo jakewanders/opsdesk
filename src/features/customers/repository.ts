@@ -151,15 +151,18 @@ export async function findCustomer(
   return (data as unknown as CustomerRow | null) ?? null;
 }
 
-/** What hangs off a customer. Tasks and quotes are counted by their own issues' tables once those exist (zero until then). */
+/** What hangs off a customer. Quotes are counted by their own issue's table once it exists (zero until then). */
 export async function countRelated(supabase: Client, orgId: string, id: string) {
-  const { count, error } = await supabase
-    .from("opportunities")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", orgId)
-    .eq("customer_id", id);
-  if (error) throw error;
-  return { opportunities: count ?? 0, tasks: 0, quotes: 0 };
+  const count = (table: "opportunities" | "tasks") =>
+    supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("customer_id", id);
+  const [opportunities, tasks] = await Promise.all([count("opportunities"), count("tasks")]);
+  if (opportunities.error) throw opportunities.error;
+  if (tasks.error) throw tasks.error;
+  return { opportunities: opportunities.count ?? 0, tasks: tasks.count ?? 0, quotes: 0 };
 }
 
 const sameValue = (a: unknown, b: unknown) =>

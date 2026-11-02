@@ -78,7 +78,7 @@ describe("TypeScript and SQL agree on today, overdue and due soon", () => {
     for (const r of rows) {
       const now = new Date(r.ts);
       OFFSETS.forEach((off, i) => {
-        const task = { dueDate: addDays(r.today, off), status: "open" };
+        const task = { dueDate: addDays(r.today, off), status: "todo" };
         if ((isOverdue(task, now, r.tz) ? "1" : "0") !== r.overdue[i])
           mismatches.push(`overdue ${r.tz} ${r.ts} ${off}`);
         if ((isDueSoon(task, now, r.tz) ? "1" : "0") !== r.soon[i])

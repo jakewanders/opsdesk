@@ -367,6 +367,90 @@ export type Database = {
         };
         Relationships: [];
       };
+      tasks: {
+        Row: {
+          archived_at: string | null;
+          assigned_to: string | null;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          description: string | null;
+          due_date: string | null;
+          id: string;
+          opportunity_id: string | null;
+          organization_id: string;
+          priority: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          opportunity_id?: string | null;
+          organization_id: string;
+          priority?: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          archived_at?: string | null;
+          assigned_to?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          opportunity_id?: string | null;
+          organization_id?: string;
+          priority?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey";
+            columns: ["organization_id", "assigned_to"];
+            isOneToOne: false;
+            referencedRelation: "memberships";
+            referencedColumns: ["organization_id", "user_id"];
+          },
+          {
+            foreignKeyName: "tasks_customer_fkey";
+            columns: ["organization_id", "customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "tasks_opportunity_fkey";
+            columns: ["organization_id", "opportunity_id"];
+            isOneToOne: false;
+            referencedRelation: "opportunities";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "tasks_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

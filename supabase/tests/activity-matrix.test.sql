@@ -4,7 +4,7 @@
 -- Columns: table, entity_type, an INSERT statement for a valid row (with %L for id and organization_id), the safe column
 -- to edit and its two values (text), the content column (free text) and its two values, the archive column.
 begin;
-select plan(37);
+select plan(50);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Sam Member' where id = tests.uid('a_member');
 
@@ -16,7 +16,10 @@ insert into cases values
     'status', 'lead', 'active', 'notes', 'original private note', 'archived_at'),
   ('opportunities', 'opportunity',
     $$insert into public.opportunities (id, organization_id, customer_id, title, description) values (%L, %L, 'c1000000-0000-4000-8000-0000000000a1', 'Matrix Deal', 'original private note')$$,
-    'title', 'Matrix Deal', 'Matrix Deal Renamed', 'description', 'original private note', 'archived_at');
+    'title', 'Matrix Deal', 'Matrix Deal Renamed', 'description', 'original private note', 'archived_at'),
+  ('tasks', 'task',
+    $$insert into public.tasks (id, organization_id, title, priority, description) values (%L, %L, 'Matrix Task', 'medium', 'original private note')$$,
+    'priority', 'medium', 'high', 'description', 'original private note', 'archived_at');
 grant select on cases to authenticated;
 insert into public.customers (id, organization_id, display_name) values ('c1000000-0000-4000-8000-0000000000a1', tests.org_id('a'), 'Parent Customer');
 

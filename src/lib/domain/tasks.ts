@@ -16,7 +16,7 @@ import { isIanaTimeZone } from "./timezone";
 
 export const DUE_SOON_DAYS = 7;
 
-export type TaskStatus = "open" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
 
 /** What a task needs for these rules. */
 export type DueInput = { dueDate: string | null; status: TaskStatus | string };

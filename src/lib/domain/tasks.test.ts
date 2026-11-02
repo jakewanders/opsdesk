@@ -149,7 +149,7 @@ describe("addDays works on calendar dates", () => {
   });
 });
 
-const task = (dueDate: string | null, status = "open") => ({ dueDate, status });
+const task = (dueDate: string | null, status = "todo") => ({ dueDate, status });
 
 describe("overdue", () => {
   const now = at("2026-11-02T15:00:00Z"); // Nov 2 in New York (10:00) and Auckland is Nov 3 (04:00)
