@@ -547,6 +547,13 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1156 / 74 files, integration 194 / 24 files, pgTAP PASS).
 - Mutations caught and reverted: customer foreign key dropped, lost-reason check dropped, `closed_at` check dropped, probability trigger disabled, cap trigger disabled, DELETE granted, activity trigger disabled.
 
+### SIT-217 — Activity logging tests: atomic rollback, no client writes, whitelist, no-op suppression (done)
+
+- `supabase/tests/activity-matrix.test.sql` (37): one `cases` row per entity (customers, opportunities), 13 assertions each: created event with the member as actor, a safe edit logging exactly that field with old and new by the editing admin, a content-only edit logging only the field NAME, neither the new nor the original content text in any event or summary, no-op updates (same values, only `updated_at`) writing nothing, archive then restore as two distinct events, a forced failure after the insert leaving no event, and every seeded event having no actor and reading as System. Shared: owner, member, guest and visitor cannot insert events, nobody can update or delete them, nobody can call `log_activity` (owner and guest), nothing forged is stored, and an oversized `changes` payload is rejected by the database. Adding an entity is one row and 13 on the plan (instructions in `docs/SECURITY.md`).
+- **Bug found and fixed.** The matrix inserts as a member in a fresh session, which showed that `private.prepare_opportunity()` (a trigger that runs as the calling role) called `private.stage_default_probability()`, which no API role may execute: the first opportunity insert in a session failed with "permission denied for function". Earlier tests missed it because an earlier insert as the server role had cached the plan. Migration `20261101002100_opportunity_trigger_privileges.sql` inlines the default and drops the helper.
+- `npm run check`: all 9 steps passed (unit 1156 / 74 files, integration 194 / 24 files, pgTAP PASS).
+- Mutations caught and reverted: no-op suppression off, actor not cleared for the System, restore logged as an update, opportunity logging disabled, `log_activity` granted to `authenticated` (matrix), plus content-value storage and INSERT granted on events (caught by the existing activity suites).
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.
