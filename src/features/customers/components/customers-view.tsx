@@ -220,6 +220,11 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
               <DropdownMenuItem asChild>
                 <Link href={`/app/customers/${row.original.id}`}>View details</Link>
               </DropdownMenuItem>
+              {canWrite ? (
+                <DropdownMenuItem asChild>
+                  <Link href={`/app/customers/${row.original.id}/edit`}>Edit</Link>
+                </DropdownMenuItem>
+              ) : null}
               {canWrite && !row.original.archivedAt ? (
                 <DropdownMenuItem onSelect={() => setArchiving(row.original)}>
                   Archive

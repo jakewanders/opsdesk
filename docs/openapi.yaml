@@ -1097,6 +1097,43 @@ paths:
           description: "Validation failed"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /members:
+    get:
+      summary: The members of the active workspace (id, role, display name) for owner and assignee pickers
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: Members sorted by display name. Nothing else about a person is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [userId, role, displayName]
+                      properties:
+                        userId: { type: string, format: uuid }
+                        role: { type: string, enum: [owner, admin, member, viewer] }
+                        displayName: { type: string }
+                  meta:
+                    type: object
+                    properties:
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "The workspace is not one the caller belongs to"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
 components:
   parameters:
     IdempotencyKey:

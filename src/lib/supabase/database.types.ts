@@ -487,6 +487,14 @@ export type Database = {
         Args: { p_body: Json; p_key: string; p_route: string; p_status: number };
         Returns: boolean;
       };
+      list_workspace_members: {
+        Args: { p_org_id: string };
+        Returns: {
+          display_name: string;
+          role: string;
+          user_id: string;
+        }[];
+      };
       move_opportunity_stage: {
         Args: {
           p_expected_updated_at: string;
