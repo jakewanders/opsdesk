@@ -2,7 +2,7 @@
 -- a 90-day activity history consistent with the entities, determinism across guests and across a reset, and a lint over
 -- every seeded string for anything that could be a real person, number or inbox.
 begin;
-select plan(43);
+select plan(44);
 
 insert into auth.users (id, email, is_anonymous) values
   ('91000000-0000-0000-0000-000000000001', null, true),
@@ -58,6 +58,8 @@ select is((select count(*) from public.opportunities o where o.organization_id =
 select is((select count(*) from public.opportunities o where o.organization_id = (select org from g1) and o.stage <> 'new' and not exists (select 1 from public.activity_events e where e.entity_id = o.id and e.action = 'stage_changed' and e.changes -> 'stage' ->> 'new' = o.stage)), 0::bigint, 'every deal past New has a stage_changed event into its current stage');
 select is((select count(*) from public.tasks t where t.organization_id = (select org from g1) and t.status = 'done' and not exists (select 1 from public.activity_events e where e.entity_id = t.id and e.action = 'completed' and e.created_at = t.completed_at)), 0::bigint, 'each done task has a completed event at its completion time');
 select is((select count(*) from public.customers c where c.organization_id = (select org from g1) and c.archived_at is not null and not exists (select 1 from public.activity_events e where e.entity_id = c.id and e.action = 'archived' and e.created_at = c.archived_at)), 0::bigint, 'each archived customer has an archived event at that time');
+
+select is((select count(*) from public.activity_events e where e.organization_id = (select org from g1) and e.action = 'stage_changed' and (e.summary !~ '^System moved "[^"]+" from [A-Z][a-z]+ to [A-Z][a-z]+$' or jsonb_typeof(e.changes -> 'probability_percent') <> 'object' or not (e.changes -> 'probability_percent' ?& array['old', 'new']))), 0::bigint, 'seeded stage events read and are shaped exactly like live ones (SIT-257)');
 
 -- ---- determinism: a second guest gets identical content, and a reset reproduces the first guest's exactly
 create function pg_temp.fingerprint(o uuid) returns text language sql as $$

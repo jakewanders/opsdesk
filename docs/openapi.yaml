@@ -1337,6 +1337,12 @@ paths:
                         id: { type: string, format: uuid }
                         entityType: { type: string, enum: [customer, opportunity, task, quote] }
                         entityId: { type: string, format: uuid }
+                        entityState:
+                          {
+                            type: string,
+                            enum: [active, archived, missing],
+                            description: "Where the record stands inside this workspace: link it unless `missing`; show `archived` as archived",
+                          }
                         action: { type: string }
                         summary: { type: string }
                         actorUserId: { type: string, format: uuid, nullable: true }

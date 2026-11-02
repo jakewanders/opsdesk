@@ -33,6 +33,11 @@ export type ActivityItemDto = {
   summary: string;
   /** Null for the System. */
   actorUserId: string | null;
+  /**
+   * Where the record stands, looked up inside this workspace only: `active`, `archived` (shown as archived, still
+   * linkable), or `missing` (deleted, or a kind with no page): no link.
+   */
+  entityState: "active" | "archived" | "missing";
   /** `System`, a member's display name, or `Former member` when the person is no longer in the workspace. */
   actorName: string;
   /** Plain fields with old and new values. */
@@ -50,6 +55,7 @@ type Row = {
   summary: string;
   actorUserId: string | null;
   actorName: string | null;
+  entityState: "active" | "archived" | "missing";
   changes: unknown;
   createdAt: string;
 };
@@ -91,6 +97,7 @@ export async function listActivity(
     summary: row.summary,
     actorUserId: row.actorUserId,
     actorName: row.actorName ?? "Former member",
+    entityState: row.entityState,
     ...readChanges(row.changes),
     createdAt: row.createdAt,
   }));

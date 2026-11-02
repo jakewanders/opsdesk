@@ -91,6 +91,7 @@ describe("GET /api/v1/activity [SIT-245]", () => {
         "contentChanged",
         "createdAt",
         "entityId",
+        "entityState",
         "entityType",
         "id",
         "summary",
@@ -216,6 +217,57 @@ describe("GET /api/v1/activity [SIT-245]", () => {
     );
     expect((await json(other, `?entityId=${aRecord}`, orgB)).data).toEqual([]);
     expect((await get(other, "", org)).status).toBe(404);
+  });
+
+  it("entityState tells whether each record is active, archived (still linkable) or gone, inside this workspace only", async () => {
+    const customer = (
+      await (await api(owner, "POST", "/customers", { displayName: "State Co" })).json()
+    ).data;
+    const state = async () =>
+      (await json(owner, `?entityType=customer&entityId=${customer.id}&limit=1`)).data[0]
+        .entityState;
+    expect(await state()).toBe("active");
+    expect((await api(owner, "DELETE", `/customers/${customer.id}`)).status).toBe(204);
+    expect(await state()).toBe("archived");
+    psql(`delete from public.customers where id = '${customer.id}'`);
+    expect(await state()).toBe("missing");
+    // a task of another workspace named in an event of this one never resolves
+    const foreign = (
+      await (
+        await server.request("/api/v1/customers", other, {
+          json: { displayName: "Foreign State" },
+          headers: hdr(orgB),
+        })
+      ).json()
+    ).data.id;
+    psql(
+      `insert into public.activity_events (organization_id, entity_type, entity_id, action, summary) values ('${org}', 'customer', '${foreign}', 'updated', 'points at another tenant')`,
+    );
+    const hit = (await json(owner, `?entityId=${foreign}`)).data;
+    expect(hit).toHaveLength(1);
+    expect(hit[0].entityState).toBe("missing");
+  });
+
+  it("/app/activity renders for an owner, a viewer and a guest with its filters, and sends a signed-out visitor to sign in", async () => {
+    const html = async (actor: Actor | null) => {
+      const res = await server.request("/app/activity", actor);
+      return {
+        status: res.status,
+        body: (await res.text()).replace(/<!-- -->/g, ""),
+        location: res.headers.get("location"),
+      };
+    };
+    for (const actor of [owner, viewer, guest]) {
+      const r = await html(actor);
+      expect(r.status).toBe(200);
+      expect(r.body).toContain("Filter activity");
+      expect(r.body).toContain("Records");
+      expect(r.body).toContain("Loading activity");
+    }
+    const out = await html(null);
+    expect(out.status).toBeGreaterThanOrEqual(300);
+    expect(out.status).toBeLessThan(400);
+    expect(out.location ?? "").toMatch(/login/);
   });
 
   it("a guest reads their own seeded history", async () => {

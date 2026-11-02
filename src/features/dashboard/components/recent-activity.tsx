@@ -1,34 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { ActivityTimeline } from "@/features/activity/components/activity-timeline";
 import type { RecentActivityDto } from "@/features/activity/repository";
 import type { MemberDto } from "@/features/members/service";
 import { useApiQuery } from "@/lib/api-client/provider";
 
 type Props = { events: RecentActivityDto[]; currentUserId: string; timeZone: string };
 
-/** Where a record lives. Tasks open from the task list; quotes have no page yet, so those events are plain text. */
-function entityHref(e: RecentActivityDto): string | null {
-  switch (e.entityType) {
-    case "customer":
-      return `/app/customers/${e.entityId}`;
-    case "opportunity":
-      return `/app/opportunities/${e.entityId}`;
-    case "task":
-      return "/app/tasks";
-    default:
-      return null;
-  }
-}
-
 /** The newest events of the workspace: who, what, when (with the full timestamp), and a link to the record. */
 export function RecentActivity({ events, currentUserId, timeZone }: Props) {
   const members = useApiQuery<MemberDto[]>(["members"], "/members");
-  const when = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  });
   const actor = (e: RecentActivityDto) =>
     e.actorUserId === null
       ? "System"
@@ -53,30 +35,21 @@ export function RecentActivity({ events, currentUserId, timeZone }: Props) {
           here.
         </p>
       ) : (
-        <ol className="flex flex-col divide-y divide-border rounded-lg border border-border">
-          {events.map((e) => {
-            const href = entityHref(e);
-            return (
-              <li key={e.id} className="flex flex-col gap-0.5 px-3 py-2 text-sm">
-                <p>
-                  {href ? (
-                    <Link href={href} className="underline-offset-4 hover:underline">
-                      {e.summary}
-                    </Link>
-                  ) : (
-                    e.summary
-                  )}
-                </p>
-                <p className="text-muted-foreground">
-                  By {actor(e)} ·{" "}
-                  <time dateTime={e.createdAt} title={new Date(e.createdAt).toISOString()}>
-                    {when.format(new Date(e.createdAt))}
-                  </time>
-                </p>
-              </li>
-            );
-          })}
-        </ol>
+        <ActivityTimeline
+          label="Recent activity"
+          timeZone={timeZone}
+          items={events.map((e) => ({
+            id: e.id,
+            action: e.action,
+            summary: e.summary,
+            actorName: actor(e),
+            createdAt: e.createdAt,
+            changes: [],
+            contentChanged: [],
+            // the dashboard payload does not say whether a record was archived, so it links like an active one
+            entity: { type: e.entityType, id: e.entityId, state: "active" },
+          }))}
+        />
       )}
     </section>
   );

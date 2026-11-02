@@ -1,7 +1,7 @@
 -- pgTAP tests for public.list_activity (SIT-245): shape, filters, stable order and paging, organization-time date ranges,
 -- actor names only through memberships, and tenant isolation.
 begin;
-select plan(30);
+select plan(34);
 select tests.create_fixtures();
 update public.profiles set display_name = 'Olive Owner' where id = tests.uid('a_owner');
 update public.profiles set display_name = 'Mia Member' where id = tests.uid('a_member');
@@ -55,7 +55,7 @@ select is((select i ->> 'actorName' from jsonb_array_elements(public.list_activi
 select is((select i ->> 'actorName' from jsonb_array_elements(public.list_activity(tests.org_id('a'), p_system_only => true) -> 'items') i), 'System', 'no actor reads as System');
 select is((select i ->> 'actorName' from jsonb_array_elements(public.list_activity(tests.org_id('a'), p_action => 'archived') -> 'items') i), null, 'an actor who is NOT a member of this workspace is never named (null; the API says Former member)');
 select is((select i -> 'changes' from jsonb_array_elements(public.list_activity(tests.org_id('a'), p_action => 'updated') -> 'items') i), '{"status":{"old":"lead","new":"active"},"_content_changed":["notes"]}'::jsonb, 'whitelisted changes are returned as stored');
-select is((select array_agg(k order by k) from jsonb_object_keys((public.list_activity(tests.org_id('a'), p_limit => 1) -> 'items') -> 0) k), array['action','actorName','actorUserId','changes','createdAt','entityId','entityType','id','summary'], 'each item has exactly the documented fields');
+select is((select array_agg(k order by k) from jsonb_object_keys((public.list_activity(tests.org_id('a'), p_limit => 1) -> 'items') -> 0) k), array['action','actorName','actorUserId','changes','createdAt','entityId','entityState','entityType','id','summary'], 'each item has exactly the documented fields');
 select tests.reset();
 
 -- isolation and access
@@ -72,6 +72,26 @@ select is(tests.sqlstate_of(format($$select public.list_activity(%L)$$, tests.or
 select tests.reset();
 select tests.act_as('g1');
 select is((public.list_activity(tests.org_id('g1')) ->> 'total')::int, 0, 'a guest reads their own (empty here) feed');
+select tests.reset();
+
+-- ---- entityState: where an event's record stands, resolved inside the organization only (SIT-257)
+insert into public.customers (id, organization_id, display_name, archived_at) values
+  ('c5000000-0000-4000-8000-000000000001', tests.org_id('g1'), 'Live', null),
+  ('c5000000-0000-4000-8000-000000000002', tests.org_id('g1'), 'Archived one', now()),
+  ('c5000000-0000-4000-8000-0000000000b1', tests.org_id('b'), 'B customer', null);
+insert into public.activity_events (id, organization_id, entity_type, entity_id, action, summary, created_at) values
+  ('e5000000-0000-4000-8000-000000000001', tests.org_id('g1'), 'customer', 'c5000000-0000-4000-8000-000000000001', 'created', 'x', now() - interval '4 minutes'),
+  ('e5000000-0000-4000-8000-000000000002', tests.org_id('g1'), 'customer', 'c5000000-0000-4000-8000-000000000002', 'archived', 'x', now() - interval '3 minutes'),
+  ('e5000000-0000-4000-8000-000000000003', tests.org_id('g1'), 'customer', 'c5000000-0000-4000-8000-0000000000b1', 'updated', 'x', now() - interval '2 minutes'),
+  ('e5000000-0000-4000-8000-000000000004', tests.org_id('g1'), 'quote', 'c5000000-0000-4000-8000-000000000009', 'sent', 'x', now() - interval '1 minutes');
+select tests.act_as('g1');
+select is((select string_agg(i ->> 'entityState', ',' order by i ->> 'createdAt') from jsonb_array_elements(public.list_activity(tests.org_id('g1')) -> 'items') i where i ->> 'summary' = 'x'), 'active,archived,missing,missing', 'an active record is "active", an archived one "archived" (still linkable), another tenant''s record id and a kind with no page are "missing"');
+select is((select i ->> 'entityState' from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_id => 'c5000000-0000-4000-8000-0000000000b1') -> 'items') i where i ->> 'summary' = 'x'), 'missing', 'a record of another organization never resolves, so it can never be linked');
+select tests.reset();
+delete from public.customers where id = 'c5000000-0000-4000-8000-000000000001';
+select tests.act_as('g1');
+select is((select i ->> 'entityState' from jsonb_array_elements(public.list_activity(tests.org_id('g1'), p_entity_id => 'c5000000-0000-4000-8000-000000000001') -> 'items') i where i ->> 'summary' = 'x'), 'missing', 'a deleted record is "missing" (its history stays, the link goes)');
+select is((select count(*)::int from jsonb_array_elements(public.list_activity(tests.org_id('g1')) -> 'items') i where i ->> 'entityState' is null), 0, 'every item has a state');
 select tests.reset();
 select * from finish();
 rollback;

@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientProvider } from "@/lib/api-client/provider";
 import { expectNoA11yViolations } from "@/test/axe";
 import type { DashboardDto } from "../service";
@@ -48,6 +48,8 @@ const ZERO = Object.fromEntries(
 ) as DashboardDto["opportunitiesByStage"];
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-10T12:00:00.000Z"));
   vi.stubGlobal("matchMedia", (q: string) => ({
     matches: q.includes("reduce"),
     media: q,
@@ -55,6 +57,8 @@ beforeEach(() => {
     removeEventListener: vi.fn(),
   }));
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe("StageChart [SIT-256]", () => {
   it("stageRows turns the API payload into rows in pipeline order with the numbers written out", () => {
@@ -206,11 +210,10 @@ describe("RecentActivity [SIT-256]", () => {
     expect(within(items[2]).getByText(/By System/)).toBeInTheDocument();
     expect(within(items[2]).getByRole("link")).toHaveAttribute("href", "/app/tasks");
     expect(within(items[3]).queryByRole("link")).toBeNull(); // quotes have no page yet
-    const time = within(items[0])
-      .getByText(/Nov 2, 2026/)
-      .closest("time")!;
+    const time = within(items[0]).getByText("7 days ago").closest("time")!;
     expect(time).toHaveAttribute("datetime", "2026-11-02T15:30:00.000Z");
-    expect(time).toHaveAttribute("title", "2026-11-02T15:30:00.000Z");
+    expect(time).toHaveAttribute("title", "Nov 2, 2026, 3:30 PM");
+    expect(within(items[0]).getByText("(Nov 2, 2026, 3:30 PM)")).toBeInTheDocument(); // the full timestamp for screen readers
     expect(screen.getByRole("link", { name: /View all/ })).toHaveAttribute("href", "/app/activity");
     await expectNoA11yViolations(container);
   });

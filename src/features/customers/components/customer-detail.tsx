@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Archive,
-  ArchiveRestore,
-  Building2,
-  CirclePlus,
-  History,
-  Pencil,
-  Trash2,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Building2, Pencil, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { notify } from "@/components/shared/toast";
@@ -23,6 +13,7 @@ import { useApiQuery } from "@/lib/api-client/provider";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
 import { useState, type ReactNode } from "react";
 import type { CustomerDetailDto } from "../schema";
+import { ActivityTimeline } from "@/features/activity/components/activity-timeline";
 import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus } from "./customer-status";
 import { RelatedOpportunities, RelatedTasks } from "./customer-related";
@@ -48,35 +39,6 @@ const SOURCE_LABELS = {
   outbound: "Outbound",
   other: "Other",
 } as const;
-const ACTION: Record<string, { label: string; Icon: LucideIcon }> = {
-  created: { label: "Created", Icon: CirclePlus },
-  updated: { label: "Updated", Icon: Pencil },
-  archived: { label: "Archived", Icon: Archive },
-  restored: { label: "Restored", Icon: ArchiveRestore },
-  deleted: { label: "Deleted", Icon: Trash2 },
-};
-const FIELD_LABELS: Record<string, string> = {
-  display_name: "name",
-  company_name: "company",
-  assigned_to: "owner",
-  type: "type",
-  status: "status",
-  source: "source",
-  tags: "tags",
-  email: "email",
-  phone: "phone",
-  website: "website",
-  notes: "notes",
-};
-
-/** A plain value from an event, as text (never markup). */
-const show = (value: unknown): string =>
-  value === null || value === undefined || value === ""
-    ? "none"
-    : Array.isArray(value)
-      ? value.join(", ")
-      : String(value);
-
 /**
  * One customer: header (name, company, status as icon + word, owner, tags, times, actions), an Overview tab and an Activity
  * tab. Notes and every value from an event are rendered as text. An archived customer says so and offers Restore to people
@@ -302,49 +264,22 @@ export function CustomerDetail({
               No activity has been recorded for this customer yet.
             </p>
           ) : (
-            <ol
-              aria-label="Activity"
-              className="flex flex-col divide-y divide-border rounded-lg border border-border"
-            >
-              {events.map((event) => {
-                const { label, Icon } = ACTION[event.action] ?? {
-                  label: event.action,
-                  Icon: History,
-                };
-                const actor =
+            <ActivityTimeline
+              label="Activity"
+              timeZone={timeZone}
+              items={events.map((event) => ({
+                id: event.id,
+                action: event.action,
+                summary: event.summary,
+                actorName:
                   event.actorUserId === null
                     ? "System"
-                    : (nameOf(event.actorUserId) ?? "A teammate");
-                return (
-                  <li key={event.id} className="flex gap-3 p-3 text-sm">
-                    <Icon
-                      aria-hidden="true"
-                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                    />
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <p>
-                        <span className="font-medium">{label}</span> · <span>{event.summary}</span>
-                      </p>
-                      <p className="text-muted-foreground">
-                        By {actor} · {stamp(event.createdAt)}
-                      </p>
-                      {event.changes.length > 0 || event.contentChanged.length > 0 ? (
-                        <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
-                          {event.changes.map((c) => (
-                            <li key={c.field}>
-                              {FIELD_LABELS[c.field] ?? c.field}: {show(c.old)} to {show(c.new)}
-                            </li>
-                          ))}
-                          {event.contentChanged.map((field) => (
-                            <li key={field}>{FIELD_LABELS[field] ?? field} was edited</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+                    : (nameOf(event.actorUserId) ?? "A teammate"),
+                createdAt: event.createdAt,
+                changes: event.changes,
+                contentChanged: event.contentChanged,
+              }))}
+            />
           )}
         </TabsContent>
       </Tabs>
