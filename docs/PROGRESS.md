@@ -491,7 +491,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 
 ## M2 — Core CRM, Pipeline & Task Management
 
-Not started. No checks run.
+In progress. Entries are added per issue.
+
+### SIT-172 — Stage defaults and pipeline aggregation domain module (done)
+
+- `src/lib/domain/pipeline.ts`: stages, labels, default probabilities (10/25/50/75/100/0), open and closed stages, the Zod `stageSchema` and `probabilitySchema`, `weightedAmountCents` (round half up, BigInt exact), `pipelineTotal` and `weightedPipeline` (open stages only, rounded per row then summed), `totalsByStage` (for board columns), and `transitionStage` (won and lost set `closedAt`; lost needs a trimmed reason of 1 to 500 code points; reopening clears `closedAt` and `lostReason`; the probability resets to the stage default; same stage is a no-op; never mutates input). A total that cannot be represented exactly throws `RangeError` instead of being wrong.
+- `src/lib/domain/pipeline.test.ts` (45 table-driven tests): stage lists and defaults, schemas, 17 rounding cases including 0, 1 cent, every .5 boundary and very large amounts at `MAX_SAFE_INTEGER` and beyond, bigint input, invalid cents and probabilities, won and lost excluded from totals, per-row rounding, empty pipeline, unrepresentable totals, input immutability, `totalsByStage`, and all 36 stage pairs.
+- The SQL the dashboard will use must match: `floor((amount_cents * probability + 50) / 100)` per open row (verified against this module by SIT-244).
+- `npm run check`: all 9 steps passed (unit 1061 / 72 files, integration 167 / 22 files, pgTAP PASS).
+- Mutations caught and reverted: floor instead of half-up, won counted in the pipeline, no reason required for lost, reopening keeping `closedAt`, reason limit off by one.
 
 ## M3 — Dashboard, Reporting Foundations & Activity
 
