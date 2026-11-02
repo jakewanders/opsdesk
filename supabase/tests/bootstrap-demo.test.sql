@@ -8,12 +8,6 @@ insert into auth.users (id, email, is_anonymous) values
   ('93000000-0000-0000-0000-000000000003', null, true),   -- G3 (capacity tests)
   ('a1000000-0000-0000-0000-000000000001', 'member@example.com', false);
 
-create or replace function pg_temp.act_as(r text, uid uuid, anon boolean) returns void language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', r, 'is_anonymous', anon)::text, true);
-  execute format('set local role %I', r);
-end $$;
-grant execute on function pg_temp.act_as(text, uuid, boolean) to public;
 
 -- Probe seeders so the seed contents can be compared between guests
 create table public.zz_seed_probe (id uuid primary key default gen_random_uuid(), org_id uuid not null, n integer not null, label text not null);
@@ -29,16 +23,16 @@ select ok((select prosecdef and coalesce('search_path=""' = any (proconfig), fal
 select ok(has_function_privilege('authenticated', 'public.bootstrap_demo_workspace()', 'execute') and not has_function_privilege('anon', 'public.bootstrap_demo_workspace()', 'execute') and not has_function_privilege('public', 'public.bootstrap_demo_workspace()', 'execute'), 'EXECUTE for authenticated only (not anon, not PUBLIC)');
 
 -- ---- rejection
-select pg_temp.act_as('anon', null, false);
+select tests.act_as_role('anon', null, false);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, '42501', null, 'the anon key cannot call it');
 reset role;
-select pg_temp.act_as('authenticated', 'a1000000-0000-0000-0000-000000000001', false);
+select tests.act_as_role('authenticated', 'a1000000-0000-0000-0000-000000000001', false);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, 'OD403', 'The live demo is for guest visitors. Sign out to try it.', 'a registered user is rejected');
 reset role;
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', false);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', false);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, 'OD403', 'The live demo is for guest visitors. Sign out to try it.', 'a JWT claiming is_anonymous = false is rejected even for an anonymous user row');
 reset role;
-select pg_temp.act_as('authenticated', 'a1000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', 'a1000000-0000-0000-0000-000000000001', true);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, 'OD403', 'The live demo is for guest visitors. Sign out to try it.', 'a forged anonymous claim on a registered user is rejected (the stored user must agree)');
 reset role;
 select set_config('request.jwt.claims', '', true);
@@ -48,7 +42,7 @@ reset role;
 select is((select count(*) from public.organizations where kind = 'demo'), 0::bigint, 'no rejected call created an organization');
 
 -- ---- G1 bootstraps
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 create temp table g1_first as select public.bootstrap_demo_workspace() as r;
 reset role;
 select is((select (r->>'created')::boolean from g1_first), true, 'the first call creates a workspace');
@@ -69,7 +63,7 @@ select ok(
   'the call takes the per-user advisory lock');
 
 -- ---- repeated calls are idempotent
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 create temp table g1_again as select public.bootstrap_demo_workspace() as r;
 create temp table g1_third as select public.bootstrap_demo_workspace() as r;
 reset role;
@@ -82,7 +76,7 @@ select is((select count(*) from public.memberships where user_id = '91000000-000
 select is((select count(*) from public.zz_seed_probe where org_id = (select (r->>'organization_id')::uuid from g1_first)), 5::bigint, 'and no duplicate seed rows');
 
 -- ---- two guests are isolated and get equal content with separate ids
-select pg_temp.act_as('authenticated', '92000000-0000-0000-0000-000000000002', true);
+select tests.act_as_role('authenticated', '92000000-0000-0000-0000-000000000002', true);
 create temp table g2_first as select public.bootstrap_demo_workspace() as r;
 reset role;
 select isnt((select r->>'organization_id' from g2_first), (select r->>'organization_id' from g1_first), 'a different guest gets a different organization');
@@ -92,26 +86,26 @@ select is(
   (select md5(string_agg(n || label, '|' order by n)) from public.zz_seed_probe where org_id = (select (r->>'organization_id')::uuid from g2_first)),
   'with identical content');
 select is((select count(*) from public.zz_seed_probe a join public.zz_seed_probe b on a.id = b.id and a.org_id <> b.org_id), 0::bigint, 'and no shared record ids');
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 select is((select count(*) from public.organizations), 1::bigint, 'G1 sees only their own organization through RLS');
 select is((select id from public.organizations), (select (r->>'organization_id')::uuid from g1_first), 'and it is theirs');
 select is((select count(*) from public.memberships), 1::bigint, 'only their own membership');
 select is((select count(*) from public.demo_workspaces), 1::bigint, 'and only their own mapping');
-select pg_temp.act_as('authenticated', '92000000-0000-0000-0000-000000000002', true);
+select tests.act_as_role('authenticated', '92000000-0000-0000-0000-000000000002', true);
 select is((select count(*) from public.organizations where id = (select (r->>'organization_id')::uuid from g1_first)), 0::bigint, 'G2 cannot see G1''s organization');
 reset role;
 
 -- ---- a caller cannot choose owner, org id, expiry or kind
 select throws_ok($$select public.bootstrap_demo_workspace('d0000000-0000-0000-0000-00000000000d')$$, '42883', null, 'passing an organization id is impossible (no such signature)');
 select throws_ok($$select public.bootstrap_demo_workspace(owner_id => '91000000-0000-0000-0000-000000000001')$$, '42883', null, 'passing an owner is impossible');
-select pg_temp.act_as('authenticated', '92000000-0000-0000-0000-000000000002', true);
+select tests.act_as_role('authenticated', '92000000-0000-0000-0000-000000000002', true);
 select throws_ok($$update public.organizations set expires_at = now() + interval '1 year'$$, '42501', null, 'the guest cannot extend the expiry afterwards');
 select throws_ok($$update public.organizations set kind = 'real'$$, '42501', null, 'nor change the kind');
 reset role;
 
 -- ---- expired demo: the caller's own is cleaned up and replaced
 update public.organizations set expires_at = now() - interval '1 minute' where id = (select (r->>'organization_id')::uuid from g1_first);
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 create temp table g1_fresh as select public.bootstrap_demo_workspace() as r;
 reset role;
 select is((select (r->>'created')::boolean from g1_fresh), true, 'after expiry a fresh workspace is created');
@@ -123,15 +117,15 @@ select is((select count(*) from public.organizations where created_by = '9200000
 
 -- ---- capacity ceiling
 update private.demo_limits set value = 2 where key = 'max_active_demos';
-select pg_temp.act_as('authenticated', '93000000-0000-0000-0000-000000000003', true);
+select tests.act_as_role('authenticated', '93000000-0000-0000-0000-000000000003', true);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, 'OD429', 'The demo is very busy right now. Please try again in a few minutes.', 'at the ceiling a new guest is refused with a 429-mapped error');
 reset role;
 select is((select count(*) from public.organizations where created_by = '93000000-0000-0000-0000-000000000003'), 0::bigint, 'and nothing was created for them');
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 select is((select (public.bootstrap_demo_workspace()->>'created')::boolean), false, 'but a guest who already has a live demo still gets it at capacity');
 reset role;
 update private.demo_limits set value = 3 where key = 'max_active_demos';
-select pg_temp.act_as('authenticated', '93000000-0000-0000-0000-000000000003', true);
+select tests.act_as_role('authenticated', '93000000-0000-0000-0000-000000000003', true);
 select is((select (public.bootstrap_demo_workspace()->>'created')::boolean), true, 'raising the ceiling lets them in');
 reset role;
 select ok(not has_table_privilege('authenticated', 'private.demo_limits', 'select') and not has_table_privilege('anon', 'private.demo_limits', 'select'), 'the limits table has no client privileges');

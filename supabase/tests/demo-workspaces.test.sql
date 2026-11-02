@@ -17,16 +17,6 @@ insert into public.memberships (organization_id, user_id, role) values
   ('d3000000-0000-0000-0000-0000000000d3', '92000000-0000-0000-0000-000000000002', 'owner'),
   ('a0000000-0000-0000-0000-00000000000a', 'a1000000-0000-0000-0000-000000000001', 'owner');
 
-create or replace function pg_temp.act_as(r text, uid uuid, anon boolean default true) returns void language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', r, 'is_anonymous', anon)::text, true);
-  execute format('set local role %I', r);
-end $$;
-grant execute on function pg_temp.act_as(text, uuid, boolean) to public;
-create or replace function pg_temp.updated_rows(stmt text) returns bigint language plpgsql as $$
-declare n bigint;
-begin execute stmt; get diagnostics n = row_count; return n; end $$;
-grant execute on function pg_temp.updated_rows(text) to public;
 
 -- ---- structure
 select has_table('public', 'demo_workspaces', 'the mapping table exists');
@@ -37,12 +27,9 @@ select ok(
   'the cleanup index on demo expiry exists (partial, kind = demo)');
 
 -- The cleanup query uses the partial index (seq scans are disabled so the tiny test table still shows the choice)
-create or replace function pg_temp.explain_text(q text) returns text language plpgsql as $$
-declare r record; out text := '';
-begin for r in execute 'explain ' || q loop out := out || (r."QUERY PLAN") || E'\n'; end loop; return out; end $$;
 set local enable_seqscan = off;
 select ok(
-  strpos(pg_temp.explain_text($q$select id from public.organizations where kind = 'demo' and expires_at < now() order by expires_at limit 100$q$), 'organizations_demo_expiry_idx') > 0,
+  strpos(tests.explain_text($q$select id from public.organizations where kind = 'demo' and expires_at < now() order by expires_at limit 100$q$), 'organizations_demo_expiry_idx') > 0,
   'the expired-demo cleanup query uses the partial expiry index');
 reset enable_seqscan;
 
@@ -73,7 +60,7 @@ select throws_ok($$select private.begin_demo_reset('d1000000-0000-0000-0000-0000
 select throws_ok($$select private.begin_demo_reset('00000000-0000-0000-0000-000000000000')$$, 'OD404', null, 'resetting an unknown workspace is refused');
 
 -- ---- browser clients: read own row only, write nothing
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001');
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001');
 select is((select count(*) from public.demo_workspaces), 1::bigint, 'a guest reads only their own workspace row');
 select is((select user_id from public.demo_workspaces), '91000000-0000-0000-0000-000000000001'::uuid, 'and it is theirs');
 select throws_ok($$update public.demo_workspaces set last_reset_at = null$$, '42501', null, 'a guest cannot clear last_reset_at (no grant)');
@@ -83,17 +70,17 @@ select throws_ok($$insert into public.demo_workspaces (organization_id, user_id)
 select throws_ok($$delete from public.demo_workspaces$$, '42501', null, 'a guest cannot delete a mapping');
 select throws_ok($$select private.begin_demo_reset('d1000000-0000-0000-0000-0000000000d1')$$, '42501', null, 'a guest cannot call the throttle helper directly');
 reset role;
-select pg_temp.act_as('anon', null);
+select tests.act_as_role('anon', null);
 select throws_ok($$select * from public.demo_workspaces$$, '42501', null, 'anon cannot read the table');
 reset role;
 
 -- ---- even with an accidental grant, the triggers and restrictive policies hold
 grant update on public.demo_workspaces to authenticated;
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001');
-select is(pg_temp.updated_rows('update public.demo_workspaces set last_reset_at = null'), 0::bigint, 'a restrictive policy blocks update even after an accidental grant');
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001');
+select is(tests.rows_changed('update public.demo_workspaces set last_reset_at = null'), 0::bigint, 'a restrictive policy blocks update even after an accidental grant');
 reset role;
 alter table public.demo_workspaces disable row level security;
-select pg_temp.act_as('authenticated', '91000000-0000-0000-0000-000000000001');
+select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001');
 select throws_ok($$update public.demo_workspaces set last_reset_at = null$$, 'OD403', 'This field cannot be changed.', 'the trigger refuses last_reset_at for a client even with RLS off and a grant');
 select throws_ok($$update public.demo_workspaces set user_id = '92000000-0000-0000-0000-000000000002'$$, 'OD403', 'This field cannot be changed.', 'and re-pointing the identity');
 reset role;

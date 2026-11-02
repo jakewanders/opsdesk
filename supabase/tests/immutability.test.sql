@@ -23,12 +23,6 @@ alter table public.organizations disable row level security;
 alter table public.memberships disable row level security;
 alter table public.profiles disable row level security;
 
-create or replace function pg_temp.act_as(r text) returns void language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims', json_build_object('sub', 'c1000000-0000-0000-0000-000000000001', 'role', r)::text, true);
-  execute format('set local role %I', r);
-end $$;
-grant execute on function pg_temp.act_as(text) to public;
 
 -- ---- privileges
 select ok(
@@ -42,7 +36,7 @@ select ok(
 );
 
 -- ---- a normal authenticated session: every protected column on organizations
-select pg_temp.act_as('authenticated');
+select tests.act_as_role('authenticated');
 select throws_ok($$update public.organizations set id = gen_random_uuid() where id = 'd1000000-0000-0000-0000-00000000000d'$$, 'OD403', 'This field cannot be changed.', 'organizations.id is immutable');
 select throws_ok($$update public.organizations set created_at = now() - interval '1 year' where id = 'd1000000-0000-0000-0000-00000000000d'$$, 'OD403', 'This field cannot be changed.', 'organizations.created_at is immutable');
 select throws_ok($$update public.organizations set created_by = 'c1000000-0000-0000-0000-000000000001' where id = 'd1000000-0000-0000-0000-00000000000d'$$, 'OD403', 'This field cannot be changed.', 'organizations.created_by cannot be reassigned');
@@ -79,7 +73,7 @@ select is(
 );
 
 -- ---- trusted paths
-select pg_temp.act_as('service_role');
+select tests.act_as_role('service_role');
 select lives_ok($$update public.organizations set expires_at = now() + interval '2 days' where id = 'd2000000-0000-0000-0000-00000000000d'$$, 'service_role may change expires_at');
 select throws_ok($$update public.organizations set kind = 'real', expires_at = null where id = 'd2000000-0000-0000-0000-00000000000d'$$, 'OD403', 'This field cannot be changed.', 'but not even service_role may change kind');
 select throws_ok($$update public.organizations set created_by = null where id = 'd1000000-0000-0000-0000-00000000000d'$$, 'OD403', 'This field cannot be changed.', 'nor created_by');
@@ -89,7 +83,7 @@ select throws_ok($$select private.set_demo_expiry('d1000000-0000-0000-0000-00000
 select throws_ok($$select private.set_demo_expiry('00000000-0000-0000-0000-000000000000', now() + interval '1 day')$$, 'OD404', 'That demo workspace was not found.', 'or an unknown id');
 select throws_ok($$select private.set_demo_expiry('d2000000-0000-0000-0000-00000000000d', null)$$, 'OD422', 'A demo workspace needs an expiry time.', 'and refuses a null expiry');
 reset role;
-select pg_temp.act_as('authenticated');
+select tests.act_as_role('authenticated');
 select throws_ok($$select private.set_demo_expiry('d2000000-0000-0000-0000-00000000000d', now() + interval '1 year')$$, '42501', null, 'an API user cannot call set_demo_expiry directly');
 reset role;
 

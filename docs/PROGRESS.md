@@ -337,6 +337,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: forged header falls back to first membership, expiry not enforced, memberships read not limited to the caller (the integration test caught it: RLS shows other members' rows of the same org), role hard-coded to owner, null/boundary expiry fail-open.
 - No existing route uses `withOrgApi` yet (customers, tasks and the others arrive in M2; SIT-203 builds the session endpoints), so the header convention is covered by tests, not by a live route.
 
+### SIT-197 — pgTAP harness and cross-tenant negative tests (done)
+
+- `supabase/tests/000-test-helpers.test.sql`: `tests` schema with deterministic identities (A/B orgs with owner, admin, member, viewer; guests g1/g2; expired demo g3; outsider), `create_fixtures()`, `act_as`/`act_as_uid`/`act_as_role`/`act_as_anon`/`act_as_service`/`reset`, one-shot `*_as` helpers, assertion helpers (`rows_changed`, `denied`, `sqlstate_of`, `visible_count`, `explain_text`), and a 31-assertion self-test. `supabase/tests/README.md` documents usage and how to write a new RLS test.
+- **Reuse proved:** `rls-tenancy`, `rls-helpers`, `demo-workspaces`, `bootstrap-demo` and `immutability` were migrated off their private copies of `act_as`/`updated_rows`/`explain_text` onto `tests.*` and still pass.
+- `supabase/tests/tenancy-isolation.test.sql` (47 assertions): every role of org A cannot read, update or delete in org B (organizations, memberships, profiles) and vice versa; guests cannot see each other or a real tenant and a real tenant cannot see a demo; nobody inserts, updates or deletes memberships (not even an owner or a guest joining a tenant); nobody promotes themselves or changes kind, expiry or `created_by`; anon cannot select, insert or delete on any public table; catalog guards (RLS on every table, no anon privileges, no client insert/delete/truncate, every SECURITY DEFINER function pins `search_path`, nothing executable by anon/PUBLIC) and a list that fails when a table is added without being covered.
+- `npm run test:db`: 11 files, 446 tests PASS (before: 394).
+- **Mutation checks (acceptance item), each reverted by `db:reset`:** memberships select opened (isolation 3 failed), any member may update org (30), delete granted on organizations (3), membership writes opened (27), update granted on kind/expires_at (16), anon select on profiles (2), RLS disabled on organizations (41), a definer function without `search_path` (1), profiles select opened (2), guests may edit settings (1), demo mapping select opened (caught by the older files: bootstrap 1, demo-workspaces 14). Every one failed the suite.
+- `npm run check`: all 9 steps passed (unit: 45 files, 751 tests; db: PASS; integration: 8 files, 60 tests).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

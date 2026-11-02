@@ -24,21 +24,12 @@ insert into public.memberships (organization_id, user_id, role) values
 -- Expire the second demo (cannot insert it already expired? it can: the check only requires non-null)
 update public.organizations set expires_at = now() - interval '1 minute' where id = 'b3000000-0000-0000-0000-00000000000b';
 
--- Acting as a signed-in user: role authenticated + JWT claims, like PostgREST does
-create or replace function pg_temp.act_as(uid uuid, anon boolean default false) returns void
-language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims',
-    json_build_object('sub', uid, 'role', 'authenticated', 'is_anonymous', anon)::text, true);
-  set local role authenticated;
-end $$;
-grant execute on function pg_temp.act_as(uuid, boolean) to public;
 
 -- ---- identity helpers
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select is(private.current_user_id(), 'a1000000-0000-0000-0000-000000000001'::uuid, 'current_user_id returns the JWT subject');
 select is(private.is_anonymous(), false, 'a registered user is not anonymous');
-select pg_temp.act_as('a6000000-0000-0000-0000-000000000006', true);
+select tests.act_as_uid('a6000000-0000-0000-0000-000000000006', true);
 select is(private.is_anonymous(), true, 'an anonymous sign-in is anonymous');
 reset role;
 select set_config('request.jwt.claims', '', true);
@@ -48,28 +39,28 @@ select set_config('request.jwt.claims', '{"sub":"a1000000-0000-0000-0000-0000000
 select is(private.is_anonymous(), false, 'a malformed is_anonymous claim counts as not anonymous');
 
 -- ---- membership and role per actor
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select is(private.is_member('b1000000-0000-0000-0000-00000000000b'), true, 'owner is a member');
 select is(private.has_role('b1000000-0000-0000-0000-00000000000b', array['owner']), true, 'owner has role owner');
 select is(private.has_role('b1000000-0000-0000-0000-00000000000b', array['viewer']), false, 'owner does not have role viewer');
 select is(private.can_write('b1000000-0000-0000-0000-00000000000b'), true, 'owner can write a real org');
 
-select pg_temp.act_as('a2000000-0000-0000-0000-000000000002');
+select tests.act_as_uid('a2000000-0000-0000-0000-000000000002');
 select is(private.can_write('b1000000-0000-0000-0000-00000000000b'), true, 'admin can write');
-select pg_temp.act_as('a3000000-0000-0000-0000-000000000003');
+select tests.act_as_uid('a3000000-0000-0000-0000-000000000003');
 select is(private.can_write('b1000000-0000-0000-0000-00000000000b'), true, 'member can write');
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
 select is(private.is_member('b1000000-0000-0000-0000-00000000000b'), true, 'viewer is a member');
 select is(private.can_write('b1000000-0000-0000-0000-00000000000b'), false, 'viewer cannot write');
 
-select pg_temp.act_as('a5000000-0000-0000-0000-000000000005');
+select tests.act_as_uid('a5000000-0000-0000-0000-000000000005');
 select is(private.is_member('b1000000-0000-0000-0000-00000000000b'), false, 'a non-member is not a member');
 select is(private.has_role('b1000000-0000-0000-0000-00000000000b', array['owner','admin','member','viewer']), false, 'a non-member has no role');
 select is(private.can_write('b1000000-0000-0000-0000-00000000000b'), false, 'a non-member cannot write');
 select is(private.is_member('b2000000-0000-0000-0000-00000000000b'), false, 'a member of one org is not a member of another');
 
 -- ---- anonymous guest and demo expiry
-select pg_temp.act_as('a6000000-0000-0000-0000-000000000006', true);
+select tests.act_as_uid('a6000000-0000-0000-0000-000000000006', true);
 select is(private.can_write('b2000000-0000-0000-0000-00000000000b'), true, 'the guest can write their live demo');
 select is(private.org_is_writable('b2000000-0000-0000-0000-00000000000b'), true, 'a live demo is writable');
 select is(private.is_member('b3000000-0000-0000-0000-00000000000b'), true, 'the guest is still a member of an expired demo');
@@ -83,7 +74,7 @@ reset role;
 create policy zz_recursion_probe on public.memberships for select to authenticated
   using (private.is_member(organization_id));
 grant select on public.memberships to authenticated;
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
 select lives_ok($$select count(*) from public.memberships$$, 'a memberships policy using a helper does not recurse');
 select is((select count(*) from public.memberships), 4::bigint, 'the probe policy shows only the caller''s own organization memberships');
 reset role;

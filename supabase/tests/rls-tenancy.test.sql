@@ -31,29 +31,8 @@ insert into public.memberships (organization_id, user_id, role) values
   ('92000000-0000-0000-0000-0000000000d2', '92000000-0000-0000-0000-000000000002', 'owner'),
   ('93000000-0000-0000-0000-0000000000d3', '93000000-0000-0000-0000-000000000003', 'owner');
 
-create or replace function pg_temp.act_as(uid uuid, anonymous boolean default false) returns void language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims',
-    json_build_object('sub', uid, 'role', 'authenticated', 'is_anonymous', anonymous)::text, true);
-  set local role authenticated;
-end $$;
-grant execute on function pg_temp.act_as(uuid, boolean) to public;
-create or replace function pg_temp.act_as_anon() returns void language plpgsql as $$
-begin
-  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
-  set local role anon;
-end $$;
-grant execute on function pg_temp.act_as_anon() to public;
 
 -- Count rows an UPDATE changed (RLS filters rows silently; the count proves it)
-create or replace function pg_temp.updated_rows(stmt text) returns bigint language plpgsql as $$
-declare n bigint;
-begin
-  execute stmt;
-  get diagnostics n = row_count;
-  return n;
-end $$;
-grant execute on function pg_temp.updated_rows(text) to public;
 
 -- =============================================================================================
 -- Catalog tests: the defaults are inverted and every table is protected
@@ -131,7 +110,7 @@ select is(
 -- =============================================================================================
 -- anon (the public key) gets nothing from any tenancy table
 -- =============================================================================================
-select pg_temp.act_as_anon();
+select tests.act_as_anon();
 select throws_ok($$select * from public.organizations$$, '42501', null, 'anon cannot select organizations');
 select throws_ok($$select * from public.memberships$$, '42501', null, 'anon cannot select memberships');
 select throws_ok($$select * from public.profiles$$, '42501', null, 'anon cannot select profiles');
@@ -144,42 +123,42 @@ reset role;
 -- =============================================================================================
 -- organizations: read
 -- =============================================================================================
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Org A')$$, 'A1 sees only org A');
 select is((select count(*) from public.organizations where id = 'b0000000-0000-0000-0000-00000000000b'), 0::bigint, 'A1 cannot read org B by id');
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Org A')$$, 'A4 (viewer) can read their org');
-select pg_temp.act_as('b1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('b1000000-0000-0000-0000-000000000001');
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Org B')$$, 'B1 sees only org B');
-select pg_temp.act_as('91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_uid('91000000-0000-0000-0000-000000000001', true);
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Demo G1')$$, 'G1 sees only their own demo');
-select pg_temp.act_as('92000000-0000-0000-0000-000000000002', true);
+select tests.act_as_uid('92000000-0000-0000-0000-000000000002', true);
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Demo G2')$$, 'G2 sees only their own demo, not G1''s');
-select pg_temp.act_as('93000000-0000-0000-0000-000000000003', true);
+select tests.act_as_uid('93000000-0000-0000-0000-000000000003', true);
 select results_eq($$select name::text from public.organizations order by name$$, $$values ('Demo G3')$$, 'G3 can still read their expired demo');
 reset role;
 
 -- =============================================================================================
 -- organizations: update (owner/admin of a real org only)
 -- =============================================================================================
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Org A (owner)', industry = 'hvac', timezone = 'America/Chicago' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 1::bigint, 'owner can update name, industry and timezone');
-select pg_temp.act_as('a2000000-0000-0000-0000-000000000002');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Org A (admin)' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 1::bigint, 'admin can update settings');
-select pg_temp.act_as('a3000000-0000-0000-0000-000000000003');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Hacked by member' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'member cannot update (0 rows)');
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Hacked by viewer' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'viewer cannot update (0 rows)');
-select pg_temp.act_as('b1000000-0000-0000-0000-000000000001');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Hacked by B1' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'the owner of org B cannot update org A');
-select pg_temp.act_as('91000000-0000-0000-0000-000000000001', true);
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Guest edit' where id = '91000000-0000-0000-0000-0000000000d1'$$), 0::bigint, 'a demo guest cannot edit organization settings, even on their own live demo');
-select is(pg_temp.updated_rows($$update public.organizations set name = 'Guest edit' where id = '92000000-0000-0000-0000-0000000000d2'$$), 0::bigint, 'nor another guest''s demo');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
+select is(tests.rows_changed($$update public.organizations set name = 'Org A (owner)', industry = 'hvac', timezone = 'America/Chicago' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 1::bigint, 'owner can update name, industry and timezone');
+select tests.act_as_uid('a2000000-0000-0000-0000-000000000002');
+select is(tests.rows_changed($$update public.organizations set name = 'Org A (admin)' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 1::bigint, 'admin can update settings');
+select tests.act_as_uid('a3000000-0000-0000-0000-000000000003');
+select is(tests.rows_changed($$update public.organizations set name = 'Hacked by member' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'member cannot update (0 rows)');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
+select is(tests.rows_changed($$update public.organizations set name = 'Hacked by viewer' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'viewer cannot update (0 rows)');
+select tests.act_as_uid('b1000000-0000-0000-0000-000000000001');
+select is(tests.rows_changed($$update public.organizations set name = 'Hacked by B1' where id = 'a0000000-0000-0000-0000-00000000000a'$$), 0::bigint, 'the owner of org B cannot update org A');
+select tests.act_as_uid('91000000-0000-0000-0000-000000000001', true);
+select is(tests.rows_changed($$update public.organizations set name = 'Guest edit' where id = '91000000-0000-0000-0000-0000000000d1'$$), 0::bigint, 'a demo guest cannot edit organization settings, even on their own live demo');
+select is(tests.rows_changed($$update public.organizations set name = 'Guest edit' where id = '92000000-0000-0000-0000-0000000000d2'$$), 0::bigint, 'nor another guest''s demo');
 reset role;
 select results_eq($$select name::text from public.organizations where id in ('a0000000-0000-0000-0000-00000000000a','b0000000-0000-0000-0000-00000000000b','91000000-0000-0000-0000-0000000000d1') order by id$$,
   $$values ('Demo G1'::text), ('Org A (admin)'), ('Org B')$$, 'the data is what the legitimate writers left');
 -- an owner of an expired organization cannot write either
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select throws_ok($$update public.organizations set kind = 'demo' where id = 'a0000000-0000-0000-0000-00000000000a'$$, '42501', null, 'owner cannot write kind (no column grant)');
 select throws_ok($$update public.organizations set expires_at = now() + interval '1 year' where id = 'a0000000-0000-0000-0000-00000000000a'$$, '42501', null, 'owner cannot write expires_at (no column grant)');
 select throws_ok($$update public.organizations set created_by = 'a1000000-0000-0000-0000-000000000001' where id = 'a0000000-0000-0000-0000-00000000000a'$$, '42501', null, 'owner cannot write created_by');
@@ -193,16 +172,16 @@ reset role;
 -- =============================================================================================
 -- memberships: read-only
 -- =============================================================================================
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
 select is((select count(*) from public.memberships), 4::bigint, 'a viewer sees all four memberships of their own org');
 select is((select count(*) from public.memberships where organization_id = 'b0000000-0000-0000-0000-00000000000b'), 0::bigint, 'and none of org B');
-select pg_temp.act_as('91000000-0000-0000-0000-000000000001', true);
+select tests.act_as_uid('91000000-0000-0000-0000-000000000001', true);
 select is((select count(*) from public.memberships), 1::bigint, 'G1 sees only their own membership');
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select throws_ok($$insert into public.memberships (organization_id, user_id, role) values ('a0000000-0000-0000-0000-00000000000a', 'b1000000-0000-0000-0000-000000000001', 'owner')$$, '42501', null, 'an owner cannot insert memberships');
 select throws_ok($$update public.memberships set role = 'owner' where user_id = 'a4000000-0000-0000-0000-000000000004'$$, '42501', null, 'an owner cannot change a role directly');
 select throws_ok($$delete from public.memberships where user_id = 'a4000000-0000-0000-0000-000000000004'$$, '42501', null, 'an owner cannot remove a member directly');
-select pg_temp.act_as('a4000000-0000-0000-0000-000000000004');
+select tests.act_as_uid('a4000000-0000-0000-0000-000000000004');
 select throws_ok($$update public.memberships set role = 'owner' where user_id = 'a4000000-0000-0000-0000-000000000004'$$, '42501', null, 'a viewer cannot promote themselves');
 select throws_ok($$insert into public.memberships (organization_id, user_id, role) values ('b0000000-0000-0000-0000-00000000000b', 'a4000000-0000-0000-0000-000000000004', 'owner')$$, '42501', null, 'a viewer cannot add themselves to org B');
 reset role;
@@ -211,20 +190,20 @@ select is((select count(*) from public.memberships), 8::bigint, 'and no membersh
 
 -- Even if a future change granted write access, the restrictive policies still deny it
 grant insert, update, delete on public.memberships to authenticated;
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select throws_ok($$insert into public.memberships (organization_id, user_id, role) values ('a0000000-0000-0000-0000-00000000000a', 'b1000000-0000-0000-0000-000000000001', 'owner')$$, '42501', null, 'restrictive policy still blocks insert after an accidental grant');
-select is(pg_temp.updated_rows($$update public.memberships set role = 'owner' where user_id = 'a4000000-0000-0000-0000-000000000004'$$), 0::bigint, 'restrictive policy still blocks update after an accidental grant');
-select is(pg_temp.updated_rows($$delete from public.memberships where user_id = 'a4000000-0000-0000-0000-000000000004'$$), 0::bigint, 'restrictive policy still blocks delete after an accidental grant');
+select is(tests.rows_changed($$update public.memberships set role = 'owner' where user_id = 'a4000000-0000-0000-0000-000000000004'$$), 0::bigint, 'restrictive policy still blocks update after an accidental grant');
+select is(tests.rows_changed($$delete from public.memberships where user_id = 'a4000000-0000-0000-0000-000000000004'$$), 0::bigint, 'restrictive policy still blocks delete after an accidental grant');
 reset role;
 revoke insert, update, delete on public.memberships from authenticated;
 
 -- =============================================================================================
 -- profiles: own row only
 -- =============================================================================================
-select pg_temp.act_as('a1000000-0000-0000-0000-000000000001');
+select tests.act_as_uid('a1000000-0000-0000-0000-000000000001');
 select results_eq($$select id from public.profiles$$, $$values ('a1000000-0000-0000-0000-000000000001'::uuid)$$, 'a user reads only their own profile');
-select is(pg_temp.updated_rows($$update public.profiles set display_name = 'Alice', avatar_url = 'https://example.com/a.png' where id = 'a1000000-0000-0000-0000-000000000001'$$), 1::bigint, 'and updates their display name and avatar');
-select is(pg_temp.updated_rows($$update public.profiles set display_name = 'Pwned' where id = 'a2000000-0000-0000-0000-000000000002'$$), 0::bigint, 'but not someone else''s profile');
+select is(tests.rows_changed($$update public.profiles set display_name = 'Alice', avatar_url = 'https://example.com/a.png' where id = 'a1000000-0000-0000-0000-000000000001'$$), 1::bigint, 'and updates their display name and avatar');
+select is(tests.rows_changed($$update public.profiles set display_name = 'Pwned' where id = 'a2000000-0000-0000-0000-000000000002'$$), 0::bigint, 'but not someone else''s profile');
 select throws_ok($$insert into public.profiles (id, display_name) values (gen_random_uuid(), 'x')$$, '42501', null, 'cannot insert profiles');
 select throws_ok($$delete from public.profiles where id = 'a1000000-0000-0000-0000-000000000001'$$, '42501', null, 'cannot delete profiles');
 reset role;
