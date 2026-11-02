@@ -477,6 +477,7 @@ export type Database = {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;
       };
+      dashboard_summary: { Args: { p_org_id: string }; Returns: Json };
       health_ping: { Args: Record<PropertyKey, never>; Returns: boolean };
       idempotency_abandon: { Args: { p_key: string; p_route: string }; Returns: boolean };
       idempotency_begin: {

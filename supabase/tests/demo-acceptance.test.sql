@@ -10,7 +10,7 @@ select is((select string_agg(p.oid::regprocedure::text, ', ' order by p.oid::reg
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public'
               and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))),
-  'bootstrap_demo_workspace(), create_real_organization(text,text,text), health_ping(), idempotency_abandon(text,text), idempotency_begin(text,text,text), idempotency_complete(text,text,integer,jsonb), list_workspace_members(uuid), move_opportunity_stage(uuid,text,text,timestamp with time zone), reset_demo_workspace(uuid)',
+  'bootstrap_demo_workspace(), create_real_organization(text,text,text), dashboard_summary(uuid), health_ping(), idempotency_abandon(text,text), idempotency_begin(text,text,text), idempotency_complete(text,text,integer,jsonb), list_workspace_members(uuid), move_opportunity_stage(uuid,text,text,timestamp with time zone), reset_demo_workspace(uuid)',
   'the callable surface is exactly the reviewed list (a new public function must be reviewed and added here)');
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname like 'cleanup\_%' and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))), 0::bigint,

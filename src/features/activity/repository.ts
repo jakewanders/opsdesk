@@ -80,3 +80,34 @@ export async function listEntityActivity(
     ...readChanges(row.changes),
   }));
 }
+
+export type RecentActivityDto = ActivityEventDto & { entityType: ActivityEntity; entityId: string };
+
+/**
+ * The newest events of a whole organization (the dashboard's "recent activity"), read with the caller's own session. Newest
+ * first; the id breaks ties so the order is stable.
+ */
+export async function listRecentActivity(
+  supabase: Client,
+  orgId: string,
+  limit = 10,
+): Promise<RecentActivityDto[]> {
+  const { data, error } = await supabase
+    .from("activity_events")
+    .select("id, entity_type, entity_id, action, summary, actor_user_id, created_at, changes")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data ?? []) as Array<Row & { entity_type: string; entity_id: string }>).map((row) => ({
+    id: row.id,
+    entityType: row.entity_type as ActivityEntity,
+    entityId: row.entity_id,
+    action: row.action,
+    summary: row.summary,
+    actorUserId: row.actor_user_id,
+    createdAt: row.created_at,
+    ...readChanges(row.changes),
+  }));
+}

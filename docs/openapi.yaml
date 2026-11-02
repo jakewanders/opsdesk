@@ -1136,6 +1136,105 @@ paths:
           description: "The workspace is not one the caller belongs to"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /dashboard:
+    get:
+      summary: The active workspace's current-state KPIs and its 10 newest activity events
+      description: >
+        Every number is a count or sum of stored, unarchived records as of `generatedAt` (`basis` is `current_state`):
+        no trends, no estimates. Computed by the database with the caller's own session, so another workspace's rows can
+        never be counted. `overdueTasks` and `tasksDueNext7Days` use the organization's local date (`today`, in
+        `timeZone`): a task due today is not overdue, and "next 7 days" runs from today through today + 7, both included.
+        Done tasks are excluded. `weightedPipelineCents` rounds each open deal half up before summing. Any member,
+        viewers included, can read it.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - basis
+                      - generatedAt
+                      - today
+                      - timeZone
+                      - activeCustomers
+                      - openOpportunities
+                      - pipelineCents
+                      - weightedPipelineCents
+                      - overdueTasks
+                      - tasksDueNext7Days
+                      - opportunitiesByStage
+                      - recentActivity
+                    properties:
+                      basis: { type: string, enum: [current_state] }
+                      generatedAt: { type: string, format: date-time }
+                      today:
+                        { type: string, format: date, description: "The organization's local date" }
+                      timeZone: { type: string, description: IANA zone of the organization }
+                      activeCustomers: { type: integer }
+                      openOpportunities: { type: integer }
+                      pipelineCents:
+                        {
+                          type: integer,
+                          description: "Sum of amounts in new, qualified, proposal and negotiation",
+                        }
+                      weightedPipelineCents: { type: integer }
+                      overdueTasks: { type: integer }
+                      tasksDueNext7Days: { type: integer }
+                      opportunitiesByStage:
+                        type: object
+                        description: Every stage is present, empty ones as zero
+                        additionalProperties:
+                          type: object
+                          required: [count, amountCents]
+                          properties:
+                            count: { type: integer }
+                            amountCents: { type: integer }
+                      recentActivity:
+                        type: array
+                        maxItems: 10
+                        items:
+                          type: object
+                          required:
+                            [
+                              id,
+                              entityType,
+                              entityId,
+                              action,
+                              summary,
+                              actorUserId,
+                              createdAt,
+                              changes,
+                              contentChanged,
+                            ]
+                          properties:
+                            id: { type: string, format: uuid }
+                            entityType: { type: string, enum: [customer, opportunity, task, quote] }
+                            entityId: { type: string, format: uuid }
+                            action: { type: string }
+                            summary: { type: string }
+                            actorUserId: { type: string, format: uuid, nullable: true }
+                            createdAt: { type: string, format: date-time }
+                            changes: { type: array, items: { type: object } }
+                            contentChanged: { type: array, items: { type: string } }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "The workspace is not one the caller belongs to"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
 components:
   parameters:
     IdempotencyKey:
