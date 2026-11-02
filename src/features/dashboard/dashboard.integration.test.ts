@@ -207,6 +207,80 @@ describe("GET /api/v1/dashboard [SIT-244]", () => {
   });
 });
 
+describe("exact KPI values for a seeded workspace [SIT-259]", () => {
+  it("a guest's dashboard equals independent SQL over the stored rows (every card, the rounding rule, both task windows, the stage table)", async () => {
+    const org = psql(
+      `select organization_id from public.memberships where user_id = '${guest.id}' limit 1`,
+    );
+    const one = (sql: string) => Number(psql(sql));
+    const tz = psql(`select timezone from public.organizations where id = '${org}'`);
+    const today = psql(`select (now() at time zone '${tz}')::date`);
+    const data = await (
+      await server.request("/api/v1/dashboard", guest)
+    )
+      .json()
+      .then((b) => b.data);
+    expect(data.activeCustomers).toBe(
+      one(
+        `select count(*) from public.customers where organization_id = '${org}' and archived_at is null`,
+      ),
+    );
+    const open = `organization_id = '${org}' and archived_at is null and stage in ('new','qualified','proposal','negotiation')`;
+    expect(data.openOpportunities).toBe(
+      one(`select count(*) from public.opportunities where ${open}`),
+    );
+    expect(data.pipelineCents).toBe(
+      one(`select coalesce(sum(amount_cents),0) from public.opportunities where ${open}`),
+    );
+    // half up per row, written independently of the function under test (numeric arithmetic, not integer division)
+    expect(data.weightedPipelineCents).toBe(
+      one(
+        `select coalesce(sum(floor(amount_cents * probability_percent / 100.0 + 0.5)),0) from public.opportunities where ${open}`,
+      ),
+    );
+    expect(data.overdueTasks).toBe(
+      one(
+        `select count(*) from public.tasks where organization_id = '${org}' and archived_at is null and status <> 'done' and due_date < date '${today}'`,
+      ),
+    );
+    expect(data.tasksDueNext7Days).toBe(
+      one(
+        `select count(*) from public.tasks where organization_id = '${org}' and archived_at is null and status <> 'done' and due_date >= date '${today}' and due_date <= date '${today}' + 7`,
+      ),
+    );
+    for (const stage of Object.keys(data.opportunitiesByStage)) {
+      expect(data.opportunitiesByStage[stage].count, stage).toBe(
+        one(
+          `select count(*) from public.opportunities where organization_id = '${org}' and archived_at is null and stage = '${stage}'`,
+        ),
+      );
+      expect(data.opportunitiesByStage[stage].amountCents, stage).toBe(
+        one(
+          `select coalesce(sum(amount_cents),0) from public.opportunities where organization_id = '${org}' and archived_at is null and stage = '${stage}'`,
+        ),
+      );
+    }
+    // the fixture itself is the 18 / 10 / 24 seed, so the cards are not trivially zero
+    expect(data.activeCustomers).toBe(15);
+    expect(data.pipelineCents).toBeGreaterThan(0);
+  });
+
+  it("a record created in another workspace changes nothing here, and its numbers are not found in this response", async () => {
+    const before =
+      JSON.stringify((await dash()).opportunitiesByStage) + (await dash()).activeCustomers;
+    await server.request("/api/v1/customers", other, {
+      json: { displayName: "Isolation probe" },
+      headers: hdr(orgB),
+    });
+    const after =
+      JSON.stringify((await dash()).opportunitiesByStage) + (await dash()).activeCustomers;
+    expect(after).toBe(before);
+    const mine = await dash();
+    expect(JSON.stringify(mine)).not.toContain("Isolation probe");
+    expect((await dash(other, orgB)).activeCustomers).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("SQL and TypeScript agree [SIT-244]", () => {
   const ZONES = [
     "UTC",

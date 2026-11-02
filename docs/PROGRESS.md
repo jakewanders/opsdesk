@@ -753,6 +753,17 @@ Entries per issue:
 
 In progress. Entries are added per issue.
 
+### SIT-259 — Dashboard tests: aggregate correctness, KPI propagation E2E, tenant isolation (done)
+
+- **What already existed from SIT-244/255/256 and is kept:** the pgTAP aggregate and time-zone tests, the nine-zone parity with the TypeScript domain modules, tenant isolation, the guest first-dashboard check, and the stage chart / table / recent-activity browser test.
+- **Integration added** (`dashboard.integration.test.ts`, now 11): a guest's dashboard compared with independent SQL over the stored rows for every card (active customers, open deals, pipeline, weighted pipeline using numeric `floor(x + 0.5)` rather than the function's integer arithmetic, overdue and next-7-days windows on the organization's local date, and count and amount for each of the six stages), and an isolation test (a customer created in another workspace changes nothing and its name is not in this response).
+- **Playwright added** (`e2e/dashboard-propagation.spec.ts`, 2 tests, each in a cold browser context with a fresh demo session; every expected number is computed from the deal fetched at the start with the domain module, not a stored snapshot):
+  1. a 3-cent Proposal deal is created (weighted 1.5 cents must round half UP to 2); a seeded Proposal deal is moved to Negotiation: pipeline unchanged, weighted pipeline changes by `weighted(amount, 75) - weighted(amount, current)`, cards show the formatted values; then Won: pipeline drops by the deal's amount, weighted by its weighted amount, open count by one, Won up by one and Proposal down by one in the stage numbers, the chart's Won label shows the API count, and the two moves are the newest two events in Recent activity, newest first;
+  2. archiving a customer through the confirmation dialog lowers Active customers by one (API and card), restoring returns it; completing an overdue task from the dashboard lowers Overdue by one, removes it from the widget and from `/tasks?overdue=true`; the three newest Recent activity items are, in order, the completed task, the restored customer and the archived customer.
+- `npm run check`: all 10 steps passed (unit 1595 / 106 files, pgTAP PASS, integration 431 / 40 files, Playwright 10 / 10).
+- **Mutation checks:** replacing the half-up rounding with truncation in the database function failed the parity integration test and, after adding the 3-cent probe, the propagation test (before the probe, the exact-multiple seed amounts did not catch it, so the probe was added); restored.
+- Not done: nothing from the issue.
+
 ### SIT-257 — Reusable activity timeline and the /app/activity page (done)
 
 - **One timeline** (`src/features/activity/components/activity-timeline.tsx`): a semantic `<ol>`; each item shows the action as icon + word, the record kind, the plain-text summary (a link to the record when it exists), "By <actor>", relative time in a `<time datetime>` with the full local timestamp as its title and, for screen readers, in parentheses (beyond 30 days the date itself is shown), and the changed fields: whitelisted fields as old to new in plain words (money as dollars, probability as a percent, `in_progress` as "in progress"), free-text fields by NAME only ("notes was edited"). Everything is rendered as text (a test feeds markup and finds none). Used by the activity page, the dashboard's Recent activity widget and the customer page's Activity tab (the minimal list there was replaced).
