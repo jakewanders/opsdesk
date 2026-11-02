@@ -346,6 +346,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - **Mutation checks (acceptance item), each reverted by `db:reset`:** memberships select opened (isolation 3 failed), any member may update org (30), delete granted on organizations (3), membership writes opened (27), update granted on kind/expires_at (16), anon select on profiles (2), RLS disabled on organizations (41), a definer function without `search_path` (1), profiles select opened (2), guests may edit settings (1), demo mapping select opened (caught by the older files: bootstrap 1, demo-workspaces 14). Every one failed the suite.
 - `npm run check`: all 9 steps passed (unit: 45 files, 751 tests; db: PASS; integration: 8 files, 60 tests).
 
+### SIT-198 — create_real_organization RPC (done)
+
+- Migration `20261101000900_create_real_organization.sql`: `public.create_real_organization(org_name, org_industry, org_timezone)` (definer, pinned `search_path`, EXECUTE for authenticated only, no owner/org/user id parameters), per-user limit of 5 via `private.app_limits` (renamed from `demo_limits`), per-user advisory lock. Security notes in `docs/SECURITY.md`, limit rationale in `docs/DECISIONS.md`, DB types regenerated.
+- `supabase/tests/create-real-org.test.sql` (56 assertions, uses the shared `tests.*` helpers): signature has exactly name/industry/timezone, anon key and guests and forged claims and no identity all rejected with nothing created, success (one org, `real`, no expiry, USD, `created_by` = caller, caller is the only member as owner, visible to the creator only), defaults, validation (1/81 characters, blank, null, 80 vs 81 emoji, markup, control characters, bare `<` allowed, industry, unknown time zone, `EST`, `posix/UTC`), limit of 5 then `OD429`, per-user not global, raising the limit, **atomic rollback when the membership insert is forced to fail**, advisory lock held.
+- `src/lib/demo/create-org.integration.test.ts` (5, real sessions via PostgREST): creation visible only to the creator, guest rejected, validation `OD422` and identity arguments impossible, **12 simultaneous creations by one user produce exactly 5 organizations (7 `OD429`)**, a call queues behind another session's lock.
+- `npm run test:db`: 12 files, 502 tests PASS. `npm run check`: all 9 steps passed (unit 751, integration 65).
+- Mutations caught and reverted: no stored-user check (2 pgTAP), no limit (2 + 1 integration), no advisory lock (1 + 2 integration), name length unchecked (5 + 1), markup allowed (2), time zone unchecked (3 + 1), owner role changed to admin (2 + 3), `created_by` left null (6 + 1).
+- Found while writing: `normalize(x, nfc)` is SQL syntax and cannot be schema-qualified.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

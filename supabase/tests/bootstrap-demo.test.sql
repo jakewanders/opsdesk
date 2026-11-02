@@ -116,7 +116,7 @@ select is((select count(*) from public.organizations where created_by = '9100000
 select is((select count(*) from public.organizations where created_by = '92000000-0000-0000-0000-000000000002'), 1::bigint, 'and G2''s workspace was untouched by G1''s cleanup');
 
 -- ---- capacity ceiling
-update private.demo_limits set value = 2 where key = 'max_active_demos';
+update private.app_limits set value = 2 where key = 'max_active_demos';
 select tests.act_as_role('authenticated', '93000000-0000-0000-0000-000000000003', true);
 select throws_ok($$select public.bootstrap_demo_workspace()$$, 'OD429', 'The demo is very busy right now. Please try again in a few minutes.', 'at the ceiling a new guest is refused with a 429-mapped error');
 reset role;
@@ -124,11 +124,11 @@ select is((select count(*) from public.organizations where created_by = '9300000
 select tests.act_as_role('authenticated', '91000000-0000-0000-0000-000000000001', true);
 select is((select (public.bootstrap_demo_workspace()->>'created')::boolean), false, 'but a guest who already has a live demo still gets it at capacity');
 reset role;
-update private.demo_limits set value = 3 where key = 'max_active_demos';
+update private.app_limits set value = 3 where key = 'max_active_demos';
 select tests.act_as_role('authenticated', '93000000-0000-0000-0000-000000000003', true);
 select is((select (public.bootstrap_demo_workspace()->>'created')::boolean), true, 'raising the ceiling lets them in');
 reset role;
-select ok(not has_table_privilege('authenticated', 'private.demo_limits', 'select') and not has_table_privilege('anon', 'private.demo_limits', 'select'), 'the limits table has no client privileges');
+select ok(not has_table_privilege('authenticated', 'private.app_limits', 'select') and not has_table_privilege('anon', 'private.app_limits', 'select'), 'the limits table has no client privileges');
 select ok(not has_function_privilege('authenticated', 'private.demo_limit(text)', 'execute'), 'and the limit reader is not callable by clients');
 
 select * from finish();

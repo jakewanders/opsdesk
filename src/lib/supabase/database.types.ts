@@ -169,6 +169,10 @@ export type Database = {
     };
     Functions: {
       bootstrap_demo_workspace: { Args: Record<PropertyKey, never>; Returns: Json };
+      create_real_organization: {
+        Args: { org_industry?: string; org_name: string; org_timezone?: string };
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;
