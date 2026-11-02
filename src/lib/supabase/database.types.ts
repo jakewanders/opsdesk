@@ -189,6 +189,54 @@ export type Database = {
           },
         ];
       };
+      invitations: {
+        Row: {
+          accepted_at: string | null;
+          created_at: string;
+          email_normalized: string;
+          expires_at: string;
+          id: string;
+          invited_by: string | null;
+          organization_id: string;
+          revoked_at: string | null;
+          role: string;
+          token_hash: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          accepted_at?: string | null;
+          created_at?: string;
+          email_normalized: string;
+          expires_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          organization_id: string;
+          revoked_at?: string | null;
+          role: string;
+          token_hash: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          created_at?: string;
+          email_normalized?: string;
+          expires_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          organization_id?: string;
+          revoked_at?: string | null;
+          role?: string;
+          token_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       memberships: {
         Row: {
           joined_at: string;

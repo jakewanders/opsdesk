@@ -31,9 +31,9 @@ select is((select string_agg(c.relname, ', ') from pg_class c join pg_namespace 
 select is((select string_agg(c.relname, ', ' order by c.relname) from pg_class c join pg_namespace n on n.oid = c.relnamespace
             where n.nspname = 'public' and c.relkind = 'r'
               and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'organization_id' and not a.attisdropped)
-              and c.relname not in ('memberships', 'demo_workspaces')
+              and c.relname not in ('memberships', 'demo_workspaces', 'invitations')
               and not exists (select 1 from pg_trigger t where t.tgrelid = c.oid and t.tgname like '%\_demo\_cap')), null,
-  'every tenant entity table carries a demo cap trigger (memberships and demo_workspaces are bounded by their own rules)');
+  'every tenant entity table carries a demo cap trigger (memberships and demo_workspaces are bounded by their own rules; invitations exist only in real workspaces, which have no caps)');
 
 -- ---- guest A and guest B each have a demo (fixtures g1, g2); A tries everything against B
 select tests.act_as('g1');
