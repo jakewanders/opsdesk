@@ -1,18 +1,16 @@
 "use client";
 
-import { Check, ListTodo, RotateCcw, Search } from "lucide-react";
+import { Check, ListTodo, Plus, RotateCcw, Search } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorAlert } from "@/components/shared/error-alert";
 import { TableSkeleton } from "@/components/shared/skeletons";
-import { notify } from "@/components/shared/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { serializeUrlState } from "@/lib/api-client/url-state";
-import { useApiMutation } from "@/lib/api-client/use-api-mutation";
 import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-state";
 import type { ApiMeta } from "@/lib/api/types";
 import type { MemberDto } from "@/features/members/service";
@@ -27,6 +25,8 @@ import {
   type TaskListState,
 } from "../list-state";
 import { TASK_PRIORITIES, TASK_STATUSES, type TaskDto } from "../schema";
+import { useCompleteTask } from "../use-complete-task";
+import { TaskDrawer, type DrawerState } from "./task-drawer";
 import { DueDate, PRIORITY_LABELS, STATUS_LABELS, TaskPriority, TaskStatus } from "./task-labels";
 
 type Initial = { items: TaskDto[]; meta: ApiMeta } | null;
@@ -77,30 +77,8 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
         ? "You"
         : (members.data?.data.find((m) => m.userId === id)?.displayName ?? "Teammate");
 
-  const toggle = useApiMutation<TaskDto, { task: TaskDto; completed: boolean }>({
-    mutationFn: ({ task, completed }, { call }) =>
-      call(`/tasks/${task.id}/complete`, {
-        method: "POST",
-        json: { completed, expectedUpdatedAt: task.updatedAt },
-      }),
-    invalidate: [["tasks"], ["dashboard"]],
-  });
-  const flip = async (task: TaskDto) => {
-    const completed = task.status !== "done";
-    try {
-      await toggle.mutateAsync({ task, completed });
-      notify.success(completed ? "Task completed" : "Task reopened", task.title);
-    } catch (error) {
-      notify.error(
-        completed ? "The task was not completed" : "The task was not reopened",
-        isClientApiError(error) && error.isStaleEdit
-          ? "Someone else changed it. The list has been refreshed."
-          : isClientApiError(error)
-            ? error.message
-            : "Something went wrong. Try again.",
-      );
-    }
-  };
+  const complete = useCompleteTask(timeZone);
+  const [drawer, setDrawer] = useState<DrawerState | null>(null);
 
   const items = useMemo(() => query.data?.data ?? [], [query.data]);
   const meta = query.data?.meta;
@@ -132,6 +110,12 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
+        {canWrite ? (
+          <Button type="button" onClick={() => setDrawer({ mode: "create" })}>
+            <Plus aria-hidden="true" />
+            Add task
+          </Button>
+        ) : null}
       </header>
 
       <form
@@ -397,8 +381,10 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                               type="button"
                               variant="outline"
                               size="icon-sm"
-                              disabled={toggle.isPending}
-                              onClick={() => void flip(task)}
+                              disabled={complete.isPending}
+                              onClick={() =>
+                                complete.mutate({ task, completed: task.status !== "done" })
+                              }
                               aria-label={
                                 task.status === "done"
                                   ? `Reopen ${task.title}`
@@ -414,11 +400,28 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                           </td>
                         ) : null}
                         <td className="px-3 py-2 align-middle">
-                          <span
-                            className={cn("font-medium", task.status === "done" && "line-through")}
-                          >
-                            {task.title}
-                          </span>
+                          {canWrite ? (
+                            <button
+                              type="button"
+                              onClick={() => setDrawer({ mode: "edit", task })}
+                              className={cn(
+                                "rounded-sm text-left font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring",
+                                task.status === "done" && "line-through",
+                              )}
+                            >
+                              {task.title}
+                              <span className="sr-only"> (edit)</span>
+                            </button>
+                          ) : (
+                            <span
+                              className={cn(
+                                "font-medium",
+                                task.status === "done" && "line-through",
+                              )}
+                            >
+                              {task.title}
+                            </span>
+                          )}
                           {task.archivedAt ? (
                             <span className="ml-2 text-xs">(archived)</span>
                           ) : null}
@@ -515,6 +518,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
           </nav>
         </>
       ) : null}
+      <TaskDrawer state={drawer} onClose={() => setDrawer(null)} currentUserId={currentUserId} />
     </div>
   );
 }

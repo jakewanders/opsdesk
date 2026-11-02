@@ -76,4 +76,59 @@ describe("/app/tasks", () => {
     expect(v).toContain("Real workspace task");
     expect(v).not.toContain("Mark Real workspace task complete");
   });
+
+  it("the drawer's requests round-trip a plain due date in a far-away zone: 2026-11-05 stays 2026-11-05 through create, edit, list and database", async () => {
+    const res = await server.request("/api/v1/organizations", owner, {
+      json: { name: "Far Zone Co" },
+    });
+    const zoneOrg = (await res.json()).data.id as string;
+    psql(`update public.organizations set timezone = 'Pacific/Kiritimati' where id = '${zoneOrg}'`);
+    const h = { "X-Organization-Id": zoneOrg };
+    const created = await server.request("/api/v1/tasks", owner, {
+      json: {
+        title: "Date only",
+        description: null,
+        status: "todo",
+        priority: "high",
+        dueDate: "2026-11-05",
+        assignedTo: null,
+        customerId: null,
+        opportunityId: null,
+      },
+      headers: h,
+    });
+    expect(created.status).toBe(201);
+    const t = (await created.json()).data;
+    expect(t.dueDate).toBe("2026-11-05");
+    expect(psql(`select due_date::text from public.tasks where id = '${t.id}'`)).toBe("2026-11-05");
+    const patched = await server.request(`/api/v1/tasks/${t.id}`, owner, {
+      method: "PATCH",
+      json: {
+        title: "Date only",
+        description: "Edited",
+        status: "todo",
+        priority: "high",
+        dueDate: "2026-11-05",
+        assignedTo: null,
+        customerId: null,
+        opportunityId: null,
+        expectedUpdatedAt: t.updatedAt,
+      },
+      headers: h,
+    });
+    expect(patched.status).toBe(200);
+    expect((await patched.json()).data.dueDate).toBe("2026-11-05");
+    const html = await page("/app/tasks", owner);
+    expect(html).toBeTruthy();
+    const list = await (await server.request("/api/v1/tasks", owner, { headers: h })).json();
+    expect(list.data.find((x: { id: string }) => x.id === t.id).dueDate).toBe("2026-11-05");
+    const archived = await server.request(`/api/v1/tasks/${t.id}`, owner, {
+      method: "DELETE",
+      headers: h,
+    });
+    expect(archived.status).toBe(204);
+    expect(
+      (await (await server.request("/api/v1/tasks", owner, { headers: h })).json()).meta.total,
+    ).toBe(0);
+  });
 });
