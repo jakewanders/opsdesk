@@ -9,6 +9,8 @@ import { DashboardView } from "./dashboard-view";
 
 const notify = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }));
 vi.mock("@/components/shared/toast", () => ({ notify }));
+// the real chart needs layout jsdom cannot do; it is covered in stage-chart.test.tsx and in the browser (e2e)
+vi.mock("./stage-chart-impl", () => ({ default: () => <p>chart drawn</p> }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/app",
@@ -105,6 +107,12 @@ const view = (over: Partial<React.ComponentProps<typeof DashboardView>> = {}) =>
   );
 
 beforeEach(() => {
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: false,
+    media: q,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
   dash = dashboard();
   overdueTasks = [task("t1", "Send revised quote", "2026-10-30", "overdue")];
   soonTasks = [
@@ -124,12 +132,12 @@ describe("DashboardView [SIT-255]", () => {
     const links = await screen.findAllByRole("link", { name: /Active customers/ });
     expect(links[0]).toHaveAttribute("href", "/app/customers");
     const expected: Array<[RegExp, string, string]> = [
-      [/^Active customers: 15\./, "/app/customers", "15"],
-      [/^Open opportunities: 7\./, "/app/opportunities", "7"],
-      [/^Pipeline: \$1,234,568\./, "/app/opportunities?view=list", "$1,234,568"],
-      [/^Weighted pipeline: \$610,001\./, "/app/opportunities", "$610,001"],
-      [/^Overdue tasks: 3, needs attention\. View overdue tasks/, "/app/tasks?overdue=true", "3"],
-      [/^Due in the next 7 days: 9\./, "/app/tasks?soon=true", "9"],
+      [/^Active customers\s*15/, "/app/customers", "15"],
+      [/^Open opportunities\s*7/, "/app/opportunities", "7"],
+      [/^Pipeline\s*\$1,234,568/, "/app/opportunities?view=list", "$1,234,568"],
+      [/^Weighted pipeline\s*\$610,001/, "/app/opportunities", "$610,001"],
+      [/^Overdue tasks\s*3\s*needs attention\s*View overdue tasks/, "/app/tasks?overdue=true", "3"],
+      [/^Due in the next 7 days\s*9/, "/app/tasks?soon=true", "9"],
     ];
     for (const [name, href] of expected) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
@@ -141,7 +149,7 @@ describe("DashboardView [SIT-255]", () => {
     );
     // overdue is flagged in words, not colour alone
     expect(
-      screen.getByRole("link", { name: /Overdue tasks: 3, needs attention/ }),
+      screen.getByRole("link", { name: /Overdue tasks\s*3\s*needs attention/ }),
     ).toBeInTheDocument();
     await expectNoA11yViolations(container);
   });
@@ -198,7 +206,7 @@ describe("DashboardView [SIT-255]", () => {
     });
     await waitFor(() => expect(screen.queryByText("Send revised quote")).toBeNull());
     await waitFor(() =>
-      expect(screen.getByRole("link", { name: /^Overdue tasks: 2/ })).toBeInTheDocument(),
+      expect(screen.getByRole("link", { name: /^Overdue tasks\s*2/ })).toBeInTheDocument(),
     );
   });
 

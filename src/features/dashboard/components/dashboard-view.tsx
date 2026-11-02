@@ -21,6 +21,8 @@ import { formatUsd } from "@/lib/money/format";
 import type { DashboardDto } from "../service";
 import { DashboardTasks } from "./dashboard-tasks";
 import { KpiCard } from "./kpi-card";
+import { RecentActivity } from "./recent-activity";
+import { StageChart } from "./stage-chart";
 
 type Props = {
   canWrite: boolean;
@@ -180,6 +182,14 @@ export function DashboardView({ canWrite, currentUserId, timeZone }: Props) {
             />
           </section>
           <DashboardTasks today={data.today} timeZone={data.timeZone} canWrite={canWrite} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <StageChart byStage={data.opportunitiesByStage} />
+            <RecentActivity
+              events={data.recentActivity}
+              currentUserId={currentUserId}
+              timeZone={data.timeZone}
+            />
+          </div>
         </>
       ) : null}
 

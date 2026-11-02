@@ -10,13 +10,14 @@ test.afterEach(async ({ context }) => trackBrowserUser(context));
 test.afterAll(cleanUp);
 
 const kpi = (page: Page, label: string) =>
-  page.getByRole("link", { name: new RegExp(`^${label}:`) });
+  page
+    .getByRole("region", { name: "Key numbers" })
+    .getByRole("link", { name: new RegExp(`^${label}\\s`) });
 const valueOf = async (page: Page, label: string) =>
-  ((await kpi(page, label).getAttribute("aria-label")) ?? "")
-    .split(":")[1]
-    .split(". ")[0]
-    .replace(", needs attention", "")
-    .trim();
+  (await kpi(page, label).innerText())
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)[1];
 const apiDashboard = async (page: Page) =>
   (await (await page.request.get("/api/v1/dashboard")).json()).data;
 
@@ -50,9 +51,8 @@ test("a guest's first dashboard shows meaningful numbers, a stage move and a com
   const firstTask = overdueList.getByRole("listitem").first();
   const title = await firstTask.locator("span.font-medium").innerText();
   await firstTask.getByRole("button", { name: /complete/ }).click();
-  await expect(kpi(page, "Overdue tasks")).toHaveAttribute(
-    "aria-label",
-    new RegExp(`^Overdue tasks: ${overdueBefore - 1}`),
+  await expect(kpi(page, "Overdue tasks")).toHaveAccessibleName(
+    new RegExp(`^Overdue tasks\\s*${overdueBefore - 1}`),
   );
   await expect(overdueList.getByText(title, { exact: true })).toHaveCount(0);
 
@@ -77,15 +77,13 @@ test("a guest's first dashboard shows meaningful numbers, a stage move and a com
   // back on the dashboard, a reload shows the new numbers (never the stale ones)
   await page.goto("/app");
   const fresh = await apiDashboard(page);
-  await expect(kpi(page, "Overdue tasks")).toHaveAttribute(
-    "aria-label",
-    new RegExp(`^Overdue tasks: ${fresh.overdueTasks}`),
+  await expect(kpi(page, "Overdue tasks")).toHaveAccessibleName(
+    new RegExp(`^Overdue tasks\\s*${fresh.overdueTasks}`),
   );
   expect(fresh.overdueTasks).toBe(overdueBefore - 1);
   expect(fresh.pipelineCents).toBeLessThan(pipelineBefore);
-  await expect(kpi(page, "Open opportunities")).toHaveAttribute(
-    "aria-label",
-    new RegExp(`^Open opportunities: ${fresh.openOpportunities}`),
+  await expect(kpi(page, "Open opportunities")).toHaveAccessibleName(
+    new RegExp(`^Open opportunities\\s*${fresh.openOpportunities}`),
   );
 
   // the card leads to the list it counts
@@ -131,4 +129,81 @@ test("at 375px the dashboard has no horizontal scrolling and the cards stay read
     await page.screenshot({ path: `${process.env.E2E_SHOTS}/dashboard-375.png`, fullPage: true });
   await trackBrowserUser(context);
   await context.close();
+});
+
+const STAGES: Array<[string, string]> = [
+  ["new", "New"],
+  ["qualified", "Qualified"],
+  ["proposal", "Proposal"],
+  ["negotiation", "Negotiation"],
+  ["won", "Won"],
+  ["lost", "Lost"],
+];
+const money = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+const barText = (byStage: Record<string, { count: number; amountCents: number }>) =>
+  STAGES.map(
+    ([key]) =>
+      `${byStage[key].count} ${byStage[key].count === 1 ? "deal" : "deals"}, ${money(byStage[key].amountCents)}`,
+  );
+
+test("[SIT-256] the stage chart draws the API's numbers, follows a stage move, and has an equal table; recent activity lists 10 events", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Try Live Demo" }).first().click();
+  await page.waitForURL(/\/app/, { timeout: 60_000 });
+  await page.goto("/app");
+  const heading = page.getByRole("heading", { name: "Opportunities by stage" });
+  await expect(heading).toBeVisible();
+  const chart = page.locator("section[aria-labelledby=dash-stage] svg.recharts-surface");
+  await expect(chart).toBeVisible({ timeout: 15_000 });
+
+  const before = (await apiDashboard(page)).opportunitiesByStage;
+  for (const text of barText(before))
+    await expect(chart.getByText(text, { exact: true })).toBeVisible();
+  for (const [, label] of STAGES)
+    await expect(chart.getByText(label, { exact: true })).toBeVisible();
+
+  // the table alternative has exactly the same rows
+  await page.getByRole("button", { name: "View as table" }).click();
+  const table = page.getByRole("table", { name: /Opportunities by stage/ });
+  for (const [key, label] of STAGES) {
+    const row = table.getByRole("row", { name: new RegExp(`^${label}\\b`) });
+    await expect(row.getByRole("cell").first()).toHaveText(String(before[key].count));
+  }
+  await page.getByRole("button", { name: "View as chart" }).click();
+
+  // a stage move changes the chart after a reload
+  await page.goto("/app/opportunities?view=board");
+  await page
+    .getByLabel(/^Move .* to another stage$/)
+    .first()
+    .waitFor();
+  const options = await page.getByLabel(/^Move .* to another stage$/).all();
+  for (const candidate of options) {
+    if ((await candidate.inputValue()) === "proposal") {
+      await candidate.selectOption("negotiation");
+      break;
+    }
+  }
+  await expect
+    .poll(async () => (await apiDashboard(page)).opportunitiesByStage.negotiation.count, {
+      timeout: 15_000,
+    })
+    .toBe(before.negotiation.count + 1);
+  await page.goto("/app");
+  const after = (await apiDashboard(page)).opportunitiesByStage;
+  const chart2 = page.locator("section[aria-labelledby=dash-stage] svg.recharts-surface");
+  await expect(chart2).toBeVisible({ timeout: 15_000 });
+  for (const text of barText(after))
+    await expect(chart2.getByText(text, { exact: true })).toBeVisible();
+
+  // recent activity
+  const activity = page.getByRole("region", { name: "Recent activity" });
+  await expect(activity.getByRole("listitem")).toHaveCount(10);
+  await expect(activity.getByRole("link", { name: /View all/ })).toHaveAttribute(
+    "href",
+    "/app/activity",
+  );
 });

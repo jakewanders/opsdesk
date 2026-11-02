@@ -25,7 +25,6 @@ export function KpiCard({ label, value, href, icon: Icon, exact, attention, acti
     <Link
       href={href}
       title={exact}
-      aria-label={`${label}: ${value}${attention ? ", needs attention" : ""}. ${action}`}
       className="group flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-border p-4 outline-none transition-colors hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring"
     >
       <span className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -39,7 +38,9 @@ export function KpiCard({ label, value, href, icon: Icon, exact, attention, acti
         )}
       >
         {value}
+        {attention ? <span className="sr-only">needs attention</span> : null}
       </span>
+      <span className="sr-only">{action}</span>
     </Link>
   );
 }
