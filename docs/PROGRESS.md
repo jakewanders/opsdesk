@@ -752,7 +752,14 @@ Entries per issue:
 
 ## M3 — Dashboard, Reporting Foundations & Activity
 
-In progress. Entries are added per issue.
+**Complete.** Every M3 issue (SIT-244, 245, 255 to 262) and the parents Operational dashboard (SIT-137), Activity timeline & feed (SIT-138) and UX refinement, seed richness & accessibility pass (SIT-139) are Done in Linear. Milestone check set, run after the last M3 issue (SIT-262) on commit 0ad2cc0 (GitHub Actions run 41464662205: success):
+
+- `npm run check` (10 steps): environment naming guard, lint, format check, typecheck, unit tests **1597 passed / 107 files**, pgTAP **PASS**, integration tests **431 passed / 40 files** (real production build + local Supabase), Playwright **36 passed** (desktop: customers, viewer, dashboard, propagation, activity, journey, states, accessibility; mobile: 5), bundle secret scan, build.
+- **M3 exit criteria (PRD 12):** the dashboard is driven by real database numbers and follows changes (SIT-244, 255, 256, 259); the activity feed and timeline exist (SIT-245, 257); seed content is exact and consistent (SIT-258: 18 / 10 / 24 / 44 events); every P0 page fits 375 px and 200% zoom (SIT-260); WCAG 2.2 AA axe checks, keyboard flows and focus pass in a real browser in both themes (SIT-261); the primary demo journey succeeds from a cold browser with one interaction (SIT-262).
+- **Not fully met, stated plainly:** the 3 s dashboard target on a cold first visit (measured 2.9 to 3.45 s locally, mostly Cloudflare's Turnstile check; 0.6 s for a returning guest); the VoiceOver pass (manual, see "Waiting on Jake"). Neither blocks M4.
+- Carried forward: browser tests exist for customers, dashboard, activity, accessibility, journey, states and mobile; the pipeline and task scenarios beyond those are asserted at component and API level; CI does not yet run the Supabase-backed suites (CI pipeline work); no hosted measurements exist until the Netlify site (SIT-177) does.
+
+Entries per issue:
 
 ### SIT-262 — Cold-browser demo journey and loading / empty / error audit (done)
 
