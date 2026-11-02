@@ -448,6 +448,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 864 / 57 files, integration 150 / 19 files, pgTAP PASS, 39 assertions in the new file).
 - Mutations caught and reverted: organizations select policy open to everyone (pgTAP 6 files, integration 1), memberships select open (pgTAP, integration 1), cleanup callable by `authenticated` (pgTAP, integration 1), anonymous guard dropped from the organizations update policy (pgTAP).
 
+### SIT-184 — TanStack Query client layer, typed API client, URL state (done)
+
+- `@tanstack/react-query` added. `src/lib/api-client/`: `api-fetch.ts` (`apiFetch`, `ClientApiError`), `query-client.ts` (defaults), `provider.tsx` (`ApiClientProvider`, `useApi`, `useApiQuery`, `useClearApiCache`), `use-api-mutation.ts`, `url-state.ts` (pure schema, parse, serialize), `use-url-state.ts` (`useUrlState`, debounced search). `/app` layout mounts the provider keyed by user and workspace; the user menu's sign-out clears the cache. ESLint bans `dangerouslySetInnerHTML`. Usage in `docs/API.md`.
+- Tests (48 new unit tests across 6 files): `apiFetch` (headers, 204, error envelope mapping, stale edit, Retry-After, 401, 5xx, network, abort, malformed bodies, URL building and refusal of absolute URLs), URL state (defaults omitted, round trip, hostile values, page reset, sensitive names), hook with mocked router (restore from URL, replace vs push, debounce, external URL change, unmount), provider (workspace header, **switching workspace starts with an empty cache**, **sign-out clears every query**, scoped keys, retry policy), mutation (**double submit sends one request**, idempotency key reused on retry and renewed after success, optimistic update, **rollback**, invalidation), user menu sign-out, and the lint rule against the repository's own config.
+- Real browser (production build, local Supabase): `/demo` to `/app` with the provider mounted, no console errors or page errors, sign-out from the account menu lands on `/login`.
+- No list pages exist yet, so `useUrlState` and `useApiQuery` are exercised by tests only; the M2 list pages are their first users.
+- `npm run check`: all 9 steps passed (unit 912 / 63 files, integration 150 / 19 files, pgTAP PASS).
+- Mutations caught and reverted: cache clear as a no-op, no double-submit guard, no rollback, mutation keys not workspace-scoped, sensitive URL names allowed, lint rule disabled.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

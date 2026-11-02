@@ -9,6 +9,7 @@ import { toWorkspaces } from "@/lib/api/organizations";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { ApiClientProvider } from "@/lib/api-client/provider";
 import { OrgSelector } from "@/components/org/org-selector";
 import { ACTIVE_ORG_COOKIE, resolveActiveWorkspace } from "@/lib/org/active-org";
 import { selectWorkspaceAction } from "@/lib/org/actions";
@@ -60,24 +61,31 @@ async function DynamicShell({ children }: { children: ReactNode }) {
   const banner = demoExpiresAt ? (
     <DemoCountdown expiresAt={demoExpiresAt} serverNow={new Date().toISOString()} />
   ) : null;
+  const activeOrgId = active.status === "selected" ? active.workspace.id : null;
   return (
-    <AppShell
-      items={getNavItems(getFeatureFlags())}
-      user={user ? { email: user.email, name: displayName, isGuest: user.isAnonymous } : null}
-      orgSelector={
-        user ? (
-          <OrgSelector
-            workspaces={workspaces}
-            activeId={active.status === "selected" ? active.workspace.id : null}
-            selectAction={selectWorkspaceAction}
-            canCreate={!user.isAnonymous}
-          />
-        ) : undefined
-      }
-      banner={banner}
+    // One client cache per user and workspace: the key makes a switch start with an empty cache.
+    <ApiClientProvider
+      key={`${user?.id ?? "anon"}:${activeOrgId ?? "none"}`}
+      organizationId={activeOrgId}
     >
-      {children}
-    </AppShell>
+      <AppShell
+        items={getNavItems(getFeatureFlags())}
+        user={user ? { email: user.email, name: displayName, isGuest: user.isAnonymous } : null}
+        orgSelector={
+          user ? (
+            <OrgSelector
+              workspaces={workspaces}
+              activeId={activeOrgId}
+              selectAction={selectWorkspaceAction}
+              canCreate={!user.isAnonymous}
+            />
+          ) : undefined
+        }
+        banner={banner}
+      >
+        {children}
+      </AppShell>
+    </ApiClientProvider>
   );
 }
 

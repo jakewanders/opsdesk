@@ -44,6 +44,25 @@ const eslintConfig = defineConfig([
     ],
     rules: { "no-restricted-imports": "off" },
   },
+  {
+    // Free text is always rendered as text (PRD 9.3). React escapes it; dangerouslySetInnerHTML would turn
+    // customer-controlled strings into markup, so it is banned everywhere (there is no exception list).
+    files: ["**/*.{ts,tsx,mts,mjs,js,jsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: "Do not use dangerouslySetInnerHTML: render free text as text (PRD 9.3).",
+        },
+        {
+          selector:
+            "Property[key.name='dangerouslySetInnerHTML'], Property[key.value='dangerouslySetInnerHTML']",
+          message: "Do not pass dangerouslySetInnerHTML: render free text as text (PRD 9.3).",
+        },
+      ],
+    },
+  },
   prettier,
   globalIgnores([".next/**", "out/**", "build/**", "coverage/**", "next-env.d.ts"]),
 ]);

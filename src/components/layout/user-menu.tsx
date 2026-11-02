@@ -2,6 +2,7 @@
 
 import { CircleUserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useClearApiCache } from "@/lib/api-client/provider";
 import { logoutAction } from "@/lib/auth/actions";
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ export type ShellUser = {
 
 /** Account menu. Renders without data; the workspace issues pass the real user and actions. */
 export function UserMenu({ user }: { user?: ShellUser | null }) {
+  const clearCache = useClearApiCache();
   const label = user?.name || user?.email || (user?.isGuest ? "Guest" : "Not signed in");
   return (
     <DropdownMenu>
@@ -40,7 +42,7 @@ export function UserMenu({ user }: { user?: ShellUser | null }) {
         ) : null}
         <DropdownMenuSeparator />
         {user ? (
-          <form action={logoutAction}>
+          <form action={logoutAction} onSubmit={clearCache}>
             <DropdownMenuItem asChild>
               <button type="submit" className="w-full cursor-pointer">
                 Sign out
