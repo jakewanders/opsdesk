@@ -1,6 +1,8 @@
 -- pgTAP tests for the demo seed registry and the fictional-data fixtures (SIT-192).
 begin;
 select plan(50);
+-- These tests count seeders from an empty registry; the permanent ones (activity_events, ...) are set aside in this transaction.
+delete from private.demo_seeders;
 
 insert into auth.users (id, email, is_anonymous) values
   ('91000000-0000-0000-0000-000000000001', null, true),

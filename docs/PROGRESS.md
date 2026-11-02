@@ -509,6 +509,13 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1103 / 73 files, integration 171 / 23 files, pgTAP PASS).
 - Mutations caught and reverted: overdue including today, a 6-day window, today computed in UTC, done tasks counted overdue, the zone not validated.
 
+### SIT-195 — Append-only activity_events table with read-only RLS (done)
+
+- Migration `20261101001600_activity_events.sql`: table with entity-type, action, summary and changes constraints (object, 4096-byte cap), the two lookup indexes, member-only SELECT policy, SELECT as the only grant, the history-protection trigger (row and truncate), the demo cap trigger, and a registered `activity_events` seeder whose clear function empties a workspace's events on reset. Documented in `docs/SECURITY.md`. Existing pgTAP suites adjusted for the new permanent seeder and policy (`demo-seed` sets the registry aside inside its transaction; `rls-tenancy` lists the new policy).
+- `supabase/tests/activity-events.test.sql` (53): shape, indexes, no foreign key on `entity_id`, each constraint (unknown entity type and action, empty and over-long summary, array and string `changes`, exactly 4096 bytes accepted and 4097 over refused, missing organization), grants, reads (own organization, cross-tenant by filter and by id, viewer, outsider, guest, visitor), **every client write path refused** (owner, admin, guest, into another organization, visitor; update, delete, truncate), the trigger still refusing when grants and policies are widened, the server role unable to update but able to delete, reset clearing only that demo's events, an organization's removal cascading its events, the demo cap (429 for a guest, none for a real organization).
+- `npm run check`: all 9 steps passed (unit 1104 / 73 files, integration 171 / 23 files, pgTAP PASS).
+- Mutations caught and reverted: INSERT granted, the protection trigger disabled, SELECT policy open to everyone, no size cap, no demo cap.
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.

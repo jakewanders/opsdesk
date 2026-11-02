@@ -213,7 +213,7 @@ reset role;
 -- =============================================================================================
 select is(
   (select string_agg(tablename || '.' || policyname || ':' || cmd, ', ' order by tablename, policyname) from pg_policies where schemaname = 'public' and policyname not like 'zz_%'),
-  'demo_workspaces.demo_workspaces_no_delete:DELETE, demo_workspaces.demo_workspaces_no_insert:INSERT, demo_workspaces.demo_workspaces_no_update:UPDATE, demo_workspaces.demo_workspaces_select_owner:SELECT, memberships.memberships_no_delete:DELETE, memberships.memberships_no_insert:INSERT, memberships.memberships_no_update:UPDATE, memberships.memberships_select_same_org:SELECT, organizations.organizations_no_delete:DELETE, organizations.organizations_no_insert:INSERT, organizations.organizations_select_member:SELECT, organizations.organizations_update_admin:UPDATE, profiles.profiles_select_own:SELECT, profiles.profiles_update_own:UPDATE',
+  'activity_events.activity_events_select_member:SELECT, demo_workspaces.demo_workspaces_no_delete:DELETE, demo_workspaces.demo_workspaces_no_insert:INSERT, demo_workspaces.demo_workspaces_no_update:UPDATE, demo_workspaces.demo_workspaces_select_owner:SELECT, memberships.memberships_no_delete:DELETE, memberships.memberships_no_insert:INSERT, memberships.memberships_no_update:UPDATE, memberships.memberships_select_same_org:SELECT, organizations.organizations_no_delete:DELETE, organizations.organizations_no_insert:INSERT, organizations.organizations_select_member:SELECT, organizations.organizations_update_admin:UPDATE, profiles.profiles_select_own:SELECT, profiles.profiles_update_own:UPDATE',
   'exactly the documented policies exist');
 
 select * from finish();

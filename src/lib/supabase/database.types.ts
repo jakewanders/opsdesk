@@ -23,6 +23,51 @@ export type Database = {
   };
   public: {
     Tables: {
+      activity_events: {
+        Row: {
+          action: string;
+          actor_user_id: string | null;
+          changes: NonNullable<Json>;
+          created_at: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          organization_id: string;
+          summary: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          action: string;
+          actor_user_id?: string | null;
+          changes?: NonNullable<Json>;
+          created_at?: string;
+          entity_id: string;
+          entity_type: string;
+          id?: string;
+          organization_id: string;
+          summary: string;
+        };
+        Update: {
+          action?: string;
+          actor_user_id?: string | null;
+          changes?: NonNullable<Json>;
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          id?: string;
+          organization_id?: string;
+          summary?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "activity_events_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       demo_workspaces: {
         Row: {
           created_at: string;
