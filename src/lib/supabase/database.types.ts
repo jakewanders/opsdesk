@@ -168,7 +168,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      bootstrap_demo_workspace: { Args: Record<PropertyKey, never>; Returns: Json };
     };
     Enums: {
       [_ in never]: never;

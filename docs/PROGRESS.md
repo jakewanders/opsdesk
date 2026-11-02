@@ -318,6 +318,16 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted by `db:reset`: phone outside reserved range (2 failed), real email domain (2), non-deterministic dates via `random()` (5), runner ignores marker (5), reversed order (2), seeder executable by authenticated (1).
 - Note: no entity seeders exist yet (customers etc. arrive in M2); the framework is exercised with probe seeders registered inside the rolled-back tests. SIT-199 can now call `seed_demo_workspace`.
 
+### SIT-199 — bootstrap_demo_workspace RPC (done)
+
+- Migrations `20261101000800_bootstrap_demo_workspace.sql` (`public.bootstrap_demo_workspace()`, `private.demo_limits`, `private.demo_limit`) and `20261101000710_demo_ts_never_future.sql` (fix found by the tests). Security review notes in `docs/SECURITY.md`; DB types regenerated.
+- `supabase/tests/bootstrap-demo.test.sql` (53 assertions): no parameters, definer with pinned search_path, EXECUTE for authenticated only, rejections (anon key, registered user, claim/row mismatch both ways, no identity) create nothing; creation (kind, name, 24 h expiry, UTC, owner-only membership, profile name, mapping, seed version, seeders ran); repeat calls return the same id/expiry with no duplicate rows; two guests get different organizations with identical content and no shared ids and see only their own through RLS; identity arguments impossible; guest cannot extend expiry or change kind; own expired demo replaced; capacity ceiling (429, existing guest unaffected, raising it admits); per-user advisory lock held after the call.
+- `src/lib/demo/bootstrap.integration.test.ts` (6, real anonymous sessions through PostgREST): create then repeat, **40 simultaneous calls give one organization**, a call **queues behind another session's lock** (waited > 1.5 s, then returned the single org), two guests concurrently isolated, registered user and anon key rejected, identity arguments rejected and expiry patch refused.
+- `npm run test:db`: 9 files, 368 tests PASS. `npm run check`: all 9 steps passed (unit 728, integration 53).
+- Mutations: no stored-user check (5 pgTAP failures), no capacity ceiling (3), expiry ignored on repeat (6), always-new expiry (1 pgTAP + 1 integration), **no advisory lock (initially NOT caught: even 40 parallel API calls rarely overlap, so I added the lock-held assertion and a two-session blocking test; with those, removing the lock fails both)**. All reverted by `db:reset`.
+- Found: `demo_ts(0, 9)` could be in the future before 09:00 database time (fixed and tested); `LEAST` cannot be schema-qualified.
+- Not done here (by design): the HTTP route and Turnstile failure paths (SIT-204), per-entity quotas (SIT-200), reset (SIT-205).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

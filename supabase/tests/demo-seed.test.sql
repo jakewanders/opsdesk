@@ -1,6 +1,6 @@
 -- pgTAP tests for the demo seed registry and the fictional-data fixtures (SIT-192).
 begin;
-select plan(49);
+select plan(50);
 
 insert into auth.users (id, email, is_anonymous) values
   ('91000000-0000-0000-0000-000000000001', null, true),
@@ -32,7 +32,8 @@ select is(private.demo_email(1), private.demo_email(25), 'the fixtures wrap dete
 select is((select count(*) from generate_series(1, 48) i where private.demo_email(i) is null or private.demo_company(i) is null or private.demo_person(i) = ''), 0::bigint, 'no fixture is empty');
 select is((select count(*) from generate_series(1, 24) i where private.demo_company(i) ~* '(google|apple|amazon|microsoft|facebook|walmart|ibm|netflix|tesla|nike|ford|disney)'), 0::bigint, 'no fixture company is a well-known real brand');
 select is((select count(*) from generate_series(1, 24) i where private.demo_person(i) ~* '(trump|biden|obama|musk|gates|bezos|swift|smith|jones|johnson)'), 0::bigint, 'no fixture person is a famous or very common real name');
-select is(private.demo_ts(0, 9), date_trunc('day', now()) + interval '9 hours', 'demo_ts(0) is today at 09:00');
+select is(private.demo_ts(1, 9), date_trunc('day', now()) - interval '1 day' + interval '9 hours', 'demo_ts(1) is yesterday at 09:00');
+select ok(private.demo_ts(0, 23) <= now() - interval '5 minutes' and private.demo_ts(0, 0) <= now() - interval '5 minutes', 'demo_ts(0) is never in the future, whatever the hour');
 select is(private.demo_ts(90, 9), date_trunc('day', now()) - interval '90 days' + interval '9 hours', 'demo_ts(90) is 90 days earlier');
 select ok((select bool_and(private.demo_ts(d) <= now() and private.demo_ts(d) >= now() - interval '91 days') from generate_series(0, 90) d), 'offsets of 0 to 90 days stay in the past 90 days');
 select is(private.demo_ts(10, 9), private.demo_ts(10, 9), 'demo_ts is stable within a transaction');
