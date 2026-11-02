@@ -1,6 +1,6 @@
 -- pgTAP tests for the database side of the expired-demo cleanup (SIT-207).
 begin;
-select plan(45);
+select plan(54);
 select tests.create_fixtures();
 
 -- a probe entity with a clear function, to prove phase 1 runs the registered clearers before deleting
@@ -91,6 +91,31 @@ select is(public.cleanup_enqueue_orphans(48), 1, 'an old guest with no organizat
 select is((select count(*) from private.demo_cleanup_users where user_id = 'c2000000-0000-4000-8000-0000000000c2'), 0::bigint, 'a fresh guest who just signed in is left alone');
 select is(public.cleanup_enqueue_orphans(48), 0, 'queueing twice adds nothing');
 select is(public.cleanup_purge_expired_keys(), 0, 'with no idempotency table yet there is nothing to purge');
+
+-- ---- SIT-214: scale, the anonymous-member-of-a-real-org edge, and key retention
+-- 220 expired demos at once: every call is bounded by its batch size and repeated calls drain the backlog
+insert into auth.users (id, email, is_anonymous) select ('f0000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid, null, true from generate_series(1, 220) i;
+insert into public.organizations (id, name, kind, expires_at, created_by)
+  select ('f1000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid, 'Bulk ' || i, 'demo', now() + interval '1 hour', ('f0000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid from generate_series(1, 220) i;
+insert into public.memberships (organization_id, user_id, role) select ('f1000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid, ('f0000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid, 'owner' from generate_series(1, 220) i;
+select private.register_demo_workspace(('f1000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid, ('f0000000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid) from generate_series(1, 220) i;
+update public.organizations set expires_at = now() - interval '1 minute' where name like 'Bulk %';
+-- the same guest also belongs to a real organization (the edge case): the real org and the guest must survive
+insert into auth.users (id, email, is_anonymous) values ('f2000000-0000-4000-8000-000000000001', null, true), ('f2000000-0000-4000-8000-000000000002', 'realowner@example.test', false);
+insert into public.organizations (id, name, kind, created_by) values ('f3000000-0000-4000-8000-000000000001', 'Real Co', 'real', 'f2000000-0000-4000-8000-000000000002');
+insert into public.memberships (organization_id, user_id, role) values ('f3000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000002', 'owner'), ('f3000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000001', 'member');
+select is((public.cleanup_purge_expired_demos(50)->>'orgs_deleted')::int, 50, 'with 220 expired demos one call deletes exactly the batch size');
+select is((select count(*) from public.organizations where name like 'Bulk %'), 170::bigint, 'and leaves the rest for the next call');
+select is((public.cleanup_purge_expired_demos(100)->>'orgs_deleted')::int, 100, 'a second call is bounded the same way');
+select is((public.cleanup_purge_expired_demos(100)->>'orgs_deleted')::int, 70, 'the last call takes what is left');
+select is((public.cleanup_purge_expired_demos(100)->>'orgs_deleted')::int, 0, 'then there is nothing left to do (idempotent)');
+select is(public.cleanup_user_eligible('f2000000-0000-4000-8000-000000000001'), false, 'an anonymous user who is a member of a real organization is never eligible for deletion');
+select is((select count(*) from public.organizations where id = 'f3000000-0000-4000-8000-000000000001'), 1::bigint, 'and the real organization survived every cleanup call');
+-- idempotency keys: past retention removed, current kept (the table is created here with the agreed shape)
+create table private.idempotency_keys (id uuid primary key default gen_random_uuid(), expires_at timestamptz not null);
+insert into private.idempotency_keys (expires_at) values (now() - interval '2 days'), (now() - interval '1 second'), (now() + interval '1 hour');
+select is(public.cleanup_purge_expired_keys(), 2, 'keys past their retention are removed');
+select is((select count(*) from private.idempotency_keys), 1::bigint, 'and a current key is kept');
 
 select * from finish();
 rollback;

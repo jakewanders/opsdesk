@@ -411,6 +411,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 814 tests/52 files, integration 113/16 files, pgTAP PASS).
 - Mutations caught and reverted: silent default among several workspaces, cookie trusted without membership, guest reaching the database, no explicit choice required, chooser redirecting to itself.
 
+### SIT-214 — Cleanup safety tests (done)
+
+- `supabase/tests/demo-cleanup.test.sql` 45 -> 54 assertions: 220 expired demos drained in bounded calls (50, then 100, 100, 70 -> 0), an anonymous user who is a member of a real organization is never eligible and the real organization survives, expired idempotency keys purged and current kept (the table is created inside the rolled-back test with the agreed `expires_at` shape; SIT-183 will create the real one).
+- `cleanup.integration.test.ts` 9 -> 11 tests (real Supabase, real admin client): 220 expired demos drained over bounded runs with every guest removed and an active demo untouched, then a no-op; an anonymous guest in a real organization is skipped while the expired demo is removed.
+- Mutations caught and reverted: eligibility ignoring memberships (pgTAP 4 failures, integration 2), no batch limit (9 failures), delete ignoring kind and expiry (31 failures), eligibility always true (2).
+- `npm run check`: all 9 steps passed (unit 814, integration 115 / 16 files, pgTAP PASS, 54 assertions in this file).
+- Fixture note: users inserted directly into `auth.users` need empty-string token columns or GoTrue returns 500 on delete (`confirmation_token` NULL scan error); not a product defect.
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

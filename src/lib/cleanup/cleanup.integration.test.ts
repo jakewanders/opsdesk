@@ -171,6 +171,87 @@ describe("cleanupExpiredDemos with mixed fixtures", () => {
     for (const g of gs) expect(orgExists(g.org)).toBe(false);
   });
 
+  it("handles 200+ expired demos in bounded batches, touching nothing else, then is a no-op", async () => {
+    const tag = `bulk${run}`;
+    const live = await guest();
+    const uid = (i: string) =>
+      `('b${String(run % 10000000).padStart(7, "0")}-0000-4000-8000-' || lpad(${i}::text, 12, '0'))::uuid`;
+    psql(`
+      insert into auth.users (instance_id, id, aud, role, email, is_anonymous, created_at, updated_at,
+          confirmation_token, recovery_token, email_change_token_new, email_change)
+        select '00000000-0000-0000-0000-000000000000',  ${uid("i")}, 'authenticated', 'authenticated', null, true, now(), now(), '', '', '', '' from generate_series(1, 220) i;
+      insert into public.organizations (id, name, kind, expires_at, created_by)
+        select gen_random_uuid(), '${tag} ' || i, 'demo', now() + interval '1 hour', ${uid("i")} from generate_series(1, 220) i;
+      insert into public.memberships (organization_id, user_id, role)
+        select o.id, o.created_by, 'owner' from public.organizations o where o.name like '${tag} %';
+      select private.register_demo_workspace(o.id, o.created_by) from public.organizations o where o.name like '${tag} %';
+      update public.organizations set expires_at = now() - interval '1 minute' where name like '${tag} %';
+    `);
+    const count = () =>
+      Number(psql(`select count(*) from public.organizations where name like '${tag} %'`));
+    expect(count()).toBe(220);
+    // Each run is bounded by the time budget; 220 demos plus their guests may need several runs.
+    let deleted = 0;
+    let batches = 0;
+    for (let i = 0; i < 10 && count() > 0; i++) {
+      const res = await runCleanup({ batchSize: 50 });
+      expect(res.errorCodes).toEqual([]);
+      deleted += res.orgsDeleted;
+      batches += res.batches;
+    }
+    expect(deleted).toBeGreaterThanOrEqual(220);
+    expect(batches).toBeGreaterThanOrEqual(5);
+    expect(count()).toBe(0);
+    expect(orgExists(live.org)).toBe(true); // an active demo, untouched
+    expect(userExists(live.id)).toBe(true);
+    // finish the guest deletions still queued, then the next run has nothing to do
+    for (let i = 0; i < 10; i++) await runCleanup({ batchSize: 50 });
+    expect((await runCleanup({ batchSize: 50 })).orgsDeleted).toBe(0);
+    expect(
+      Number(
+        psql(
+          `select count(*) from auth.users where id::text like 'b${String(run % 10000000).padStart(7, "0")}-%'`,
+        ),
+      ),
+    ).toBe(0);
+  }, 240_000);
+
+  it("an anonymous guest who also belongs to a real organization is skipped, and the real organization survives", async () => {
+    const g = await guest();
+    const owner = createClient(supabase.apiUrl, supabase.publishableKey, {
+      auth: { persistSession: false },
+    });
+    const email = `cleanup-edge-${run}@example.test`;
+    const make = await fetch(`${supabase.apiUrl}/auth/v1/admin/users`, {
+      method: "POST",
+      headers: {
+        apikey: supabase.secretKey,
+        Authorization: `Bearer ${supabase.secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password: "correct horse battery", email_confirm: true }),
+    });
+    const { id: ownerId } = (await make.json()) as { id: string };
+    created.push(ownerId);
+    void owner;
+    const realOrg = crypto.randomUUID();
+    psql(`
+      insert into public.organizations (id, name, kind, created_by) values ('${realOrg}', 'Edge Co ${run}', 'real', '${ownerId}');
+      insert into public.memberships (organization_id, user_id, role) values ('${realOrg}', '${ownerId}', 'owner'), ('${realOrg}', '${g.id}', 'member');
+    `);
+    expire(g);
+    const res = await runCleanup();
+    expect(res.errors).toBe(0);
+    expect(orgExists(g.org)).toBe(false); // the expired demo itself is removed
+    expect(orgExists(realOrg)).toBe(true);
+    expect(userExists(g.id)).toBe(true); // still a member of a real organization: not deleted
+    expect(userExists(ownerId)).toBe(true);
+    expect(
+      Number(psql(`select count(*) from public.memberships where organization_id = '${realOrg}'`)),
+    ).toBe(2);
+    psql(`delete from public.organizations where id = '${realOrg}'`);
+  });
+
   it("respects the time budget and finishes the work on the next run", async () => {
     const gs = await Promise.all([guest(), guest(), guest()]);
     gs.forEach(expire);
