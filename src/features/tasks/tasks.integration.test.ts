@@ -353,6 +353,15 @@ describe("GET /tasks (list, filters, search, sort, time zones)", () => {
         expect(overdue).toEqual(expected);
         expect(overdue).not.toContain("Due today");
         const byState = Object.fromEntries(tasks.map((t) => [t.title, t.dueState]));
+        const flags = Object.fromEntries(
+          tasks.map((t) => [t.title, (t as unknown as { dueToday: boolean }).dueToday]),
+        );
+        expect(flags).toMatchObject({
+          "Due yesterday": false,
+          "Due today": true,
+          "Due tomorrow": false,
+          "Done yesterday": false,
+        });
         expect(byState).toMatchObject({
           "Due yesterday": "overdue",
           "Due today": "due_soon",

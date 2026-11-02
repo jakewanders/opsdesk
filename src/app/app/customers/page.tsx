@@ -7,16 +7,8 @@ import { customerListQuery } from "@/features/customers/schema";
 import { listForOrg } from "@/features/customers/service";
 import { can } from "@/lib/permissions";
 import { parseUrlState } from "@/lib/api-client/url-state";
+import { stringifyQuery } from "@/lib/api/stringify-query";
 import { getPageOrgContext } from "@/lib/org/page-context";
-
-/** The API's query schema reads strings (it parses URLs), so the typed state is stringified the same way a URL would be. */
-function stringify(query: Record<string, string | number | undefined>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(query)
-      .filter((e): e is [string, string | number] => e[1] !== undefined)
-      .map(([k, v]) => [k, String(v)]),
-  );
-}
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -50,7 +42,7 @@ export default async function CustomersPage({
     initial = await listForOrg(
       supabase,
       ctx,
-      customerListQuery.parse(stringify(toApiQuery(state))),
+      customerListQuery.parse(stringifyQuery(toApiQuery(state))),
     );
   } catch {
     initial = null; // the browser retries and shows the error with its request ID

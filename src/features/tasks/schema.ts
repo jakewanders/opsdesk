@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { expectedUpdatedAtField } from "@/lib/api/concurrency";
-import { dueState, type DueState } from "@/lib/domain/tasks";
+import { dueState, todayInZone, type DueState } from "@/lib/domain/tasks";
 import { choice, isoDate, listQuery, optionalMultiLine, singleLine, uuid } from "@/lib/validation";
 
 /** The enums mirror the database CHECK constraints (tasks_*_values). */
@@ -104,6 +104,8 @@ export type TaskDto = {
   dueDate: string | null;
   /** Overdue / due soon / later / none / done, in the organization's time zone. */
   dueState: DueState;
+  /** The due date is today in the organization's time zone (an open task due today is not overdue). */
+  dueToday: boolean;
   assignedTo: string | null;
   customerId: string | null;
   customerName: string | null;
@@ -144,6 +146,8 @@ export function toTaskDto(row: TaskRow, timeZone: string, now: Date = new Date()
     priority: row.priority as TaskDto["priority"],
     dueDate: row.due_date,
     dueState: dueState({ dueDate: row.due_date, status: row.status }, now, timeZone),
+    dueToday:
+      row.status !== "done" && row.due_date !== null && row.due_date === todayInZone(now, timeZone),
     assignedTo: row.assigned_to,
     customerId: row.customer_id,
     customerName: row.customer?.display_name ?? null,

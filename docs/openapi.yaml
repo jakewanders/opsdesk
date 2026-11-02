@@ -1233,7 +1233,7 @@ components:
         assignedTo: { type: [string, "null"], format: uuid }
     Task:
       type: object
-      required: [id, title, status, priority, dueState, createdAt, updatedAt]
+      required: [id, title, status, priority, dueState, dueToday, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         title: { type: string, minLength: 2, maxLength: 160 }

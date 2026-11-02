@@ -197,6 +197,14 @@ describe("toTaskDto", () => {
       ),
     ).toMatchObject({ customerName: "Acme", dueState: "due_soon" });
     expect(toTaskDto(row({ due_date: "2026-11-01" }), "UTC", now).dueState).toBe("overdue");
+    // 03:00 UTC on Nov 2 is still Nov 1 in New York: due on Nov 1 there is "today", in UTC it is yesterday
+    expect(toTaskDto(row({ due_date: "2026-11-01" }), "America/New_York", now).dueToday).toBe(true);
+    expect(toTaskDto(row({ due_date: "2026-11-01" }), "UTC", now).dueToday).toBe(false);
+    expect(toTaskDto(row({ due_date: "2026-11-02" }), "UTC", now).dueToday).toBe(true);
+    expect(toTaskDto(row({ due_date: "2026-11-02", status: "done" }), "UTC", now).dueToday).toBe(
+      false,
+    );
+    expect(toTaskDto(row({ due_date: null }), "UTC", now).dueToday).toBe(false);
     expect(toTaskDto(row({ status: "done", due_date: "2020-01-01" }), "UTC", now).dueState).toBe(
       "done",
     );
