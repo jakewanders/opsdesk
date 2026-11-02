@@ -491,7 +491,14 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 
 ## M2 — Core CRM, Pipeline & Task Management
 
-In progress. Entries are added per issue.
+**Complete.** Every M2 leaf issue and the parents Customer management (SIT-134), Opportunity pipeline (SIT-135) and Task management (SIT-136) are Done in Linear. Milestone check set, run after the last M2 issue (SIT-251) on commit 9454791:
+
+- `npm run check` (10 steps): environment naming guard, lint, format check, typecheck, unit tests **1534 passed / 99 files**, pgTAP **PASS**, integration tests **410 passed / 38 files** (real production build + local Supabase), Playwright **3 passed** (guest customer flow, viewer UI, viewer API 403), bundle secret scan, build.
+- GitHub Actions on the last M2 commit (run 41429542516): success.
+- Cross-tenant matrices from SIT-254 (1,223 pgTAP assertions and the API/PostgREST matrix) are part of those runs.
+- Known gaps carried forward: the Playwright suite covers customers only; pipeline board, list, drag and task scenarios are asserted at component and API level and their browser scenarios belong to the E2E pipeline work (P-07/P-08/P-12); CI does not yet run the Supabase-backed suites (CI pipeline work); the `/signup` `Date.now()` prerender log noted under SIT-251.
+
+Entries per issue:
 
 ### SIT-172 — Stage defaults and pipeline aggregation domain module (done)
 
