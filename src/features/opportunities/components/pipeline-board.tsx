@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ErrorAlert } from "@/components/shared/error-alert";
-import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
@@ -73,6 +74,12 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
+        {canWrite ? (
+          <Link href="/app/opportunities/new" className={buttonVariants()}>
+            <Plus aria-hidden="true" />
+            Add opportunity
+          </Link>
+        ) : null}
       </header>
 
       <form

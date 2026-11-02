@@ -1,13 +1,34 @@
-import { PlannedPage } from "@/components/shared/planned-page";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
+import { OpportunityDetail } from "@/features/opportunities/components/opportunity-detail";
+import { getForOrg } from "@/features/opportunities/service";
+import { NotFoundError } from "@/lib/api/errors";
+import { getPageOrgContext } from "@/lib/org/page-context";
+import { can } from "@/lib/permissions";
+import { uuid } from "@/lib/validation";
 
-export default function OpportunityDetailPage() {
+export const metadata: Metadata = { title: "Opportunity" };
+
+export default async function OpportunityPage({ params }: { params: Promise<{ id: string }> }) {
+  await connection();
+  const { id } = await params;
+  const parsed = uuid().safeParse(id);
+  if (!parsed.success) notFound();
+
+  const page = await getPageOrgContext();
+  if (!page) redirect("/app/workspaces");
+  const { ctx, supabase } = page;
+
+  let deal;
+  try {
+    // the same read the API does: a missing id and another workspace's id are both "not found"
+    deal = await getForOrg(supabase, ctx, parsed.data);
+  } catch (error) {
+    if (error instanceof NotFoundError) notFound();
+    throw error;
+  }
   return (
-    <PlannedPage
-      title="Opportunity"
-      summary="Stage, amount, owner, and history for one opportunity."
-      milestone="M2"
-      backHref="/app/opportunities"
-      backLabel="Back to pipeline"
-    />
+    <OpportunityDetail initial={deal} canWrite={can(ctx.role, ctx.kind, "records.write").allowed} />
   );
 }
