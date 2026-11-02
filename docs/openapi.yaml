@@ -1426,6 +1426,254 @@ paths:
           description: "RATE_LIMITED"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /quotes:
+    get:
+      summary: "One page of the workspace's quotes (404 when NEXT_PUBLIC_ENABLE_QUOTES is false)"
+      description: >
+        `page`, `limit` (default 25, at most 100; more is 422), `sort` (`updated_at` default, `created_at`, `quote_number`, `title`,
+        `total_cents`, `issue_date`, `status`), `order`; filters `q` (quote number or title), `status`, `customerId`, `opportunityId`,
+        `issueFrom`, `issueTo`, `archived` (`false` default, `true`, `all`). Any member, viewers included, can read. The list carries
+        no line items.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { name: page, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - {
+            name: sort,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum:
+                  [updated_at, created_at, quote_number, title, total_cents, issue_date, status],
+              },
+          }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc] } }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [draft, sent, approved, rejected, expired] },
+          }
+        - { name: customerId, in: query, schema: { type: string, format: uuid } }
+        - { name: opportunityId, in: query, schema: { type: string, format: uuid } }
+        - { name: issueFrom, in: query, schema: { type: string, format: date } }
+        - { name: issueTo, in: query, schema: { type: string, format: date } }
+        - { name: archived, in: query, schema: { type: string, enum: ["false", "true", all] } }
+      responses:
+        "200":
+          description: A page of quotes with `meta.page`, `limit`, `total`, `totalPages`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Quote" } }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "The workspace is not the caller's, or the quotes feature is off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "A filter, sort or page value is not valid"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    post:
+      summary: Create a draft quote from a customer, header fields and 1 to 100 line items
+      description: >
+        The server computes every amount (`subtotal = sum of quantity x unit price`, `taxable = subtotal - discount`,
+        `tax = half-up(taxable x taxRateBps / 10000)`, `total = taxable + tax`) and allocates the next number (`Q-` and 6 or more
+        digits, sequential per workspace). A body that names `totalCents`, `subtotalCents`, `taxCents`, `quoteNumber`, `status`,
+        `version` or any other unknown field is 422. Owner, admin and member (and a demo guest in their own demo); a viewer is 403.
+        An `Idempotency-Key` makes a retry return the original quote.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateQuote" }
+      responses:
+        "201":
+          description: The new draft with its lines
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuoteDetail" }
+        "403":
+          description: "A viewer, or a demo workspace that has expired (DEMO_EXPIRED)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "The workspace is not the caller's, or the feature is off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Validation failed (fieldErrors), or a rule: DISCOUNT_TOO_LARGE, CUSTOMER_NOT_FOUND, CUSTOMER_ARCHIVED, OPPORTUNITY_MISMATCH, QUOTE_TOO_LARGE, IDEMPOTENCY_KEY_REUSED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "The demo workspace has reached its quote cap (DEMO_CAP)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /quotes/{id}:
+    get:
+      summary: A quote with its lines, the quote it revises, its revisions and its status history
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The quote
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuoteDetail" }
+        "400":
+          description: "A malformed id"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Missing, in another workspace, or the feature is off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    patch:
+      summary: Edit a DRAFT quote at the version the client saw
+      description: >
+        Any of the create fields may be sent; those not sent keep their value. `items`, when sent, replaces all lines (in the order
+        given). Totals are recomputed by the server. A stale `expectedVersion` is 409 `STALE_EDIT` with `error.meta.current.version`;
+        a quote that has been sent is 409 `QUOTE_LOCKED` (revise it instead). Totals, number and status in the body are 422.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateQuote" }
+      responses:
+        "200":
+          description: The updated quote (version + 1)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuoteDetail" }
+        "403":
+          description: "A viewer"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Missing or in another workspace"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "STALE_EDIT or QUOTE_LOCKED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Validation failed or a rule (see POST)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /quotes/{id}/transition:
+    post:
+      summary: Move a quote along draft -> sent -> approved | rejected | expired
+      description: >
+        Allowed: draft to sent (needs at least one line), sent to approved, rejected or expired. Anything else is 409
+        `QUOTE_STATUS_TRANSITION`. `expectedVersion` is optional (the current version is used without it); a stale one is 409
+        `STALE_EDIT`. In a demo workspace "sent" only changes the status: nothing is delivered anywhere.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [to]
+              properties:
+                to: { type: string, enum: [sent, approved, rejected, expired] }
+                expectedVersion: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: The quote in its new status (version + 1)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuoteDetail" }
+        "403":
+          description: "A viewer"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Missing or in another workspace"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "QUOTE_STATUS_TRANSITION or STALE_EDIT"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "An unknown target, or ITEMS_REQUIRED when sending a quote with no lines"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /quotes/{id}/revise:
+    post:
+      summary: Start a new draft from a quote that has been sent
+      description: >
+        The new draft gets the next number, version 1 and `revisesQuoteId`; its lines and amounts are copied. The original is left
+        exactly as it was. A draft cannot be revised (409 `QUOTE_NOT_REVISABLE`); one open draft revision per quote (409
+        `REVISION_EXISTS`).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "201":
+          description: The new draft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/QuoteDetail" }
+        "403":
+          description: "A viewer"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Missing or in another workspace"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "QUOTE_NOT_REVISABLE or REVISION_EXISTS"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /dashboard:
     get:
       summary: The active workspace's current-state KPIs and its 10 newest activity events
@@ -1676,6 +1924,157 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    QuoteItemInput:
+      type: object
+      additionalProperties: false
+      required: [description, quantity, unitPriceCents]
+      properties:
+        description: { type: string, minLength: 2, maxLength: 300 }
+        quantity: { type: integer, minimum: 1, maximum: 100000 }
+        unitPriceCents: { type: integer, minimum: 0, maximum: 100000000 }
+    CreateQuote:
+      type: object
+      additionalProperties: false
+      required: [customerId, title, items]
+      properties:
+        customerId: { type: string, format: uuid }
+        opportunityId:
+          {
+            type: [string, "null"],
+            format: uuid,
+            description: "Must be a deal of the same customer.",
+          }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        issueDate:
+          {
+            type: [string, "null"],
+            format: date,
+            description: "Defaults to today in the workspace's time zone.",
+          }
+        validUntil: { type: [string, "null"], format: date }
+        taxRateBps:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 10000,
+            default: 0,
+            description: "Basis points: 825 is 8.25%.",
+          }
+        discountCents: { type: integer, minimum: 0, default: 0 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        items:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 100,
+            items: { $ref: "#/components/schemas/QuoteItemInput" },
+          }
+    UpdateQuote:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion: { type: integer, minimum: 1 }
+        customerId: { type: string, format: uuid }
+        opportunityId: { type: [string, "null"], format: uuid }
+        title: { type: string, minLength: 2, maxLength: 150 }
+        issueDate: { type: string, format: date }
+        validUntil: { type: [string, "null"], format: date }
+        taxRateBps: { type: integer, minimum: 0, maximum: 10000 }
+        discountCents: { type: integer, minimum: 0 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        items:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 100,
+            items: { $ref: "#/components/schemas/QuoteItemInput" },
+          }
+    Quote:
+      type: object
+      required:
+        [
+          id,
+          quoteNumber,
+          customerId,
+          title,
+          currency,
+          status,
+          issueDate,
+          taxRateBps,
+          discountCents,
+          subtotalCents,
+          taxCents,
+          totalCents,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        quoteNumber: { type: string, pattern: "^Q-[0-9]{6,}$" }
+        customerId: { type: string, format: uuid }
+        customerName: { type: [string, "null"] }
+        opportunityId: { type: [string, "null"], format: uuid }
+        title: { type: string }
+        currency: { type: string, enum: [USD] }
+        status: { type: string, enum: [draft, sent, approved, rejected, expired] }
+        issueDate: { type: string, format: date }
+        validUntil: { type: [string, "null"], format: date }
+        taxRateBps: { type: integer }
+        discountCents: { type: integer }
+        subtotalCents: { type: integer, description: "Computed by the server." }
+        taxCents: { type: integer, description: "Computed by the server." }
+        totalCents: { type: integer, description: "Computed by the server." }
+        notes: { type: [string, "null"] }
+        version: { type: integer, description: "Send it back as `expectedVersion`." }
+        revisesQuoteId: { type: [string, "null"], format: uuid }
+        createdBy: { type: [string, "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        archivedAt: { type: [string, "null"], format: date-time }
+    QuoteDetail:
+      allOf:
+        - $ref: "#/components/schemas/Quote"
+        - type: object
+          required: [items, revises, revisions, statusHistory]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  position: { type: integer }
+                  description: { type: string }
+                  quantity: { type: integer }
+                  unitPriceCents: { type: integer }
+                  lineTotalCents: { type: integer }
+            revises:
+              type: [object, "null"]
+              description: The quote this one revises.
+              properties:
+                id: { type: string, format: uuid }
+                quoteNumber: { type: string }
+                status: { type: string }
+            revisions:
+              type: array
+              description: The revisions made from this quote, newest first.
+              items:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  quoteNumber: { type: string }
+                  status: { type: string }
+                  createdAt: { type: string, format: date-time }
+            statusHistory:
+              type: array
+              description: Draft at creation, then each status change, oldest first.
+              items:
+                type: object
+                properties:
+                  status: { type: string }
+                  at: { type: string, format: date-time }
     Customer:
       type: object
       required: [id, type, displayName, status, source, tags, createdAt, updatedAt]

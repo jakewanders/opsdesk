@@ -210,6 +210,44 @@ describe("withOrgApi", () => {
     expect((await res.json()).error.code).toBe("DEMO_EXPIRED");
     expect((await api([dead], { allowExpired: true })(request())).status).toBe(200);
   });
+  it("feature: an endpoint whose flag is off is a 404 for everyone, before authorization or any body reading", async () => {
+    const flags = (quotes: boolean) => () => ({ quotes }) as never;
+    const off = await api([member(A, "viewer")], {
+      feature: "quotes",
+      authorize: "quotes.write",
+      flags: flags(false),
+    })(request());
+    expect(off.status).toBe(404); // a viewer would be 403 if the flag were on: nothing is revealed
+    const on = await api([member(A, "viewer")], {
+      feature: "quotes",
+      authorize: "quotes.write",
+      flags: flags(true),
+    })(request());
+    expect(on.status).toBe(403);
+    const ok = await api([member(A, "member")], {
+      feature: "quotes",
+      authorize: "quotes.write",
+      flags: flags(true),
+    })(request());
+    expect(ok.status).toBe(200);
+  });
+  it("authorize: a role the action refuses is a 403 before the handler runs", async () => {
+    let ran = false;
+    const handler = withOrgApi(
+      () => {
+        ran = true;
+        return okItem({});
+      },
+      {
+        trustedOrigins: () => [APP],
+        resolveUser: async () => user,
+        createSupabase: async () => fakeSupabase([member(A, "viewer")]),
+        authorize: "records.write",
+      },
+    );
+    expect((await handler(request())).status).toBe(403);
+    expect(ran).toBe(false);
+  });
   it("a database error becomes a generic 500, not a leak", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const res = await api({ error: { code: "XX000", message: "relation secret_table failed" } })(

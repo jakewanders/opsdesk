@@ -23,6 +23,7 @@ export type EndpointRule =
 const read: EndpointRule = { who: "org", action: "records.read" };
 const write: EndpointRule = { who: "org", action: "records.write" };
 const manage: EndpointRule = { who: "org", action: "members.manage" };
+const quoteWrite: EndpointRule = { who: "org", action: "quotes.write" };
 
 /** Keyed `"METHOD /path"` with `{param}` placeholders, exactly as the route files are laid out. */
 export const ENDPOINTS: Record<string, EndpointRule> = {
@@ -53,6 +54,12 @@ export const ENDPOINTS: Record<string, EndpointRule> = {
   "GET /organizations": { who: "signed-in" },
   "POST /organizations": { who: "registered" },
   "GET /organizations/{id}": { who: "member-of-path" },
+  "GET /quotes": read,
+  "POST /quotes": quoteWrite,
+  "GET /quotes/{id}": read,
+  "PATCH /quotes/{id}": quoteWrite,
+  "POST /quotes/{id}/transition": quoteWrite,
+  "POST /quotes/{id}/revise": quoteWrite,
   "GET /session": { who: "signed-in" },
   "GET /tasks": read,
   "POST /tasks": write,

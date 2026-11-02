@@ -12,7 +12,9 @@ import type { Database } from "@/lib/supabase/database.types";
 import type { CurrentUser } from "@/lib/supabase/resolve-user";
 import { resolveOrg, type OrgContext, type SelectOptions } from "./org-context";
 import { assertCan, type Action } from "@/lib/permissions";
-import { UnauthorizedError } from "./errors";
+import { getFeatureFlags } from "@/lib/env/public";
+import type { FeatureFlags } from "@/lib/env/schema";
+import { NotFoundError, UnauthorizedError } from "./errors";
 import { assertJsonRequest } from "./json-body";
 import { logger as defaultLogger, type Logger, type LogFields } from "@/lib/logger/logger";
 import { routeLabel } from "@/lib/logger/route-label";
@@ -179,6 +181,13 @@ export type OrgApiOptions = Omit<ApiOptions, "auth"> &
      * check again (defense in depth), and the database is the final authority.
      */
     authorize?: Action;
+    /**
+     * A feature flag that must be on (`NEXT_PUBLIC_ENABLE_*`). When it is off the endpoint does not exist: 404, for every caller,
+     * checked right after the workspace is resolved and before authorization, so a disabled feature reveals nothing.
+     */
+    feature?: keyof FeatureFlags;
+    /** Test seam: replaces the validated environment's flags. */
+    flags?: () => FeatureFlags;
     /** Test seam: replaces the cookie-session client. */
     createSupabase?: () => Promise<SupabaseClient<Database>>;
   };
@@ -196,7 +205,7 @@ export function withOrgApi<P = Record<string, never>>(
   handler: (args: OrgApiHandlerArgs<P>) => Promise<ApiResult | Response> | ApiResult | Response,
   options: OrgApiOptions = {},
 ) {
-  const { allowExpired, now, createSupabase, authorize, ...apiOptions } = options;
+  const { allowExpired, now, createSupabase, authorize, feature, flags, ...apiOptions } = options;
   return withApi<P>(
     async (args) => {
       const user = args.user;
@@ -204,6 +213,7 @@ export function withOrgApi<P = Record<string, never>>(
       const supabase = await (createSupabase ?? defaultCreateSupabase)();
       const org = await resolveOrg(args.request, user, supabase, { allowExpired, now });
       args.trace({ orgId: org.org.id });
+      if (feature && !(flags ?? getFeatureFlags)()[feature]) throw new NotFoundError();
       if (authorize) assertCan(org.role, org.kind, authorize);
       return handler({ ...args, user, org, supabase });
     },

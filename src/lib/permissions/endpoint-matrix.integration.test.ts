@@ -18,7 +18,7 @@ const STALE = "2020-01-01T00:00:00.000000+00:00";
 let owner: Actor, admin: Actor, member: Actor, viewer: Actor, outsider: Actor, guest: Actor;
 let orgA = "";
 let demoOrg = "";
-type Ids = { customer: string; opportunity: string; task: string };
+type Ids = { customer: string; opportunity: string; task: string; quote: string };
 let idsA: Ids, idsDemo: Ids;
 let counter = 0;
 
@@ -98,6 +98,28 @@ const B: Record<string, (c: Ctx) => Req> = {
     json: { name: `Matrix Workspace ${++counter}` },
   }),
   "GET /organizations/{id}": (c) => ({ method: "GET", path: `/organizations/${c.org}` }),
+  "GET /quotes": () => ({ method: "GET", path: "/quotes" }),
+  "POST /quotes": (c) => ({
+    method: "POST",
+    path: "/quotes",
+    json: {
+      customerId: c.ids.customer,
+      title: `Matrix quote ${++counter}`,
+      items: [{ description: "Matrix line", quantity: 1, unitPriceCents: 100 }],
+    },
+  }),
+  "GET /quotes/{id}": (c) => ({ method: "GET", path: `/quotes/${c.ids.quote}` }),
+  "PATCH /quotes/{id}": (c) => ({
+    method: "PATCH",
+    path: `/quotes/${c.ids.quote}`,
+    json: { expectedVersion: 999, title: "matrix" },
+  }),
+  "POST /quotes/{id}/transition": (c) => ({
+    method: "POST",
+    path: `/quotes/${c.ids.quote}/transition`,
+    json: { to: "sent", expectedVersion: 999 },
+  }),
+  "POST /quotes/{id}/revise": (c) => ({ method: "POST", path: `/quotes/${c.ids.quote}/revise` }),
   "GET /session": () => ({ method: "GET", path: "/session" }),
   "GET /tasks": () => ({ method: "GET", path: "/tasks" }),
   "POST /tasks": () => ({
@@ -140,7 +162,12 @@ async function seed(actor: Actor, org: string): Promise<Ids> {
     title: "Matrix seed deal",
   });
   const task = await post("/tasks", { title: "Matrix seed task" });
-  return { customer, opportunity, task };
+  const quote = await post("/quotes", {
+    customerId: customer,
+    title: "Matrix seed quote",
+    items: [{ description: "Seed line", quantity: 1, unitPriceCents: 100 }],
+  });
+  return { customer, opportunity, task, quote };
 }
 
 beforeAll(async () => {

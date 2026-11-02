@@ -704,6 +704,50 @@ export type Database = {
         Args: { p_email: string; p_org_id: string; p_role: string };
         Returns: Json;
       };
+      create_quote_with_items: {
+        Args: {
+          p_customer_id: string;
+          p_discount_cents: number;
+          p_issue_date: string;
+          p_items: Json;
+          p_notes: string;
+          p_opportunity_id: string;
+          p_org_id: string;
+          p_tax_rate_bps: number;
+          p_title: string;
+          p_valid_until: string;
+        };
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string;
+          discount_cents: number;
+          id: string;
+          issue_date: string;
+          notes: string | null;
+          opportunity_id: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id: string | null;
+          status: string;
+          subtotal_cents: number;
+          tax_cents: number;
+          tax_rate_bps: number;
+          title: string;
+          total_cents: number;
+          updated_at: string;
+          valid_until: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_real_organization: {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;
@@ -779,7 +823,118 @@ export type Database = {
       preview_invitation: { Args: { p_token: string }; Returns: Json };
       redeem_invitation: { Args: { p_token: string }; Returns: Json };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
+      revise_quote: {
+        Args: { p_id: string };
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string;
+          discount_cents: number;
+          id: string;
+          issue_date: string;
+          notes: string | null;
+          opportunity_id: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id: string | null;
+          status: string;
+          subtotal_cents: number;
+          tax_cents: number;
+          tax_rate_bps: number;
+          title: string;
+          total_cents: number;
+          updated_at: string;
+          valid_until: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
+      transition_quote: {
+        Args: { p_expected_version: number; p_id: string; p_to_status: string };
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string;
+          discount_cents: number;
+          id: string;
+          issue_date: string;
+          notes: string | null;
+          opportunity_id: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id: string | null;
+          status: string;
+          subtotal_cents: number;
+          tax_cents: number;
+          tax_rate_bps: number;
+          title: string;
+          total_cents: number;
+          updated_at: string;
+          valid_until: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      update_draft_quote: {
+        Args: {
+          p_customer_id: string;
+          p_discount_cents: number;
+          p_expected_version: number;
+          p_id: string;
+          p_issue_date: string;
+          p_items: Json;
+          p_notes: string;
+          p_opportunity_id: string;
+          p_tax_rate_bps: number;
+          p_title: string;
+          p_valid_until: string;
+        };
+        Returns: {
+          archived_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string;
+          discount_cents: number;
+          id: string;
+          issue_date: string;
+          notes: string | null;
+          opportunity_id: string | null;
+          organization_id: string;
+          quote_number: string;
+          revises_quote_id: string | null;
+          status: string;
+          subtotal_cents: number;
+          tax_cents: number;
+          tax_rate_bps: number;
+          title: string;
+          total_cents: number;
+          updated_at: string;
+          valid_until: string | null;
+          version: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "quotes";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
     };
     Enums: {
       [_ in never]: never;
