@@ -769,7 +769,7 @@ In progress. Entries are added per issue.
 | 6   | Screen reader (VoiceOver) pass on the dashboard, a list, a form and the board                                                                                                                            | **Not done**: it needs a person with VoiceOver; recorded under "Waiting on Jake" below as an optional manual step                                                |
 
 - **No findings** for: dialogs and drawers (focus held through 24 Tab / Shift+Tab presses, returned to the trigger on close), Escape on unsaved task work (asks first, "keep editing" keeps it), the archive confirmation (Escape cancels with no action; the destructive button is reached by Tab and Enter), the theme toggle (keeps focus), the phone navigation drawer, visible focus rings in both themes, and every P0 page's axe results after the fixes above.
-- `npm run check`: all 10 steps passed (see below for the final counts). **Mutation checks:** reverting the contrast fix made the light-theme axe test fail on the customer page; reverting the auth skip link failed the skip-link test; both restored.
+- `npm run check`: all 10 steps passed (unit 1595 / 106 files, pgTAP PASS, integration 431 / 40 files, Playwright 24 / 24: 10 earlier desktop, 9 accessibility, 5 mobile). **Mutation checks:** reverting the contrast fix made the light-theme axe test fail on the customer page; reverting the auth skip link failed the skip-link test; both restored.
 - Not done: the VoiceOver pass (finding 6).
 
 ### SIT-260 — Mobile 375px and 200% zoom pass across all P0 pages (done)
