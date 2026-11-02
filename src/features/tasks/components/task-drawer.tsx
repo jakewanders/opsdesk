@@ -35,7 +35,9 @@ import { TASK_PRIORITIES, TASK_STATUSES, type TaskDto } from "../schema";
 import { OpportunityPicker } from "./opportunity-picker";
 import { PRIORITY_LABELS, STATUS_LABELS } from "./task-labels";
 
-export type DrawerState = { mode: "create" } | { mode: "edit"; task: TaskDto };
+/** `customer` starts a new task attached to that customer (the customer page's "Add task"). */
+export type DrawerState =
+  { mode: "create"; customer?: { id: string; name: string } } | { mode: "edit"; task: TaskDto };
 
 const SELECT =
   "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 disabled:opacity-50 dark:bg-input/30";
@@ -88,7 +90,11 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
 
   const form = useForm<TaskFormValues>({
     resolver: taskResolver(editing ? { mode: "edit", version } : { mode: "create" }),
-    defaultValues: task ? toTaskFormValues(task) : EMPTY_TASK,
+    defaultValues: task
+      ? toTaskFormValues(task)
+      : state?.mode === "create" && state.customer
+        ? { ...EMPTY_TASK, customerId: state.customer.id, customerName: state.customer.name }
+        : EMPTY_TASK,
     mode: "onSubmit",
     reValidateMode: "onChange",
   });

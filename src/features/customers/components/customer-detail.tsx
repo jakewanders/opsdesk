@@ -21,10 +21,11 @@ import type { MemberDto } from "@/features/members/service";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { CustomerDetailDto } from "../schema";
 import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus } from "./customer-status";
+import { RelatedOpportunities, RelatedTasks } from "./customer-related";
 
 type Props = {
   customer: CustomerDetailDto;
@@ -34,6 +35,11 @@ type Props = {
   currentUserId: string;
   /** The organization's time zone, for every time shown. */
   timeZone: string;
+  /**
+   * The Quotes tab, supplied only when the quotes feature flag is on AND the quotes API exists (`quotesTabEnabled`). With no
+   * value no Quotes tab is rendered: there is never an empty placeholder tab.
+   */
+  quotesTab?: { count: number; content: ReactNode };
 };
 
 const SOURCE_LABELS = {
@@ -76,7 +82,14 @@ const show = (value: unknown): string =>
  * tab. Notes and every value from an event are rendered as text. An archived customer says so and offers Restore to people
  * who can write; archive and restore go through the API and then refresh the page's server data and the customer list.
  */
-export function CustomerDetail({ customer, events, canWrite, currentUserId, timeZone }: Props) {
+export function CustomerDetail({
+  customer,
+  events,
+  canWrite,
+  currentUserId,
+  timeZone,
+  quotesTab,
+}: Props) {
   const router = useRouter();
   const members = useApiQuery<MemberDto[]>(["members"], "/members");
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -219,6 +232,11 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
       <Tabs defaultValue="overview">
         <TabsList variant="line" aria-label="Customer sections">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="opportunities">
+            Opportunities ({customer.related.opportunities})
+          </TabsTrigger>
+          <TabsTrigger value="tasks">Tasks ({customer.related.tasks})</TabsTrigger>
+          {quotesTab ? <TabsTrigger value="quotes">Quotes ({quotesTab.count})</TabsTrigger> : null}
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -257,6 +275,26 @@ export function CustomerDetail({ customer, events, canWrite, currentUserId, time
             </p>
           </section>
         </TabsContent>
+
+        <TabsContent value="opportunities" className="mt-4">
+          <RelatedOpportunities customer={customer} canWrite={canWrite} archived={archived} />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-4">
+          <RelatedTasks
+            customer={customer}
+            canWrite={canWrite}
+            archived={archived}
+            currentUserId={currentUserId}
+            timeZone={timeZone}
+          />
+        </TabsContent>
+
+        {quotesTab ? (
+          <TabsContent value="quotes" className="mt-4">
+            {quotesTab.content}
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="activity" className="mt-4">
           {events.length === 0 ? (

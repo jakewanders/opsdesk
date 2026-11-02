@@ -161,12 +161,16 @@ describe("CustomerDetail [SIT-226]", () => {
     expect(screen.getByText("No notes.")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Tags" })).toBeNull();
   });
-  it("tabs have proper roles and are keyboard operable: arrow keys move between Overview and Activity", async () => {
+  it("tabs have proper roles and are keyboard operable: arrow keys move through Overview, Opportunities, Tasks and Activity", async () => {
     renderDetail();
     expect(screen.getByRole("tablist", { name: "Customer sections" })).toBeInTheDocument();
-    const [overview, activity] = screen.getAllByRole("tab");
+    const [overview, opportunities, tasks, activity] = screen.getAllByRole("tab");
     expect(overview).toHaveAttribute("aria-selected", "true");
     overview.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(opportunities).toHaveFocus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(tasks).toHaveFocus();
     await userEvent.keyboard("{ArrowRight}");
     expect(activity).toHaveFocus();
     await userEvent.keyboard("{Enter}");

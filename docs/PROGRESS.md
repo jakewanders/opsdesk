@@ -724,6 +724,14 @@ In progress. Entries are added per issue.
 - `npm run check`: all steps passed (unit 1524 / 98 files, integration 406 / 37 files, pgTAP PASS). Mutation checks caught: warning disabled (1 failure); open count including won deals (1).
 - Not done: the Playwright scenario 1 (create/edit/archive/restore); no Playwright suite exists yet (SIT-251 covers customer E2E once the harness exists).
 
+### SIT-243 — Related opportunities and tasks tabs on the customer detail page (done)
+
+- The customer page has Overview, Opportunities (n), Tasks (n) and Activity tabs; counts come from the detail endpoint's `related`. Tab content loads only when opened. **Opportunities:** server-paged (10 per page) `GET /opportunities?customerId=`, stage as icon + word, amount through `formatUsd`, expected close, links to each deal, and "Add opportunity" linking to `/app/opportunities/new?customerId=` (which already starts on that customer). **Tasks:** `GET /tasks?customerId=` (every status, by due date), status, due state, priority, quick complete/reopen with the existing optimistic hook (rollback on failure), edit by title, and "Add task" which opens the task drawer with the customer already chosen (`DrawerState` create gained an optional `customer`). Loading, empty (with the add action for writers only), error with retry. Archived customers still show their history but offer no Add actions.
+- **Quotes tab:** gated by `quotesTabEnabled(flags)` = `NEXT_PUBLIC_ENABLE_QUOTES` AND `QUOTES_API_AVAILABLE` (currently `false`: there is no quotes API). `CustomerDetail` renders a Quotes tab only when given a `quotesTab`; the page gives none, so no tab, no placeholder. The quotes UI issue flips the constant and supplies the content.
+- Tests: `customer-related.test.tsx` (10: counts in labels and no early requests, only this customer's request, columns and links, paging, empty states for writer/viewer/archived, archived history kept, complete in place, failed completion rolls back, Add task prefilled with `customerId` in the POST, read error with retry, Quotes gate) with axe; `customer-related.integration.test.ts` (4, real build and Supabase): per-customer filtering and counts, another workspace's customer id returns nothing from either side, archived customer's history and server paging, prefilled create pages ignore a foreign customer. The SIT-226 tab keyboard test now walks four tabs.
+- `npm run check`: all steps passed (unit 1534 / 99 files, integration 410 / 38 files, pgTAP PASS). Mutation caught: `customerId` dropped from the opportunities request (1 failure).
+- Not done: the Playwright scenario 1 extension (no Playwright suite yet).
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.
