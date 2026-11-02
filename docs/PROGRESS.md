@@ -516,6 +516,13 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1104 / 73 files, integration 171 / 23 files, pgTAP PASS).
 - Mutations caught and reverted: INSERT granted, the protection trigger disabled, SELECT policy open to everyone, no size cap, no demo cap.
 
+### SIT-201 — Transactional activity logging with whitelisted changes and no-op suppression (done)
+
+- Migration `20261101001700_activity_logging.sql`: `private.log_activity`, `private.log_entity_change` (generic row trigger), `private.attach_activity_log` (one-line attach for entity migrations), `private.sanitize_activity_changes` (the whitelist), actor and system-mode helpers, and the seed runner now switches to the System actor for the seed. Events are stamped with the clock time so a transaction's events keep their order. Usage for entity issues documented in `docs/SECURITY.md` and at the top of the migration.
+- `supabase/tests/activity-logging.test.sql` (50): no helper callable by any API role, none exposed in the API schema, direct inserts still refused; create, update (by the real caller, not the owner), PRD summary shapes, numbers staying numbers; **notes-only and mixed edits log the field names without content, and no note or e-mail text appears in any event or summary**; no-op updates write nothing (same value, only `updated_at`, no matching row); archive and restore; explicit named transitions sanitized the same way (content and secret keys reduced to names, odd keys dropped, complex values flattened, summary cleaned and cut, values cut to 120); empty summary and unknown action or entity refused; **atomicity: a forced failure after an insert or an update leaves neither the row change nor its event, and a demo at the activity cap cannot save a change without its event**; System actor for seeded rows and the mode switched off afterwards; back-dating only in system mode; attach-time column checks.
+- `npm run check`: all 9 steps passed (unit 1105 / 73 files, integration 171 / 23 files, pgTAP PASS).
+- Mutations caught and reverted: content keys stored, no-op suppression off, actor not cleared in system mode, summary not truncated, `log_activity` granted to `authenticated`.
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.
