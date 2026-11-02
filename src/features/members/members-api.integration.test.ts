@@ -347,3 +347,41 @@ describe("PATCH and DELETE /api/v1/members/:userId", () => {
     expect((await call(admin, "PATCH", `/members/${viewer.id}`, {})).status).toBe(422);
   });
 });
+
+describe("POST /api/v1/invitations/preview", () => {
+  const preview = (actor: Actor | null, token: string) =>
+    call(actor, "POST", "/invitations/preview", { token }, null);
+
+  it("200: shows the workspace, the role and whether the signed-in account is the invited one, and never echoes the token or address", async () => {
+    const who = await server.member("mb-prev");
+    const token = await tokenFor(owner, who.email!, "viewer");
+    const res = await preview(who, token);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    const { data } = JSON.parse(text);
+    expect(data).toMatchObject({
+      organizationName: "Members Co A",
+      role: "viewer",
+      emailVerified: true,
+      emailMatches: true,
+    });
+    expect(data.invitedEmailHint).toMatch(/^.\*\*\*@example\.test$/);
+    expect(text).not.toContain(token);
+    expect(text).not.toContain(who.email!);
+    // looking is not joining
+    expect(roleOf(orgA, who)).toBe("none");
+    const other2 = await preview(outsider, token);
+    expect((await other2.json()).data.emailMatches).toBe(false);
+  });
+
+  it("refuses with the same stable codes as accepting, and a guest or signed-out caller gets 403 or 401", async () => {
+    expect(await code(await preview(outsider, "0".repeat(64)))).toBe("INVITATION_INVALID");
+    expect(await code(await preview(outsider, "nope"))).toBe("INVITATION_INVALID");
+    const made = await (await invite(owner, `pv-${Date.now()}@example.test`)).json();
+    await call(owner, "DELETE", `/invitations/${made.data.id}`);
+    expect(await code(await preview(outsider, made.data.token))).toBe("INVITATION_REVOKED");
+    const guestRes = await preview(guest, "0".repeat(64));
+    expect(guestRes.status).toBe(403);
+    expect((await preview(null, "0".repeat(64))).status).toBe(401);
+  });
+});

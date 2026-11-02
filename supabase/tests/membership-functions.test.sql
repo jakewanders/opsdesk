@@ -1,7 +1,7 @@
 -- pgTAP tests for create_invitation, revoke_invitation, redeem_invitation and change_membership (SIT-202): who may call them,
 -- every reject case, the last-owner guard, no privilege escalation, hashed tokens, and the redemption rate limit.
 begin;
-select plan(88);
+select plan(102);
 select tests.create_fixtures();
 -- verified addresses for everyone except a_viewer
 update auth.users set email_confirmed_at = now() where email like '%@example.test' and email <> 'a_viewer@example.test';
@@ -132,6 +132,44 @@ select isnt((select accepted_at from public.invitations where id = (select id fr
 select tests.act_as('outsider');
 select is((select public.redeem_invitation((select token from made where label = 'for_outsider'))), '{"ok": false, "reason": "used"}'::jsonb, 'a second use is refused (used)');
 select tests.reset();
+-- ---- preview_invitation: what the link offers, before accepting
+select tests.act_as_anon();
+select is(tests.sqlstate_of($$select public.preview_invitation(repeat('a', 64))$$), '42501', 'anon cannot preview');
+select tests.reset();
+select tests.act_as('g1');
+select is(tests.sqlstate_of($$select public.preview_invitation(repeat('a', 64))$$), 'OD403', 'a demo guest cannot preview');
+select tests.reset();
+select tests.act_as('a_member');
+select is((select (r ->> 'organizationName') || '/' || (r ->> 'role') || '/' || (r ->> 'invitedEmailHint') from (select public.preview_invitation((select token from made where label = 'for_member')) r) s), 'Org B/admin/a***@example.test', 'the matching person sees the workspace name, the role and a masked address');
+select is((select r -> 'emailMatches' from (select public.preview_invitation((select token from made where label = 'for_member')) r) s), 'true'::jsonb, 'and that their account is the one invited');
+select is((select r::text like '%a_member@example.test%' or r::text like '%' || (select token from made where label = 'for_member') || '%' from (select public.preview_invitation((select token from made where label = 'for_member')) r) s), false, 'neither the full address nor the token is echoed');
+select tests.reset();
+select tests.act_as('b_admin');
+select is((select r -> 'emailMatches' from (select public.preview_invitation((select token from made where label = 'for_member')) r) s), 'false'::jsonb, 'someone else holding the link is told it is not their account');
+select tests.reset();
+select tests.act_as('a_viewer');
+select is((select r -> 'emailVerified' from (select public.preview_invitation((select token from made where label = 'for_unverified')) r) s), 'false'::jsonb, 'an unverified address is flagged before accepting');
+select is((select public.preview_invitation('nope')), '{"ok": false, "reason": "invalid"}'::jsonb, 'a malformed token is invalid');
+select is((select public.preview_invitation(repeat('0', 64))), '{"ok": false, "reason": "invalid"}'::jsonb, 'an unknown token is invalid');
+select is((select public.preview_invitation((select token from made where label = 'to_revoke'))), '{"ok": false, "reason": "revoked", "organizationName": "Org B"}'::jsonb, 'a revoked invitation says so, naming the workspace');
+select is((select public.preview_invitation((select token from made where label = 'for_outsider'))), '{"ok": false, "reason": "used", "organizationName": "Org B"}'::jsonb, 'a used invitation says so');
+select tests.reset();
+alter table public.invitations disable trigger invitations_protect_columns;
+update public.invitations set expires_at = now() - interval '1 minute', created_at = now() - interval '8 days' where id = (select id from made where label = 'for_someone_else');
+alter table public.invitations enable trigger invitations_protect_columns;
+select tests.act_as('a_viewer');
+select is((select public.preview_invitation((select token from made where label = 'for_someone_else'))), '{"ok": false, "reason": "expired", "organizationName": "Org B"}'::jsonb, 'an expired invitation says so');
+select tests.reset();
+delete from private.invitation_redeem_attempts;
+update private.app_limits set value = 2 where key = 'invitation_redeem_attempts_per_15_min';
+select tests.act_as('b_member');
+select public.preview_invitation(repeat('1', 64)); select public.preview_invitation(repeat('2', 64));
+select is((select public.preview_invitation(repeat('3', 64))), '{"ok": false, "reason": "rate_limited"}'::jsonb, 'previews share the redemption rate limit');
+select tests.reset();
+update private.app_limits set value = 10 where key = 'invitation_redeem_attempts_per_15_min';
+delete from private.invitation_redeem_attempts;
+select ok(not has_function_privilege('anon', 'public.preview_invitation(text)', 'execute') and has_function_privilege('authenticated', 'public.preview_invitation(text)', 'execute'), 'preview_invitation: EXECUTE for authenticated only');
+
 -- a second workspace's invitation for an existing member of another workspace works independently
 select tests.act_as('a_member');
 select is((select public.redeem_invitation((select token from made where label = 'for_member'))), jsonb_build_object('ok', true, 'organizationId', tests.org_id('b'), 'role', 'admin'), 'a member of one workspace can join another by invitation (case-insensitive address match)');

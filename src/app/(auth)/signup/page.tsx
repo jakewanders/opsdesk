@@ -4,14 +4,21 @@ import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthFormShell } from "@/components/auth/auth-form-shell";
 import { signupAction } from "@/lib/auth/actions";
+import { safeNextPath } from "@/lib/auth/safe-redirect";
 import { getPublicEnv } from "@/lib/env/public";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 
 export const metadata: Metadata = { title: "Create account" };
 
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const destination = safeNextPath(next);
   const user = await getCurrentUser();
-  if (user && !user.isAnonymous) redirect("/app");
+  if (user && !user.isAnonymous) redirect(destination);
 
   return (
     <AuthFormShell
@@ -20,7 +27,10 @@ export default async function SignupPage() {
       footer={
         <p>
           Already have an account?{" "}
-          <Link href="/login" className="underline underline-offset-2">
+          <Link
+            href={next ? `/login?next=${encodeURIComponent(destination)}` : "/login"}
+            className="underline underline-offset-2"
+          >
             Sign in
           </Link>
           .
@@ -31,6 +41,7 @@ export default async function SignupPage() {
         mode="signup"
         action={signupAction}
         siteKey={getPublicEnv().NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+        next={next ? destination : undefined}
       />
     </AuthFormShell>
   );

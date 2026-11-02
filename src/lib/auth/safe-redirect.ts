@@ -1,5 +1,8 @@
 export const DEFAULT_AFTER_LOGIN = "/app";
 
+/** Public pages that are valid places to return to after signing in (the invitation page reads its token on the client). */
+const ALWAYS_ALLOWED = ["/invite"] as const;
+
 /**
  * Validates a post-login `next` target. Only a same-site path inside the app is accepted: it must
  * start with a single `/`, contain no backslash, control character or encoded slash tricks, and
@@ -35,6 +38,11 @@ export function safeNextPath(
     return fallback;
   }
   const inApp = parsed.pathname === "/app" || parsed.pathname.startsWith("/app/");
-  if (!inApp && !extraPaths.includes(parsed.pathname)) return fallback;
+  if (
+    !inApp &&
+    !extraPaths.includes(parsed.pathname) &&
+    !(ALWAYS_ALLOWED as readonly string[]).includes(parsed.pathname)
+  )
+    return fallback;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }

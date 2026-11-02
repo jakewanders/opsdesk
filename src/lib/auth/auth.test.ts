@@ -18,6 +18,19 @@ describe("safeNextPath", () => {
       "/app/customers?stage=won&page=2#top",
     );
   });
+  it("allows the invitation page, and only that page, outside /app", () => {
+    expect(safeNextPath("/invite")).toBe("/invite");
+    for (const v of [
+      "/invite/x",
+      "/invitee",
+      "//invite",
+      "/invite/../login",
+      "/%69nvite/../x",
+      "/login",
+      "/signup",
+    ])
+      expect(safeNextPath(v), v).toBe(DEFAULT_AFTER_LOGIN);
+  });
   it("falls back for missing or non-string values", () => {
     for (const v of [undefined, null, "", 5, {}, ["/app"]])
       expect(safeNextPath(v)).toBe(DEFAULT_AFTER_LOGIN);

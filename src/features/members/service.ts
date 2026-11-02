@@ -118,6 +118,30 @@ export async function changeMembership(
   return data as { userId: string; role: string | null };
 }
 
+export type InvitationPreview = {
+  organizationName: string;
+  role: string;
+  expiresAt: string;
+  invitedEmailHint: string;
+  emailVerified: boolean;
+  emailMatches: boolean;
+};
+
+/** What the token offers, for the confirmation page. Refusals use the same stable codes as accepting. */
+export async function previewInvitation(
+  supabase: SupabaseClient<Database>,
+  token: string,
+): Promise<InvitationPreview> {
+  const { data, error } = await supabase.rpc("preview_invitation", { p_token: token });
+  if (error) throw error;
+  const result = data as { ok: boolean; reason?: string } & Partial<InvitationPreview>;
+  if (!result.ok) throw (ACCEPT_ERRORS[result.reason ?? "invalid"] ?? ACCEPT_ERRORS.invalid)();
+  const preview: Record<string, unknown> = { ...result };
+  delete preview.ok;
+  delete preview.reason;
+  return preview as InvitationPreview;
+}
+
 /** Redeems a token for the signed-in user. Not tied to an active workspace: the invitation names it. */
 export async function acceptInvitation(
   supabase: SupabaseClient<Database>,

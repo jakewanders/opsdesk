@@ -3,7 +3,7 @@ import { localSupabase, psql } from "../../src/test/local-supabase";
 
 /** Helpers for end-to-end tests: real users on the LOCAL Supabase stack, with their own workspaces, removed afterwards. */
 const supabase = localSupabase();
-const PASSWORD = "correct horse battery";
+export const PASSWORD = "correct horse battery";
 const TOKEN = "XXXX.DUMMY.TOKEN.XXXX"; // Cloudflare's public test token, accepted by the local auth stack
 export const BASE = "http://localhost:3111";
 

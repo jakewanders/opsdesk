@@ -601,6 +601,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      preview_invitation: { Args: { p_token: string }; Returns: Json };
       redeem_invitation: { Args: { p_token: string }; Returns: Json };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };

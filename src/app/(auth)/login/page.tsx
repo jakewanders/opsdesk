@@ -32,7 +32,10 @@ export default async function LoginPage({
       footer={
         <p>
           New here?{" "}
-          <Link href="/signup" className="underline underline-offset-2">
+          <Link
+            href={next ? `/signup?next=${encodeURIComponent(destination)}` : "/signup"}
+            className="underline underline-offset-2"
+          >
             Create an account
           </Link>
           , or{" "}

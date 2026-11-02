@@ -1376,6 +1376,56 @@ paths:
           description: "RATE_LIMITED"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /invitations/preview:
+    post:
+      summary: What an invitation offers, before it is accepted (a documented addition to the endpoint inventory)
+      description: >
+        For the confirmation page. Requires a signed-in registered user; no `X-Organization-Id`. Returns the workspace name,
+        the role, the expiry, a masked form of the invited address (first letter and domain) and whether the signed-in account
+        is verified and is the invited one. The token is in the body, never the URL, and is not echoed. Refusals use the same
+        codes as accept (404 `INVITATION_INVALID`; 409 `INVITATION_REVOKED`, `INVITATION_USED`, `INVITATION_EXPIRED`; 429
+        `RATE_LIMITED`); each lookup counts against the same 10-per-15-minutes limit. A demo guest gets 403.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: The offer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      organizationName: { type: string }
+                      role: { type: string, enum: [admin, member, viewer] }
+                      expiresAt: { type: string, format: date-time }
+                      invitedEmailHint: { type: string }
+                      emailVerified: { type: boolean }
+                      emailMatches: { type: boolean }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A demo guest (ACCOUNT_REQUIRED)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "INVITATION_INVALID"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "INVITATION_REVOKED, INVITATION_USED or INVITATION_EXPIRED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "RATE_LIMITED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /dashboard:
     get:
       summary: The active workspace's current-state KPIs and its 10 newest activity events

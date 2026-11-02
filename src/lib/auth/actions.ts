@@ -54,19 +54,25 @@ export async function signupAction(
   if (!parsed.success)
     return failed(previous, { fieldErrors: zodFieldErrors(parsed.error), values });
 
-  // The confirmation link must go to the exact allowlisted callback on the configured origin.
-  const callback = new URL("/auth/callback", getPublicEnv().NEXT_PUBLIC_APP_URL).toString();
+  // The confirmation link must go to an exact allowlisted callback on the configured origin. Signing up from an invitation
+  // returns to the invitation page afterwards (`?next=/invite` is one of the two allowlisted forms).
+  const next = safeNextPath(text(formData, "next"));
+  const callback =
+    new URL("/auth/callback", getPublicEnv().NEXT_PUBLIC_APP_URL).toString() +
+    (next === "/invite" ? "?next=/invite" : "");
   const result = await signUp(await createClient(), parsed.data, callback);
   if (!result.ok) return failed(previous, { message: result.message, values });
-  if (result.next === "signed-in") redirect("/app");
+  if (result.next === "signed-in") redirect(next);
   return { status: "check-email", attempt: previous.attempt, values };
 }
 
 /** Signs the current user out (clears the session cookies) and returns to the login page. */
-export async function logoutAction(): Promise<void> {
+export async function logoutAction(formData?: FormData): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  // Signing out to use the invited account returns to the invitation page afterwards.
+  const next = formData ? safeNextPath(text(formData, "next")) : "";
+  redirect(next === "/invite" ? `/login?next=${encodeURIComponent(next)}` : "/login");
 }
 
 export async function forgotPasswordAction(
