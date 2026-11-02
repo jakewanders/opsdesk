@@ -24,25 +24,28 @@ export type UrlState<S extends UrlSchema> = { [K in keyof S]: ValueOf<S[K]> };
 
 export const urlField = {
   /** Free text such as the search box. Trimmed and capped. */
-  string: (defaultValue = "", max = 100): UrlField => ({
+  string: (defaultValue = "", max = 100): Extract<UrlField, { kind: "string" }> => ({
     kind: "string",
     default: defaultValue,
     max,
   }),
-  int: (defaultValue: number, min = 1, max = 1_000_000): UrlField => ({
+  int: (defaultValue: number, min = 1, max = 1_000_000): Extract<UrlField, { kind: "int" }> => ({
     kind: "int",
     default: defaultValue,
     min,
     max,
   }),
   /** One of a fixed set (a stage, a sort key). */
-  enum: (values: readonly string[], defaultValue: string): UrlField => ({
+  enum: (values: readonly string[], defaultValue: string): Extract<UrlField, { kind: "enum" }> => ({
     kind: "enum",
     default: defaultValue,
     values,
   }),
   /** Any subset of a fixed set, in the set's order (multi-select filters). */
-  list: (values: readonly string[]): UrlField => ({ kind: "list", values }),
+  list: (values: readonly string[]): Extract<UrlField, { kind: "list" }> => ({
+    kind: "list",
+    values,
+  }),
 } as const;
 
 const FORBIDDEN_NAME =

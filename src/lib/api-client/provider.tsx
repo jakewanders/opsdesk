@@ -1,6 +1,11 @@
 "use client";
 
-import { QueryClientProvider, useQuery, type QueryKey } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  QueryClientProvider,
+  useQuery,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, type ApiFetchOptions, type ApiResponse } from "./api-fetch";
 import { makeQueryClient } from "./query-client";
@@ -68,6 +73,8 @@ type QueryOptions<T> = {
   staleTime?: number;
   /** Server-rendered first read, so the first paint needs no request. */
   initialData?: ApiResponse<T>;
+  /** Keep showing the previous result while a new key loads (paging, filtering) instead of an empty table. */
+  keepPrevious?: boolean;
 };
 
 /** A GET through the shared cache. */
@@ -80,5 +87,6 @@ export function useApiQuery<T>(key: QueryKey, path: string, options: QueryOption
     enabled: options.enabled,
     staleTime: options.staleTime,
     initialData: options.initialData,
+    placeholderData: options.keepPrevious ? keepPreviousData : undefined,
   });
 }

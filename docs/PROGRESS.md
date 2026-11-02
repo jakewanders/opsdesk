@@ -561,6 +561,16 @@ In progress. Entries are added per issue.
 - `npm run check`: all 9 steps passed (unit 1173 / 75 files, integration 213 / 25 files, pgTAP PASS).
 - Mutations caught and reverted: no-op detection removed, restore not clearing `archived_at`. The up-front stale check is covered by the unit test and the compare-and-set by SIT-183's tests.
 
+### SIT-219 — Customer list page: table, search, filters, pagination, responsive layout (done)
+
+- `src/app/app/customers/page.tsx` reads the first page on the server with the caller's own session (RLS applies; `getPageOrgContext` in `src/lib/org/page-context.ts` re-verifies the workspace from the preference cookie), then `CustomersView` (`src/features/customers/components/`) hands over to TanStack Query (`@tanstack/react-table` 8.21.3 for the table). The server-read page is reused only while the URL still matches (`staleTime` 30 s, so no second read on mount); a failed server read falls back to a browser read with the error and request ID.
+- URL state (`list-state.ts`): `q`, `status`, `source`, `sort`, `order`, `page`, `limit`; defaults are left out, invalid values fall back to defaults, any change but the page returns to page 1, filter changes replace history and page changes push. Search is debounced (300 ms). `useApiQuery` gained `keepPrevious` so paging does not flash the skeleton.
+- States: loading skeleton, empty (with "Add your first customer" for writers, no action for viewers), no results with "Clear filters", page past the end with "Go to the first page", error alert with request ID and retry. Status is an icon plus a word. Sortable headers (name, status, last updated) are buttons with `aria-sort`; the table region is keyboard-focusable so it scrolls sideways at 375 px; every control is a native element. Rows per page 10/25/50/100 (server pagination, never a full download). Row menu: view and archive (with confirmation); owners, admins and members see Add and Archive, viewers do not.
+- Tests: `list-state.test.ts` (6), `customers-view.test.tsx` (9: first page with no request and axe clean, empty state for writers and viewers, no Add for viewers, filters in the URL, clear filters, sort, paging, failed read then retry, archive asks then DELETEs), `customers-page.integration.test.ts` (4, real production build and Supabase: demo guest gets the table in server HTML with "Showing 1 to 15 of 15" (18 seeded, 3 archived hidden), filters from the URL applied on the server, garbage URL state is a 200, a new real workspace gets the empty state with no table).
+- Bug found by the integration test: the list query schema reads strings, so the typed numeric `page`/`limit` failed validation and the server silently fell back to the browser read; the page now stringifies the query the way a URL would.
+- Checks: prettier, `tsc --noEmit`, eslint clean; unit 1188 / 77 files; integration 217 / 26 files; production build lists `/app/customers`. Not run in this iteration: a Playwright scenario (the issue defers it).
+- Deviation: the row menu has View and Archive but no Edit; the edit form is a later issue, and a link to a page that does not exist yet would be a dead end (see DECISIONS).
+
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 Not started. No checks run.
