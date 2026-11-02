@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { BackendUnavailable } from "@/components/shared/backend-unavailable";
+import { getRepoUrl } from "@/lib/env/links";
 import { DemoEndedPanel } from "@/components/demo/demo-ended-panel";
 import { DemoEntryClient } from "@/components/demo/demo-entry-client";
 import { buttonVariants } from "@/components/ui/button";
@@ -41,7 +43,8 @@ export default async function DemoPage() {
     try {
       workspaces = toWorkspaces(await loadMemberships(await createClient(), user.id));
     } catch {
-      /* treated as no workspace: the entry flow below re-runs the idempotent bootstrap */
+      // Not "no workspace": the database is not answering. Say so; never start a flow that cannot finish.
+      return <BackendUnavailable action="open the demo" repoUrl={getRepoUrl()} />;
     }
     const live = workspaces.some((w) => w.kind === "demo" && !w.expired);
     if (live) redirect("/app");

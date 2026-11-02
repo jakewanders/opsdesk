@@ -78,8 +78,8 @@ select is(
 select is(
   (select coalesce(string_agg(n.nspname || '.' || p.proname, ', '), '')
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))),
-  '', 'no function in public is executable by anon or PUBLIC'
+    where n.nspname = 'public' and p.proname <> 'health_ping' /* the no-data liveness probe, SIT-186 */ and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))),
+  '', 'no function in public is executable by anon or PUBLIC (except the health_ping probe)'
 );
 select ok(not has_schema_privilege('anon', 'private', 'usage') and not has_schema_privilege('authenticated', 'public', 'create') and not has_schema_privilege('anon', 'public', 'create'),
   'anon cannot use the private schema and nobody can create objects in public');

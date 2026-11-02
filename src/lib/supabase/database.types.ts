@@ -186,6 +186,16 @@ export type Database = {
         Args: { org_industry?: string; org_name: string; org_timezone?: string };
         Returns: string;
       };
+      health_ping: { Args: Record<PropertyKey, never>; Returns: boolean };
+      idempotency_abandon: { Args: { p_key: string; p_route: string }; Returns: boolean };
+      idempotency_begin: {
+        Args: { p_hash: string; p_key: string; p_route: string };
+        Returns: Json;
+      };
+      idempotency_complete: {
+        Args: { p_body: Json; p_key: string; p_route: string; p_status: number };
+        Returns: boolean;
+      };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
     };
     Enums: {

@@ -14,6 +14,9 @@ const PASSWORD = "correct horse battery";
 export type Actor = { id: string; email: string | null; cookie: string; isAnonymous: boolean };
 
 export class RealServer {
+  /** Point the app at another Supabase URL (for example a closed port, to simulate an outage). Users cannot be created then. */
+  constructor(private readonly options: { supabaseUrl?: string } = {}) {}
+
   supabase!: LocalSupabase;
   base = "";
   private child?: ChildProcess;
@@ -45,7 +48,7 @@ export class RealServer {
       env: {
         ...process.env,
         NODE_ENV: "production",
-        NEXT_PUBLIC_SUPABASE_URL: this.supabase.apiUrl,
+        NEXT_PUBLIC_SUPABASE_URL: this.options.supabaseUrl ?? this.supabase.apiUrl,
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: this.supabase.publishableKey,
         NEXT_PUBLIC_APP_URL: this.base,
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",

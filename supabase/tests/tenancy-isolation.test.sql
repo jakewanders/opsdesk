@@ -84,8 +84,8 @@ select is(
   '', 'every SECURITY DEFINER function in public and private pins an empty search_path');
 select is(
   (select coalesce(string_agg(n.nspname || '.' || p.proname, ', '), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname in ('public', 'private') and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))),
-  '', 'no function in public or private is executable by anon or PUBLIC');
+    where n.nspname in ('public', 'private') and p.proname <> 'health_ping' /* the no-data liveness probe, SIT-186 */ and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))),
+  '', 'no function in public or private is executable by anon or PUBLIC (except the health_ping probe)');
 select is((select count(*) from tests.public_tables() t where t::text in ('profiles', 'organizations', 'memberships', 'demo_workspaces')), 4::bigint, 'the tenancy tables are the ones under test (update this list when a table is added)');
 
 select * from finish();

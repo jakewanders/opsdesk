@@ -148,6 +148,10 @@ describe("DemoEntry", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Read the technical overview" })).toHaveAttribute(
+      "href",
+      "/#technical-overview",
+    );
     expect(screen.getByRole("link", { name: /GitHub/ })).toHaveAttribute(
       "href",
       "https://github.com/example/opsdesk",

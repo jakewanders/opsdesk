@@ -2,7 +2,7 @@
 -- Database half: guest A/B isolation, escalation attempts, throttles, expiry, and two catalog guards that fail when a
 -- later issue adds a function or tenant table without the demo protections. Re-run on every entity issue.
 begin;
-select plan(39);
+select plan(42);
 select tests.create_fixtures();
 
 -- ---- catalog guard 1: only these public functions are callable by browser roles
@@ -10,7 +10,7 @@ select is((select string_agg(p.oid::regprocedure::text, ', ' order by p.oid::reg
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public'
               and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))),
-  'bootstrap_demo_workspace(), create_real_organization(text,text,text), idempotency_abandon(text,text), idempotency_begin(text,text,text), idempotency_complete(text,text,integer,jsonb), reset_demo_workspace(uuid)',
+  'bootstrap_demo_workspace(), create_real_organization(text,text,text), health_ping(), idempotency_abandon(text,text), idempotency_begin(text,text,text), idempotency_complete(text,text,integer,jsonb), reset_demo_workspace(uuid)',
   'the callable surface is exactly the reviewed list (a new public function must be reviewed and added here)');
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname = 'public' and p.proname like 'cleanup\_%' and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))), 0::bigint,
@@ -19,6 +19,11 @@ select is((select string_agg(p.oid::regprocedure::text, ', ' order by p.oid::reg
             where n.nspname = 'private' and (has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute'))),
   'private.can_write(uuid), private.current_user_id(), private.has_role(uuid,text[]), private.is_anonymous(), private.is_member(uuid), private.is_valid_timezone(text), private.org_is_writable(uuid)',
   'only the row-level-security helpers are callable in the private schema (no seed, cleanup or admin function)');
+
+-- ---- the health probe (SIT-186) reads nothing and is callable by a visitor
+select is((select public.health_ping()), true, 'health_ping answers true');
+select is(has_function_privilege('anon', 'public.health_ping()', 'execute'), true, 'a visitor can call it (the health endpoint has no session)');
+select is((select prosrc from pg_proc where oid = 'public.health_ping()'::regprocedure), ' select true ', 'and it is just "select true": no table, no data');
 
 -- ---- catalog guard 2: every tenant table has RLS; every entity table has a demo cap
 select is((select string_agg(c.relname, ', ') from pg_class c join pg_namespace n on n.oid = c.relnamespace

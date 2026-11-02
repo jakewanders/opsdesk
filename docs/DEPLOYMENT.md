@@ -59,3 +59,11 @@ Auth emails (sign-up confirmation, password reset) link back to the app, and Sup
 | Preview / test project         | the deploy preview origin        | the same three paths on that origin only (tracked in SIT-274); never a wildcard                                                                                      |
 
 Local email is delivered to the Supabase mail catcher (Mailpit; `http://127.0.0.1:54324`). Keep **Confirm email** on in hosted projects (local config has it on) and set the minimum password length to 8. Status: **not yet applied to a hosted project** (needs Jake's Supabase access; tracked with the production setup issues).
+
+## Health check and pause recovery (SIT-186)
+
+`GET /api/health` returns `{ "web": "ok", "database": "ok" | "unavailable" }`. It needs no session, is never cached, and is limited to 30 calls a minute per address (in process memory, so per warm instance: a guard against loops, not a security boundary). The status is 200 whenever the web app answers; the body says whether the database does, so a monitor can tell "site up, backend paused" from "site down". The database check calls `public.health_ping()` (returns `true`, reads nothing) with the publishable key and a 2.5 second timeout; any failure, timeout or odd answer is `unavailable`, with no details.
+
+When the database is not answering, `/demo` and `/app` show "The live backend is not answering" (retry, technical overview, home, repository) instead of a half-working page; nothing is created. The landing and legal pages are static and keep working.
+
+**Recovering from a paused Supabase project.** Free-tier projects pause after a period of inactivity. Restore the project from the Supabase dashboard (Project settings, then Restore), wait for it to report healthy, then check `/api/health` shows `database: "ok"`. Do not add a keep-alive job to avoid the pause policy.

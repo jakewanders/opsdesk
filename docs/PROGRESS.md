@@ -464,6 +464,15 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `npm run check`: all 9 steps passed (unit 978 / 66 files, integration 150 / 19 files, pgTAP PASS).
 - Mutations caught and reverted: content keys not redacted, no recursion into nested objects, JWT pattern removed, query string kept in the route, lint rule off, fields overriding `level`.
 
+### SIT-186 — Health endpoint and backend-unavailable page (done)
+
+- Migration `20261101001500_health_ping.sql` (`public.health_ping()`, no-data probe, callable by anon). `GET /api/health` (`src/app/api/health/route.ts`, `src/lib/health/check.ts`): `{ web, database }`, 2.5 s timeout, rate limited (`src/lib/http/rate-limit.ts`), no-store, no details. `BackendUnavailable` component used by `/demo` and the `/app` shell when the database does not answer; the demo entry failure also links to the technical overview. Pause recovery documented in `docs/DEPLOYMENT.md`. `RealServer` can now be pointed at another Supabase URL.
+- Tests: `check.test.ts` (ok, 5xx, 401, wrong body, non-JSON, refused, hang cut by the timeout, unconfigured, no detail leak), `rate-limit.test.ts`, `backend-unavailable.test.tsx` (copy, links, reload, axe), `health.integration.test.ts` (real production servers: database up, and pointed at a closed port): up reports ok uncached; the 31st call in a minute is 429 with Retry-After while another caller is unaffected; down reports `database: unavailable` within 4 s without leaking the host or error text, the landing and legal pages still render 200, `/demo` renders the entry flow, `/app` redirects a visitor to sign-in. pgTAP: `health_ping` is the one function anon may call, and it is `select true` (the two earlier anon-function guards name it as the exception).
+- Real browser (production build with Supabase URL pointed at a closed port): `/api/health` returned `{"web":"ok","database":"unavailable"}`, `/` returned 200, `/demo` showed "The demo is unavailable right now" with Try again, Back to home and the GitHub link.
+- Manual test with the local Supabase stack stopped was replaced by the closed-port server, which is a real refused connection and leaves the stack running.
+- `npm run check`: all 9 steps passed (unit 996 / 69 files, integration 157 / 20 files, pgTAP PASS).
+- Mutations caught: no timeout, errors reported as ok. Not caught, equivalent: counting a non-2xx as ok (the body check still says unavailable).
+
 ## M2 — Core CRM, Pipeline & Task Management
 
 Not started. No checks run.

@@ -9,6 +9,8 @@ import { toWorkspaces } from "@/lib/api/organizations";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { BackendUnavailable } from "@/components/shared/backend-unavailable";
+import { getRepoUrl } from "@/lib/env/links";
 import { ApiClientProvider } from "@/lib/api-client/provider";
 import { OrgSelector } from "@/components/org/org-selector";
 import { ACTIVE_ORG_COOKIE, resolveActiveWorkspace } from "@/lib/org/active-org";
@@ -49,7 +51,16 @@ async function DynamicShell({ children }: { children: ReactNode }) {
         demoExpiresAt = workspaces.find((w) => w.kind === "demo" && w.expiresAt)?.expiresAt ?? null;
       }
     } catch {
-      workspaces = []; // the selector and banner are conveniences; never block the page on them
+      // The workspace list is how the shell knows who this is. If the database does not answer, say so instead of
+      // rendering an empty shell that looks like a workspace with no data.
+      return (
+        <main
+          id="main-content"
+          className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center p-6"
+        >
+          <BackendUnavailable action="load your workspace" repoUrl={getRepoUrl()} />
+        </main>
+      );
     }
   }
   // The cookie is only a preference: it counts only if it names one of the caller's own workspaces.

@@ -148,6 +148,9 @@ export function DemoEntry({ siteKey, repoUrl, deps }: Props) {
                 Open my workspace
               </Link>
             )}
+            <Link href="/#technical-overview" className="underline underline-offset-4">
+              Read the technical overview
+            </Link>
             <Link href="/" className="underline underline-offset-4">
               Back to home
             </Link>
