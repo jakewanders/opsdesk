@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224, SIT-233, SIT-240 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224, SIT-233, SIT-240, SIT-249 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -906,6 +906,16 @@ In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-224, SI
 - **Integration** `membership-concurrency.integration.test.ts` (7), real HTTP to PostgREST with each user's token: two owners demoting each other and two removing each other, 12 rounds each, never leave zero owners and exactly one call succeeds; the sole owner gets `OD409`; a viewer and a guest are refused (`OD403`); an anonymous call is refused; a full create, redeem, reuse flow. PostgREST answers a custom SQLSTATE with HTTP 400 and the code in the body, so the tests assert the code.
 - **Mutation checks:** admin owner-grant removed: 4 failures; function-level last-owner check disabled: failures from test 70 on; row lock removed: both concurrency tests fail. All restored.
 - Threat notes: `docs/SECURITY.md` ("Membership and invitation functions").
+
+### SIT-249 — Role enforcement audit: endpoint matrix, authorization-first, viewer UI sweep (done)
+
+- **The classification table** `src/lib/permissions/endpoints.ts` lists all 34 implemented `/api/v1` endpoints by who may call them: 26 are workspace endpoints tied to a permission-matrix action (`records.read`, `records.write`, `members.manage`), the rest are signed-in, registered-only, guest-only, or path-member. `expectedOutcome(rule, caller)` derives the status class (401, 403, 404, allowed) from the rule and `can()`.
+- **A new endpoint fails CI until classified:** `endpoints.test.ts` (9 tests) scans the route files; an unclassified route, a classification without a route, an org endpoint that does not pass `authorize: "<the table's action>"` to `withOrgApi`, or a write endpoint open to viewers fails. **Mutation checks:** pointing `POST /customers` at `records.read` failed the authorize assertion; adding an unclassified `GET /zzz` route failed the classification test with the message naming it; both reverted.
+- **The matrix, live:** `endpoint-matrix.integration.test.ts` (36) calls every classified endpoint as eight callers (signed out, owner, admin, member, viewer, non-member, a demo guest in their own demo, a demo guest against a real workspace) against the production build and the real database and compares each status with `expectedOutcome`. A route with no request builder also fails. Result: 34 endpoint cases and the builder-coverage and ordering checks all pass.
+- **Defect found and fixed (authorization after validation):** a viewer, a member (invitations, members) or a demo guest (invitations, members) sending an invalid body to a write endpoint got **422** instead of **403** from 13 endpoint/role combinations, because the handlers parsed the body before checking the role. That told a refused caller which fields the endpoint reads, and it contradicts "403 at the API". `withOrgApi` now takes `authorize: <action>`, checked right after the workspace is resolved and before the body or query is read; all 26 workspace routes pass it. The services still check again, and RLS remains the final authority. The new test "a refused caller gets 403 even when the body is invalid" covers every write endpoint.
+- **Viewer UI, in a real browser** (`e2e/viewer-roles.spec.ts`, 4): across the dashboard, customers list and detail, opportunities list, board and detail, tasks, activity and members, a viewer has no enabled control named add, new, create, edit, archive, restore, delete, remove, invite, save, complete, mark, reset, change, revoke or import; what is disabled says why (customer archive: "You can view this customer but not archive it"); a viewer cannot pick up or move a card on the board by keyboard and the deal stays in its stage (and the API says 403); a member sees a read-only Members page and gets 403 from the invitation and role endpoints; `/app/settings/integrations` and `/app/settings/billing` are 404s with their flags off, for an owner and for a demo guest, and their links are absent from the settings navigation.
+- **Review against PRD 5.1:** viewer reads everything and writes nothing; admin manages members but cannot grant owner or touch owners (database and API, SIT-202/224); member cannot invite or change settings; the demo guest is a limited owner (records yes; invitations, members, billing, integrations, external email refused at the permission module, the API and the database). Nothing disagreed except the ordering defect above. Exports, quotes and reports have no endpoints yet; their `export.run` and `quotes.write` rows are in the permission module and their endpoints must be classified when added (the test enforces it).
+- Not covered: no VoiceOver pass; the "Actions" menus of a viewer's customer list were checked by the existing `viewer-customers.spec.ts`.
 
 ### SIT-240 — Accept-invitation flow and multi-organization experience (done)
 

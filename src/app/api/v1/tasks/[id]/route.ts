@@ -15,19 +15,26 @@ function taskId(params: Params): string {
 }
 
 /** GET /api/v1/tasks/:id: the task with its linked customer's name and deal's title. */
-export const GET = withOrgApi<Params>(async ({ params, supabase, org }) =>
-  okItem(await getForOrg(supabase, org, taskId(params))),
+export const GET = withOrgApi<Params>(
+  async ({ params, supabase, org }) => okItem(await getForOrg(supabase, org, taskId(params))),
+  { authorize: "records.read" },
 );
 
 /** PATCH /api/v1/tasks/:id: partial update. Send `expectedUpdatedAt` as last seen: a stale one is 409 `STALE_EDIT`. */
-export const PATCH = withOrgApi<Params>(async ({ params, request, supabase, org }) => {
-  const id = taskId(params);
-  const input = await parseBody(updateTaskSchema, request);
-  return okItem(await updateForOrg(supabase, org, id, input));
-});
+export const PATCH = withOrgApi<Params>(
+  async ({ params, request, supabase, org }) => {
+    const id = taskId(params);
+    const input = await parseBody(updateTaskSchema, request);
+    return okItem(await updateForOrg(supabase, org, id, input));
+  },
+  { authorize: "records.write" },
+);
 
 /** DELETE /api/v1/tasks/:id: archive (soft delete), idempotent, 204. */
-export const DELETE = withOrgApi<Params>(async ({ params, supabase, org }) => {
-  await archiveForOrg(supabase, org, taskId(params));
-  return noContent();
-});
+export const DELETE = withOrgApi<Params>(
+  async ({ params, supabase, org }) => {
+    await archiveForOrg(supabase, org, taskId(params));
+    return noContent();
+  },
+  { authorize: "records.write" },
+);

@@ -17,13 +17,19 @@ function memberId(params: Params): string {
  * PATCH /api/v1/members/:userId: change a member's role. Owner and admin only; an admin cannot make an owner, change an
  * owner or promote themselves (403 `OWNER_GRANT`, `OWNER_PROTECTED`); the last owner cannot be demoted (409 `LAST_OWNER`).
  */
-export const PATCH = withOrgApi<Params>(async ({ params, request, supabase, org }) => {
-  const { role } = await parseBody(changeRoleSchema, request);
-  return okItem(await changeMembership(supabase, org, memberId(params), { role }));
-});
+export const PATCH = withOrgApi<Params>(
+  async ({ params, request, supabase, org }) => {
+    const { role } = await parseBody(changeRoleSchema, request);
+    return okItem(await changeMembership(supabase, org, memberId(params), { role }));
+  },
+  { authorize: "members.manage" },
+);
 
 /** DELETE /api/v1/members/:userId: remove a member (204). Same rules as PATCH; the last owner cannot be removed (409 `LAST_OWNER`). */
-export const DELETE = withOrgApi<Params>(async ({ params, supabase, org }) => {
-  await changeMembership(supabase, org, memberId(params), { remove: true });
-  return noContent();
-});
+export const DELETE = withOrgApi<Params>(
+  async ({ params, supabase, org }) => {
+    await changeMembership(supabase, org, memberId(params), { remove: true });
+    return noContent();
+  },
+  { authorize: "members.manage" },
+);

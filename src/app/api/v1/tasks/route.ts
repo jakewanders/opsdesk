@@ -10,14 +10,20 @@ import { parseBody, parseQuery } from "@/lib/validation";
  * `status`, `priority`, `assignedTo`, `assignedToMe`, `overdue` (not done and due before today in the organization's
  * time zone), `customerId`, `opportunityId`, `archived`. Tasks without a due date sort last.
  */
-export const GET = withOrgApi(async ({ request, supabase, org }) => {
-  const query = parseQuery(taskListQuery, new URL(request.url).searchParams);
-  const { items, meta } = await listForOrg(supabase, org, query);
-  return okList(items, meta);
-});
+export const GET = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const query = parseQuery(taskListQuery, new URL(request.url).searchParams);
+    const { items, meta } = await listForOrg(supabase, org, query);
+    return okList(items, meta);
+  },
+  { authorize: "records.read" },
+);
 
 /** POST /api/v1/tasks: create a task (201). Owner, admin and member only. */
-export const POST = withOrgApi(async ({ request, supabase, org }) => {
-  const input = await parseBody(createTaskSchema, request);
-  return created(await createForOrg(supabase, org, input));
-});
+export const POST = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const input = await parseBody(createTaskSchema, request);
+    return created(await createForOrg(supabase, org, input));
+  },
+  { authorize: "records.write" },
+);

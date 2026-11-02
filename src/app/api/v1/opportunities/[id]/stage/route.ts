@@ -11,9 +11,12 @@ import { parseBody, uuid } from "@/lib/validation";
  * deal is missing or in another workspace, 403 for a viewer or an expired demo. Moving to the current stage is a 200
  * that changes nothing.
  */
-export const POST = withOrgApi<{ id: string }>(async ({ params, request, supabase, org }) => {
-  const parsed = uuid().safeParse(params.id);
-  if (!parsed.success) throw new BadRequestError("That opportunity id is not valid.");
-  const input = await parseBody(moveStageSchema, request);
-  return okItem(await moveStageForOrg(supabase, org, parsed.data, input));
-});
+export const POST = withOrgApi<{ id: string }>(
+  async ({ params, request, supabase, org }) => {
+    const parsed = uuid().safeParse(params.id);
+    if (!parsed.success) throw new BadRequestError("That opportunity id is not valid.");
+    const input = await parseBody(moveStageSchema, request);
+    return okItem(await moveStageForOrg(supabase, org, parsed.data, input));
+  },
+  { authorize: "records.write" },
+);

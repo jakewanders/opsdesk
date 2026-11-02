@@ -11,14 +11,20 @@ import { parseBody, parseQuery } from "@/lib/validation";
  * pagination fields plus `stageTotals` (count and cents per stage), `openPipelineCents` and `weightedPipelineCents`
  * for the whole filtered set.
  */
-export const GET = withOrgApi(async ({ request, supabase, org }) => {
-  const query = parseQuery(opportunityListQuery, new URL(request.url).searchParams);
-  const { items, meta } = await listForOrg(supabase, org, query);
-  return okList(items, meta);
-});
+export const GET = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const query = parseQuery(opportunityListQuery, new URL(request.url).searchParams);
+    const { items, meta } = await listForOrg(supabase, org, query);
+    return okList(items, meta);
+  },
+  { authorize: "records.read" },
+);
 
 /** POST /api/v1/opportunities: create a deal in an open stage (201). Owner, admin and member only. */
-export const POST = withOrgApi(async ({ request, supabase, org }) => {
-  const input = await parseBody(createOpportunitySchema, request);
-  return created(await createForOrg(supabase, org, input));
-});
+export const POST = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const input = await parseBody(createOpportunitySchema, request);
+    return created(await createForOrg(supabase, org, input));
+  },
+  { authorize: "records.write" },
+);

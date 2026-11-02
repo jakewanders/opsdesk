@@ -15,22 +15,30 @@ function opportunityId(params: Params): string {
 }
 
 /** GET /api/v1/opportunities/:id: the deal with its customer's name. */
-export const GET = withOrgApi<Params>(async ({ params, supabase, org }) =>
-  okItem(await getForOrg(supabase, org, opportunityId(params))),
+export const GET = withOrgApi<Params>(
+  async ({ params, supabase, org }) =>
+    okItem(await getForOrg(supabase, org, opportunityId(params))),
+  { authorize: "records.read" },
 );
 
 /**
  * PATCH /api/v1/opportunities/:id: partial update. Send `expectedUpdatedAt` as last seen: a stale one is 409
  * `STALE_EDIT`. `stage` is refused (422): stage changes use POST /:id/stage.
  */
-export const PATCH = withOrgApi<Params>(async ({ params, request, supabase, org }) => {
-  const id = opportunityId(params);
-  const input = await parseBody(updateOpportunitySchema, request);
-  return okItem(await updateForOrg(supabase, org, id, input));
-});
+export const PATCH = withOrgApi<Params>(
+  async ({ params, request, supabase, org }) => {
+    const id = opportunityId(params);
+    const input = await parseBody(updateOpportunitySchema, request);
+    return okItem(await updateForOrg(supabase, org, id, input));
+  },
+  { authorize: "records.write" },
+);
 
 /** DELETE /api/v1/opportunities/:id: archive (soft delete), idempotent, 204. */
-export const DELETE = withOrgApi<Params>(async ({ params, supabase, org }) => {
-  await archiveForOrg(supabase, org, opportunityId(params));
-  return noContent();
-});
+export const DELETE = withOrgApi<Params>(
+  async ({ params, supabase, org }) => {
+    await archiveForOrg(supabase, org, opportunityId(params));
+    return noContent();
+  },
+  { authorize: "records.write" },
+);

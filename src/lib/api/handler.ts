@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import type { CurrentUser } from "@/lib/supabase/resolve-user";
 import { resolveOrg, type OrgContext, type SelectOptions } from "./org-context";
+import { assertCan, type Action } from "@/lib/permissions";
 import { UnauthorizedError } from "./errors";
 import { assertJsonRequest } from "./json-body";
 import { logger as defaultLogger, type Logger, type LogFields } from "@/lib/logger/logger";
@@ -172,6 +173,12 @@ export type OrgApiHandlerArgs<P> = Omit<ApiHandlerArgs<P>, "user"> & {
 
 export type OrgApiOptions = Omit<ApiOptions, "auth"> &
   SelectOptions & {
+    /**
+     * The permission-matrix action this endpoint needs. Checked right after the workspace is resolved and BEFORE the body or
+     * query is read, so a refused caller always gets 403 and never learns what the endpoint validates (SIT-249). Services
+     * check again (defense in depth), and the database is the final authority.
+     */
+    authorize?: Action;
     /** Test seam: replaces the cookie-session client. */
     createSupabase?: () => Promise<SupabaseClient<Database>>;
   };
@@ -189,7 +196,7 @@ export function withOrgApi<P = Record<string, never>>(
   handler: (args: OrgApiHandlerArgs<P>) => Promise<ApiResult | Response> | ApiResult | Response,
   options: OrgApiOptions = {},
 ) {
-  const { allowExpired, now, createSupabase, ...apiOptions } = options;
+  const { allowExpired, now, createSupabase, authorize, ...apiOptions } = options;
   return withApi<P>(
     async (args) => {
       const user = args.user;
@@ -197,6 +204,7 @@ export function withOrgApi<P = Record<string, never>>(
       const supabase = await (createSupabase ?? defaultCreateSupabase)();
       const org = await resolveOrg(args.request, user, supabase, { allowExpired, now });
       args.trace({ orgId: org.org.id });
+      if (authorize) assertCan(org.role, org.kind, authorize);
       return handler({ ...args, user, org, supabase });
     },
     { ...apiOptions, auth: "required" },

@@ -10,18 +10,24 @@ import { parseBody, parseQuery } from "@/lib/validation";
  * `status`, `source`, `assignedTo`, `archived` (`false` default, `true`, `all`). `meta` carries `page`, `limit`, `total`
  * and `totalPages`.
  */
-export const GET = withOrgApi(async ({ request, supabase, org }) => {
-  const query = parseQuery(customerListQuery, new URL(request.url).searchParams);
-  const { items, meta } = await listForOrg(supabase, org, query);
-  return okList(items, meta);
-});
+export const GET = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const query = parseQuery(customerListQuery, new URL(request.url).searchParams);
+    const { items, meta } = await listForOrg(supabase, org, query);
+    return okList(items, meta);
+  },
+  { authorize: "records.read" },
+);
 
 /**
  * POST /api/v1/customers: create a customer (201). Owner, admin and member only. A duplicate e-mail returns the
  * record with `meta.warnings`, it does not fail.
  */
-export const POST = withOrgApi(async ({ request, supabase, org }) => {
-  const input = await parseBody(createCustomerSchema, request);
-  const { customer, warnings } = await createForOrg(supabase, org, input);
-  return created(customer, warnings.length > 0 ? { warnings } : {});
-});
+export const POST = withOrgApi(
+  async ({ request, supabase, org }) => {
+    const input = await parseBody(createCustomerSchema, request);
+    const { customer, warnings } = await createForOrg(supabase, org, input);
+    return created(customer, warnings.length > 0 ? { warnings } : {});
+  },
+  { authorize: "records.write" },
+);
