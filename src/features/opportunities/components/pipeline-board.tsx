@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ErrorAlert } from "@/components/shared/error-alert";
 import { Plus } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,11 +14,13 @@ import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-stat
 import type { ApiMeta } from "@/lib/api/types";
 import { OPEN_STAGES, STAGES, STAGE_LABELS, type Stage } from "@/lib/domain/pipeline";
 import { formatUsd } from "@/lib/money/format";
+import { cn } from "@/lib/utils";
 import type { MemberDto } from "@/features/members/service";
 import { opportunityFilterUrl } from "../filter-state";
 import type { PipelineTotals } from "../pipeline-model";
 import type { OpportunityDto } from "../schema";
 import { BOARD_KEY, useMoveStage, type Move } from "../use-move-stage";
+import { BoardDnd, DragHandle, useStageDrop } from "./board-dnd";
 import { LostReasonDialog } from "./lost-reason-dialog";
 
 const PAGE = 10;
@@ -41,6 +44,7 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
   const [filters, setFilters] = useUrlState(opportunityFilterUrl);
   const [search, onSearch] = useDebouncedUrlParam(filters.q, (q) => setFilters({ q }));
   const [lostFor, setLostFor] = useState<OpportunityDto | null>(null);
+  const [wonFor, setWonFor] = useState<OpportunityDto | null>(null);
   const move = useMoveStage();
 
   const base = {
@@ -64,6 +68,11 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
     if (to === deal.stage) return;
     if (to === "lost") setLostFor(deal);
     else move.mutate({ deal, to } satisfies Move);
+  };
+  // A drop asks for a move like the menu does, except that Won first asks for a confirmation.
+  const drop = (deal: OpportunityDto, to: Stage) => {
+    if (to === "won") setWonFor(deal);
+    else request(deal, to);
   };
   const filtered = Boolean(filters.q || filters.assignedTo);
   const openDeals = totals?.stageTotals
@@ -171,23 +180,48 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
         tabIndex={0}
         className="overflow-x-auto pb-2 outline-none focus-visible:ring-3 focus-visible:ring-ring"
       >
-        <div className="grid min-w-[72rem] grid-cols-6 gap-3">
-          {STAGES.map((stage) => (
-            <Column
-              key={stage}
-              stage={stage}
-              base={base}
-              total={totals?.stageTotals?.[stage]}
-              loadingTotals={summary.isPending}
-              filtered={filtered}
-              canWrite={canWrite}
-              busy={move.isPending}
-              ownerName={ownerName}
-              onMove={request}
-            />
-          ))}
-        </div>
+        <BoardDnd enabled={canWrite && !move.isPending} onDrop={drop}>
+          <div className="grid min-w-[72rem] grid-cols-6 gap-3">
+            {STAGES.map((stage) => (
+              <Column
+                key={stage}
+                stage={stage}
+                base={base}
+                total={totals?.stageTotals?.[stage]}
+                loadingTotals={summary.isPending}
+                filtered={filtered}
+                canWrite={canWrite}
+                busy={move.isPending}
+                ownerName={ownerName}
+                onMove={request}
+              />
+            ))}
+          </div>
+        </BoardDnd>
       </div>
+
+      <ConfirmDialog
+        open={wonFor !== null}
+        onOpenChange={(open) => {
+          if (!open) setWonFor(null);
+        }}
+        title="Mark as won?"
+        description={
+          wonFor ? (
+            <>
+              <strong>{wonFor.title}</strong> moves to Won, its probability becomes 100%, and it
+              closes today (
+              {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date())}). You
+              can reopen it later.
+            </>
+          ) : null
+        }
+        confirmLabel="Mark as won"
+        onConfirm={() => {
+          if (wonFor) move.mutate({ deal: wonFor, to: "won" });
+          setWonFor(null);
+        }}
+      />
 
       <LostReasonDialog
         deal={lostFor}
@@ -236,6 +270,7 @@ function Column({
   onMove,
 }: ColumnProps) {
   const [limit, setLimit] = useState(PAGE);
+  const { setRef, isOver, dragging, props: dropProps } = useStageDrop(stage);
   const query = useApiQuery<OpportunityDto[]>(
     [...BOARD_KEY, "column", stage, base, limit],
     "/opportunities",
@@ -251,8 +286,14 @@ function Column({
 
   return (
     <section
+      ref={setRef}
+      {...dropProps}
       aria-labelledby={headingId}
-      className="flex min-w-0 flex-col gap-2 rounded-lg bg-muted/40 p-2"
+      className={cn(
+        "flex min-w-0 flex-col gap-2 rounded-lg bg-muted/40 p-2 transition-shadow",
+        dragging && "outline-1 outline-dashed outline-border",
+        isOver && "bg-muted ring-2 ring-ring",
+      )}
     >
       <header className="px-1 pt-1">
         <h2 id={headingId} className="text-sm font-semibold">
@@ -339,7 +380,10 @@ function Card({
   const selectId = `move-${deal.id}`;
   return (
     <article className="relative flex flex-col gap-1.5 rounded-lg border border-border bg-background p-3 text-sm shadow-xs focus-within:ring-3 focus-within:ring-ring">
-      <p className="text-muted-foreground">{deal.customerName ?? "Customer"}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-muted-foreground">{deal.customerName ?? "Customer"}</p>
+        {canWrite ? <DragHandle deal={deal} disabled={busy} /> : null}
+      </div>
       <h3 className="font-medium">
         <Link
           href={`/app/opportunities/${deal.id}`}

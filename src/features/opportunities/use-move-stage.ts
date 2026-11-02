@@ -70,6 +70,11 @@ export function useMoveStage() {
           "The deal was not moved",
           "Someone else changed it. The board has been refreshed.",
         );
+      } else if (error.status === 429) {
+        notify.error(
+          "The deal was not moved",
+          "You are making changes too quickly. Wait a moment, then try again.",
+        );
       } else if (error.status === 403) {
         notify.error(
           "The deal was not moved",
