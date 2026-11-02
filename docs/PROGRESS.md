@@ -7,6 +7,7 @@ Real command output only. Nothing here is a claim of completion until the checks
 Items only Jake can unblock. Each is also an action item in the tracker.
 
 - **SIT-177** (Netlify deploy preview; blocks SIT-213, 272, 273, 274): create the Netlify site from `jakewanders/opsdesk` and enable Deploy Previews (steps in `docs/DEPLOYMENT.md`), then share the site name and assigned `*.netlify.app` hostname. Do not attach `opsdesk.sitelaunch.dev` yet.
+- **SIT-261 (optional, manual)**: a VoiceOver pass on the dashboard, a list, a form and the board (needs a person at a Mac with VoiceOver). All automated WCAG 2.2 AA, keyboard and focus checks pass; the findings log is under SIT-261. Does not block anything.
 - **SIT-168 (hosted part)**: create a Cloudflare Turnstile widget for `opsdesk.sitelaunch.dev`; in the hosted Supabase project turn on anonymous sign-ins and Turnstile CAPTCHA with the production secret and review the anonymous rate limit; set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in Netlify. Checklist in `docs/DEMO.md`; tracked as P-14. Does not block local work.
 
 ## M0 — Foundation & Application Architecture
@@ -752,6 +753,24 @@ Entries per issue:
 ## M3 — Dashboard, Reporting Foundations & Activity
 
 In progress. Entries are added per issue.
+
+### SIT-261 — Keyboard and screen-reader pass (done, VoiceOver pass not performed)
+
+- **What was run:** `e2e/accessibility.spec.ts` (9 tests, real Chromium, `@axe-core/playwright`, WCAG 2.0/2.1/2.2 A and AA rule sets including colour contrast and target size): axe on 21 P0 pages (7 public, 14 signed-in as a guest) in the light and in the dark theme plus the open task drawer; the skip link on 12 pages; focus visibility on every Tab stop (45 per screen) of four screens in both themes; and keyboard-only workflows (no mouse): customer create, edit surface, archive and restore, stage move by the stage select and by the drag handle's keyboard sensor, the task drawer and completing a task, Reset Demo, the theme toggle, and the phone navigation drawer.
+- **Findings log**
+
+| #   | Finding                                                                                                                                                                                                  | Status                                                                                                                                                           |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Inactive tab labels on the customer page (`text-foreground/60`) failed colour contrast in the light theme (axe `color-contrast`, three tabs)                                                             | **Fixed**: `text-muted-foreground`                                                                                                                               |
+| 2   | Task list: the customer and opportunity links stacked in one cell were under the 24 px target size (axe `target-size`, both themes)                                                                      | **Fixed**: `py-1` on the links                                                                                                                                   |
+| 3   | The auth pages (login, signup, forgot and reset password, demo) had no skip link and their `main` could not take focus                                                                                   | **Fixed**: skip link and `tabIndex={-1}` in the auth layout (the skip-link test then passed on all 12 pages)                                                     |
+| 4   | Keyboard drag on the board: dnd-kit announces "over the card's own column" in the same tick as the pick-up, so the pick-up announcement and its instructions were replaced before a screen reader speaks | **Fixed**: that redundant first "over" is skipped; every later one is announced (unit test updated; the browser test records every announcement in order)        |
+| 5   | After an empty submit, focus lands on the first invalid field (not on the error summary the docs described); the summary is an `alert` and the field is `aria-invalid` and linked by `aria-describedby`  | **Accepted**: it is the better behaviour (the fix can be typed at once and the summary is announced); `docs/ARCHITECTURE.md` now describes what actually happens |
+| 6   | Screen reader (VoiceOver) pass on the dashboard, a list, a form and the board                                                                                                                            | **Not done**: it needs a person with VoiceOver; recorded under "Waiting on Jake" below as an optional manual step                                                |
+
+- **No findings** for: dialogs and drawers (focus held through 24 Tab / Shift+Tab presses, returned to the trigger on close), Escape on unsaved task work (asks first, "keep editing" keeps it), the archive confirmation (Escape cancels with no action; the destructive button is reached by Tab and Enter), the theme toggle (keeps focus), the phone navigation drawer, visible focus rings in both themes, and every P0 page's axe results after the fixes above.
+- `npm run check`: all 10 steps passed (see below for the final counts). **Mutation checks:** reverting the contrast fix made the light-theme axe test fail on the customer page; reverting the auth skip link failed the skip-link test; both restored.
+- Not done: the VoiceOver pass (finding 6).
 
 ### SIT-260 — Mobile 375px and 200% zoom pass across all P0 pages (done)
 

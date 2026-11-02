@@ -9,13 +9,22 @@ async function Dynamic({ children }: { children: ReactNode }) {
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <main
-      id="main-content"
-      className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center p-6"
-    >
-      <Suspense fallback={<div aria-busy="true" />}>
-        <Dynamic>{children}</Dynamic>
-      </Suspense>
-    </main>
+    <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to main content
+      </a>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center p-6 outline-none"
+      >
+        <Suspense fallback={<div aria-busy="true" />}>
+          <Dynamic>{children}</Dynamic>
+        </Suspense>
+      </main>
+    </>
   );
 }

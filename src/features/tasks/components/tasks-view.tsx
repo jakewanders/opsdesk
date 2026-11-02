@@ -454,7 +454,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                           {task.customerId ? (
                             <Link
                               href={`/app/customers/${task.customerId}`}
-                              className="block underline-offset-4 hover:underline"
+                              className="block py-1 underline-offset-4 hover:underline"
                             >
                               {task.customerName ?? "Customer"}
                             </Link>
@@ -462,7 +462,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                           {task.opportunityId ? (
                             <Link
                               href={`/app/opportunities/${task.opportunityId}`}
-                              className="block underline-offset-4 hover:underline"
+                              className="block py-1 underline-offset-4 hover:underline"
                             >
                               {task.opportunityTitle ?? "Opportunity"}
                             </Link>

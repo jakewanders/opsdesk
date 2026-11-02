@@ -45,7 +45,7 @@ The baseline for every screen (PRD 3.2, WCAG 2.2 AA). Feature issues reference t
 **Structure**
 
 - One `h1` per page; headings in order; landmarks `header`, `nav` (labelled when there are several), `main`, `footer`; a page `title`.
-- Skip link first in tab order, targeting `main#main-content`.
+- Skip link first in tab order, targeting `main#main-content` (which has `tabIndex={-1}` so focus lands there). Every layout has one: the app shell, the marketing and legal pages, and the auth pages (login, signup, forgot and reset password, demo).
 
 **Keyboard**
 
@@ -57,7 +57,7 @@ The baseline for every screen (PRD 3.2, WCAG 2.2 AA). Feature issues reference t
 **Names, labels, and forms**
 
 - Every control has a visible label (`FormField`); helper text and errors are linked with `aria-describedby`; invalid controls set `aria-invalid`.
-- A failed submit shows an `ErrorSummary` (announced, takes focus, links to each field). Errors say what is wrong and how to fix it, in words.
+- A failed submit shows an `ErrorSummary` (an `alert`, so it is announced; focus goes to the first invalid field so the fix can be typed at once, and each invalid control is linked to its message with `aria-describedby`). Errors say what is wrong and how to fix it, in words.
 - Icon-only buttons have an `aria-label`; decorative icons and illustrations are `aria-hidden`; informative images have alt text.
 - Identity fields set `autocomplete`; login and signup never require a cognitive test and allow pasting into password fields (WCAG 3.3.8).
 
@@ -109,3 +109,11 @@ Files in `src/lib/supabase/`:
 ## Permissions (SIT-171)
 
 `src/lib/permissions/`: `matrix.ts` is the PRD 5.1 matrix as typed data (a missing action or role is a type error); `can.ts` has `can`, `allowedActions`, `permissionsFor` (UI), `assertCan` (route handlers, throws the 403 envelope), `grantableRoles` and `canChangeMembership` (invitations and role changes); `docs.ts` renders the table that `docs/SECURITY.md` embeds (a test fails if they drift). The database stays the final authority.
+
+**Verified in a real browser (SIT-261, `e2e/accessibility.spec.ts`, run by `npm run test:e2e`)**
+
+- axe-core with the WCAG 2.0/2.1/2.2 A and AA rule sets (so colour contrast and target size are included) on every P0 page, in the light and the dark theme, plus the task drawer open: 0 violations. New screens: add them to the page lists in that spec.
+- The skip link is the first Tab stop on twelve pages and moves focus to `main-content`.
+- Every Tab stop on the dashboard, customer list, board and task list has a visible focus indicator in both themes.
+- Keyboard-only workflows: customer create (error announced, linked, focus on the invalid field), archive (dialog holds focus, Escape cancels and returns focus, Tab to the destructive button then Enter confirms) and restore; a stage move through the stage select and through the drag handle's keyboard sensor with its live-region announcements; the task drawer (focus held, Escape on unsaved work asks first, focus returns to its button) and completing a task; Reset Demo; the theme toggle; the phone navigation drawer.
+- Not covered by automation, to repeat by hand when the UI changes a lot: a screen reader pass (VoiceOver) on the dashboard, a list, a form and the board.

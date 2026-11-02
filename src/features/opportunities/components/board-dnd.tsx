@@ -52,14 +52,24 @@ export const stageCoordinateGetter: KeyboardCoordinateGetter = (
 
 const label = (id: unknown) => (isStage(id) ? STAGE_LABELS[id] : "no stage");
 
+/**
+ * dnd-kit reports "over <the card's own column>" in the same tick as the pick-up, which would replace the pick-up
+ * announcement (and its instructions) in the live region before a screen reader speaks it. That first, redundant "over" is
+ * skipped; every later "over" is announced.
+ */
+let pickedUpAt = 0;
+const SAME_TICK_MS = 100;
+
 /** What a screen reader hears while a card is lifted, moved and dropped. */
 export const announcements: Announcements = {
   onDragStart: ({ active }) => {
+    pickedUpAt = Date.now();
     const deal = dealOf(active.data);
     return `Picked up ${deal?.title ?? "the deal"}. It is in ${label(deal?.stage)}. Use the left and right arrow keys to choose a stage.`;
   },
   onDragOver: ({ active, over }) => {
     const deal = dealOf(active.data);
+    if (over && over.id === deal?.stage && Date.now() - pickedUpAt < SAME_TICK_MS) return undefined;
     return over
       ? `${deal?.title ?? "The deal"} is over ${label(over.id)}.`
       : `${deal?.title ?? "The deal"} is not over a stage.`;

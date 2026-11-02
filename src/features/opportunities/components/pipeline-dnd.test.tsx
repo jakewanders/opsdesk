@@ -199,8 +199,11 @@ describe("PipelineBoard drag and drop: keyboard", () => {
     const user = userEvent.setup();
     handle("Beta boiler").focus();
     await user.keyboard(" ");
-    // dnd-kit announces "picked up" and then, at once, which stage the card is over; the live region keeps the latest
-    expect(live()).toBe("Beta boiler is over Qualified.");
+    // the pick-up announcement (with its instructions) is what the live region holds: the redundant same-tick "over its own
+    // column" is skipped so it cannot replace it (SIT-261)
+    expect(live()).toBe(
+      "Picked up Beta boiler. It is in Qualified. Use the left and right arrow keys to choose a stage.",
+    );
     await user.keyboard("{ArrowRight}");
     expect(live()).toBe("Beta boiler is over Proposal.");
     await user.keyboard("{ArrowRight}");
