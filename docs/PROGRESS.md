@@ -888,7 +888,13 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-Not started. No checks run.
+In progress. Entries are added per issue.
+
+### SIT-174 — Money and quote calculation domain module (done)
+
+- `src/lib/domain/quotes.ts`: `calculateQuote({ lines, discountCents, taxRateBps })` returns each line total, the subtotal, discount, taxable amount (`max(0, subtotal - discount)`), tax (`round-half-up(taxable * bps / 10000)`, i.e. `(taxable * bps + 5000) / 10000` in integers) and total. Every product and sum is a BigInt; a result beyond the safe-integer range throws "too large to calculate exactly" instead of rounding. `validateQuoteInput` lists every problem at once (each naming its field and line, in words) and `QuoteCalculationError` carries them; rejected: quantity outside 1 to 100,000 or not whole, unit price outside 0 to 100,000,000 cents or not whole, negative or fractional discount, a discount larger than the subtotal, a tax rate outside 0 to 10,000 bps or not whole. `parseTaxRateToBps` ("8.25", "8.25%" to 825, at most 2 decimals, 0 to 100) and `formatTaxRate` (825 to "8.25%") turn rates to and from text with digit handling only. Pure and framework-free; the browser will use it only for the preview and the server's result is authoritative.
+- **Tests:** `quotes.test.ts` (31): 0% tax, a typical 8.25% sale, half-up rounding at .5 (0.5 to 1, 1.5 to 2, 2.5 to 3, where banker's rounding would give 2) and just under (.4998, .4999 stay), 1-bp rates, 20 lines of the maximum quantity and price at 100% tax (2e14 exact), discount equal to and above the subtotal, an empty quote, line order, every rejection (zero, negative, too large, fractional, NaN, Infinity), all problems reported together, overflow refused, rate text in and out and a 1,500-value round trip, and a source scan that fails on `Math.round/floor/ceil`, `parseFloat`, `toFixed` or a float literal in the module. `quotes.integration.test.ts` (2): **TypeScript equals independent SQL** (numeric arithmetic with `floor(x + 0.5)`, not the module's integer-division form) on 9 edge quotes and 400 pseudo-random ones; the quote-saving RPC (SIT-230) must reuse this vector list for its own parity test.
+- `npm run check`: all 10 steps passed (unit 1628 / 108 files, pgTAP PASS, integration 433 / 41 files, Playwright 36 / 36). **Mutation check:** dropping the `+ 5000` (truncating instead of rounding half up) failed 3 unit tests and both parity tests; restored.
 
 ## M5 — Production Readiness & Public Portfolio Launch
 
