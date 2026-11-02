@@ -142,6 +142,18 @@ exception when insufficient_privilege then
   return true;
 end $$;
 
+-- True when a data-changing statement did nothing: refused outright (no grant, failed RLS check) or matched 0 rows.
+-- Use it for "the caller must not be able to change this", where either outcome is a pass.
+create or replace function tests.blocked(stmt text) returns boolean language plpgsql as $$
+declare n bigint;
+begin
+  execute stmt;
+  get diagnostics n = row_count;
+  return n = 0;
+exception when insufficient_privilege then
+  return true;
+end $$;
+
 -- The SQLSTATE a statement fails with, or 'ok' if it succeeds. Handy for exact-code assertions.
 create or replace function tests.sqlstate_of(stmt text) returns text language plpgsql as $$
 begin
