@@ -12,6 +12,8 @@ export class ApiError extends Error {
     public readonly fieldErrors?: FieldErrors,
     /** Extra response headers, for example `Retry-After`. */
     public readonly headers?: Record<string, string>,
+    /** Machine-readable context returned as `error.meta`. */
+    public readonly meta?: Record<string, unknown>,
   ) {
     super(message);
     this.name = new.target.name;
@@ -54,8 +56,10 @@ export class ConflictError extends ApiError {
   constructor(
     message = "This record was changed by someone else. Reload and try again.",
     code = "CONFLICT",
+    meta?: Record<string, unknown>,
+    headers?: Record<string, string>,
   ) {
-    super(409, code, message);
+    super(409, code, message, undefined, headers, meta);
   }
 }
 

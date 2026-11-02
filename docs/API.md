@@ -42,20 +42,20 @@ Throw to fail: `throw new NotFoundError()`, or let a Zod or database error propa
 }
 ```
 
-`code` is for programs, `message` is written for the user, `fieldErrors` (optional) maps field names (dotted for nesting, `_form` for form-level) to messages, `requestId` matches the `X-Request-Id` response header.
+`code` is for programs, `message` is written for the user, `fieldErrors` (optional) maps field names (dotted for nesting, `_form` for form-level) to messages, `requestId` matches the `X-Request-Id` response header. `meta` (optional) carries machine-readable context, for example the current version on a stale edit.
 
-| HTTP | `code`                                                                                                                                   | Meaning                                                                                                      |
-| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 400  | `BAD_REQUEST`                                                                                                                            | malformed request: invalid JSON, a bad id format                                                             |
-| 401  | `UNAUTHENTICATED`                                                                                                                        | no valid session                                                                                             |
-| 403  | `FORBIDDEN`                                                                                                                              | signed in, but role or workspace may not do this                                                             |
-| 404  | `NOT_FOUND`                                                                                                                              | record missing **or in another tenant** (never distinguished)                                                |
-| 409  | `CONFLICT`, `DUPLICATE`                                                                                                                  | stale edit, or a unique violation                                                                            |
-| 413  | `PAYLOAD_TOO_LARGE`                                                                                                                      | JSON body over the cap (enforced by SIT-181)                                                                 |
-| 415  | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                 | a body that is not `application/json` (an addition to the PRD list; see `docs/DECISIONS.md`)                 |
-| 422  | `VALIDATION_ERROR`, `INVALID_REFERENCE`, `CHECK_VIOLATION`, `REQUIRED_VALUE`, `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, or a business code | well-formed but invalid, or a rule refuses it                                                                |
-| 429  | `RATE_LIMITED` or a business code (for example `DEMO_QUOTA`)                                                                             | quota or throttle; `Retry-After` header when known                                                           |
-| 500  | `INTERNAL_ERROR`                                                                                                                         | anything unexpected. Always the same generic message; the cause is logged server-side against the request ID |
+| HTTP | `code`                                                                                                                                                                                        | Meaning                                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 400  | `BAD_REQUEST`                                                                                                                                                                                 | malformed request: invalid JSON, a bad id format                                                             |
+| 401  | `UNAUTHENTICATED`                                                                                                                                                                             | no valid session                                                                                             |
+| 403  | `FORBIDDEN`                                                                                                                                                                                   | signed in, but role or workspace may not do this                                                             |
+| 404  | `NOT_FOUND`                                                                                                                                                                                   | record missing **or in another tenant** (never distinguished)                                                |
+| 409  | `STALE_EDIT`, `IDEMPOTENCY_IN_PROGRESS`, `CONFLICT`, `DUPLICATE`                                                                                                                              | stale edit (current value in `error.meta.current`), a duplicate request still running, or a unique violation |
+| 413  | `PAYLOAD_TOO_LARGE`                                                                                                                                                                           | JSON body over the cap (enforced by SIT-181)                                                                 |
+| 415  | `UNSUPPORTED_MEDIA_TYPE`                                                                                                                                                                      | a body that is not `application/json` (an addition to the PRD list; see `docs/DECISIONS.md`)                 |
+| 422  | `VALIDATION_ERROR`, `IDEMPOTENCY_KEY_INVALID`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_REFERENCE`, `CHECK_VIOLATION`, `REQUIRED_VALUE`, `VALUE_TOO_LONG`, `VALUE_OUT_OF_RANGE`, or a business code | well-formed but invalid, or a rule refuses it                                                                |
+| 429  | `RATE_LIMITED` or a business code (for example `DEMO_QUOTA`)                                                                                                                                  | quota or throttle; `Retry-After` header when known                                                           |
+| 500  | `INTERNAL_ERROR`                                                                                                                                                                              | anything unexpected. Always the same generic message; the cause is logged server-side against the request ID |
 
 Every response, success or error, carries `X-Request-Id` and `Cache-Control: no-store`, and `Content-Type: application/json; charset=utf-8` when it has a body.
 
@@ -172,3 +172,37 @@ Full machine-readable contract: `docs/openapi.yaml` (a test fails when a route a
 | `GET /api/v1/organizations/:id` | One workspace the caller belongs to, with their role; an expired demo is still readable (`expired: true`)                                                                                                       | 200     | 400 (id not a UUID), 401, 404 (not a member and unknown ids look the same)                         |
 
 `PATCH /api/v1/organizations/:id` arrives with the organization settings issue (M4).
+
+## Stale edits and retries (SIT-183)
+
+**Stale edits** (`src/lib/api/concurrency.ts`). An update carries what the client last saw, and the `UPDATE` only matches that exact state. CRM entities use `updated_at`; entities that need a counter (quotes) use an integer `version`.
+
+```ts
+const body = updateCustomerSchema.parse(await request.json()); // { ...fields, ...expectedUpdatedAtField }
+const row = await updateIfCurrent(supabase, {
+  table: "customers",
+  id,
+  expected: { updatedAt: body.expectedUpdatedAt }, // or { version: body.expectedVersion }
+  patch: fields,
+});
+```
+
+- Zero rows and the record exists: `409 STALE_EDIT` with `error.meta.current = { updatedAt, version? }`. Zero rows and the caller cannot see it: `404` (the same as another tenant's record).
+- Send `updatedAt` back exactly as the API returned it (a string with microseconds). Never round-trip it through `new Date()`.
+- Check the caller's role first; RLS still applies, but `updateIfCurrent` does not decide authorization.
+- A version table adds `version integer not null default 1` and `before update ... execute function private.bump_version()`; the client cannot set it. An `updated_at` table uses `private.set_updated_at()`.
+
+**Idempotency** (`src/lib/api/idempotency.ts`). For requests whose side effects must not repeat (demo bootstrap and reset, quote creation, import commits):
+
+```ts
+const key = readIdempotencyKey(request); // Idempotency-Key header; null when absent; malformed is 422
+return withIdempotency(supabase, { route: "POST /api/v1/quotes", key, payload: body }, async () =>
+  created(await createQuote(body)),
+);
+```
+
+- Scope: signed-in user + route + key; bound to the payload (same key, different payload: `422 IDEMPOTENCY_KEY_REUSED`). A duplicate while the first is running: `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 2`. A replay returns the stored status and body and does not run the work.
+- If the work throws, the key is released so the client can retry with the same key. A claim abandoned by a crashed request is retaken after 2 minutes. Results are kept for 24 hours; `public.cleanup_purge_expired_keys` (the demo cleanup job) deletes expired keys.
+- Key format: 8 to 128 characters of letters, digits, `-` and `_`. Stored results are capped at 100 KB.
+- The store `private.idempotency_keys` has no client grants and no RLS policy; only `idempotency_begin / complete / abandon` (SECURITY DEFINER, acting as `auth.uid()`) reach it. A signed-out caller (public bootstrap) gets no replay protection from this store; use the CAPTCHA and the database's own idempotence there.
+- Client: `src/lib/api-client/idempotency.ts` has `newIdempotencyKey()` and `createSingleFlight()`: a second submit while one is pending is ignored, and a retry after a failure reuses the key; a success clears it.

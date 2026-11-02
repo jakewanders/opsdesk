@@ -110,7 +110,19 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: One key per user intent (8-128 of A-Z a-z 0-9 _ -). Reuse it on retry. Same key and payload replays the stored result; a different payload is 422 IDEMPOTENCY_KEY_REUSED; a duplicate still running is 409 IDEMPOTENCY_IN_PROGRESS.
+      schema: { type: string, minLength: 8, maxLength: 128, pattern: "^[A-Za-z0-9_-]{8,128}$" }
   responses:
+    StaleEdit:
+      description: The record changed since the client loaded it (code STALE_EDIT). `error.meta.current` holds the current `updatedAt` (and `version`).
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Unauthenticated:
       description: No valid session
       content:
@@ -128,6 +140,9 @@ components:
             code: { type: string }
             message: { type: string }
             requestId: { type: string }
+            meta:
+              type: object
+              additionalProperties: true
             fieldErrors:
               type: object
               additionalProperties:

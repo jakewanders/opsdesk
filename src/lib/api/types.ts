@@ -10,6 +10,10 @@ export type ApiErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "STALE_EDIT"
+  | "IDEMPOTENCY_IN_PROGRESS"
+  | "IDEMPOTENCY_KEY_REUSED"
+  | "IDEMPOTENCY_KEY_INVALID"
   | "PAYLOAD_TOO_LARGE"
   | "UNSUPPORTED_MEDIA_TYPE"
   | "VALIDATION_ERROR"
@@ -24,6 +28,8 @@ export type ApiErrorBody = {
   code: ApiErrorCode | (string & {});
   message: string;
   fieldErrors?: FieldErrors;
+  /** Extra machine-readable context, for example the current server version on a stale edit (409). */
+  meta?: Record<string, unknown>;
   requestId: string;
 };
 

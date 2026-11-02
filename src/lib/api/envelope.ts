@@ -70,6 +70,7 @@ export function errorResponse(error: ApiError, requestId: string): Response {
       code: error.code,
       message: error.message,
       ...(error.fieldErrors ? { fieldErrors: error.fieldErrors } : {}),
+      ...(error.meta ? { meta: error.meta } : {}),
       requestId,
     },
   };

@@ -401,7 +401,7 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - `src/lib/cleanup/cleanup.integration.test.ts` (9, real Supabase, real admin client, mixed fixtures): expired demos and their guests removed, **active demo, real organization and real user untouched**, second run deletes nothing; a registered user's expired demo is removed but the account stays; a queued guest with an active demo is never deleted; batch size respected (3 expired, batch 2, two batches); **time budget respected** (injected clock, truncated, next run finishes, then idempotent); **phase-2 failure leaves a queued retry candidate (`1:unexpected_failure`), does not block phase 1, healthy guest still deleted, next run retries it**; eligibility check failure leaves the user alone; old orphan guest removed, fresh guest kept; logs hold counts and codes only.
 - `npm run test:db`: 16 files, 650 tests PASS. `npm run check`: all 9 steps passed (unit 783, integration 109).
 - Mutations caught and reverted: no time budget, no eligibility check, unknown eligibility treated as eligible, phase-2 failure aborting everything, batch size ignored, anonymity not required, membership check ignored, live demos purged. Not caught as equivalent mutants: dropping `kind = 'demo'` from the expired-org query (real organizations cannot carry an expiry: constraint) and ignoring the real-organization creator (the membership rule already blocks it; covered separately by a pgTAP case).
-- Not done here (SIT-213): the Netlify scheduled function and `npm run demo:cleanup`. The idempotency-key purge is wired but has nothing to purge until SIT-183 creates the table.
+- Not done here (SIT-213): the Netlify scheduled function and `npm run demo:cleanup`. The idempotency-key purge now has its table (SIT-183).
 
 ### SIT-209 — Organization setup, workspace selector and user menu (done)
 
@@ -418,6 +418,16 @@ Not part of this issue's acceptance (needs Jake): applying the hosted settings a
 - Mutations caught and reverted: eligibility ignoring memberships (pgTAP 4 failures, integration 2), no batch limit (9 failures), delete ignoring kind and expiry (31 failures), eligibility always true (2).
 - `npm run check`: all 9 steps passed (unit 814, integration 115 / 16 files, pgTAP PASS, 54 assertions in this file).
 - Fixture note: users inserted directly into `auth.users` need empty-string token columns or GoTrue returns 500 on delete (`confirmation_token` NULL scan error); not a product defect.
+
+### SIT-183 — Optimistic concurrency and idempotency helpers (done)
+
+- Migration `20261101001400_concurrency_idempotency.sql`: `private.bump_version()` (version counter, client value ignored), `private.idempotency_keys` (RLS on, no policy, no grants), `public.idempotency_begin / complete / abandon` (SECURITY DEFINER acting as `auth.uid()`, execute for `authenticated` only). The cleanup's key purge from SIT-207 now has a real table to purge.
+- `src/lib/api/concurrency.ts` (`updateIfCurrent`, `StaleEditError`, `expectedUpdatedAtField` / `expectedVersionField`), `src/lib/api/idempotency.ts` (`readIdempotencyKey`, `hashRequest`, `withIdempotency`), `src/lib/api-client/idempotency.ts` (`newIdempotencyKey`, `createSingleFlight`); `error.meta` added to the envelope; usage in `docs/API.md`; `Idempotency-Key` and `StaleEdit` in `docs/openapi.yaml`.
+- `supabase/tests/idempotency.test.sql` (32 assertions): no grants, RLS with no policy, direct reads and deletes denied, anon cannot call, new / in_progress / mismatch / replay, results cannot be overwritten, per-route and per-user scope, abandon, key validation, expiry and 2-minute claim retake, version counter ignores client value.
+- Unit (19 new): schemas, `StaleEditError` envelope, compare-and-set query shape, 404 vs 409, header parsing, canonical hash, replay / mismatch / in-progress / failure release, single-flight.
+- `concurrency.integration.test.ts` (11, real Supabase, two real sessions): **two concurrent edits from one starting point: one wins, the other gets 409 and the winner's value is kept**, stale editor retries with the current timestamp, version table conflicts and ignores client versions, another user's record is 404, **five simultaneous requests with one key insert exactly one row**, replay returns the original result with no extra row, key reuse with a different payload refused, per-user keys, failed attempt releases the key, closed store, expired keys removed by `cleanupExpiredDemos` while current ones stay.
+- `npm run check`: all 9 steps passed (unit 833 / 55 files, integration 126 / 17 files, pgTAP PASS).
+- Mutations caught and reverted: update without the `updated_at` match, mismatch ignored, no abandon on failure, begin always claiming, version trusting the client, begin ignoring the user, a table grant to `authenticated` (pgTAP).
 
 ## M2 — Core CRM, Pipeline & Task Management
 

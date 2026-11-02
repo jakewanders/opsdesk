@@ -90,7 +90,7 @@ insert into auth.users (id, email, is_anonymous, created_at) values ('c1000000-0
 select is(public.cleanup_enqueue_orphans(48), 1, 'an old guest with no organization is queued as an orphan');
 select is((select count(*) from private.demo_cleanup_users where user_id = 'c2000000-0000-4000-8000-0000000000c2'), 0::bigint, 'a fresh guest who just signed in is left alone');
 select is(public.cleanup_enqueue_orphans(48), 0, 'queueing twice adds nothing');
-select is(public.cleanup_purge_expired_keys(), 0, 'with no idempotency table yet there is nothing to purge');
+select is(public.cleanup_purge_expired_keys(), 0, 'with no expired idempotency keys there is nothing to purge');
 
 -- ---- SIT-214: scale, the anonymous-member-of-a-real-org edge, and key retention
 -- 220 expired demos at once: every call is bounded by its batch size and repeated calls drain the backlog
@@ -111,11 +111,13 @@ select is((public.cleanup_purge_expired_demos(100)->>'orgs_deleted')::int, 70, '
 select is((public.cleanup_purge_expired_demos(100)->>'orgs_deleted')::int, 0, 'then there is nothing left to do (idempotent)');
 select is(public.cleanup_user_eligible('f2000000-0000-4000-8000-000000000001'), false, 'an anonymous user who is a member of a real organization is never eligible for deletion');
 select is((select count(*) from public.organizations where id = 'f3000000-0000-4000-8000-000000000001'), 1::bigint, 'and the real organization survived every cleanup call');
--- idempotency keys: past retention removed, current kept (the table is created here with the agreed shape)
-create table private.idempotency_keys (id uuid primary key default gen_random_uuid(), expires_at timestamptz not null);
-insert into private.idempotency_keys (expires_at) values (now() - interval '2 days'), (now() - interval '1 second'), (now() + interval '1 hour');
+-- idempotency keys: past retention removed, current kept (real table, SIT-183)
+insert into private.idempotency_keys (user_id, route, key, request_hash, expires_at) values
+  ('f2000000-0000-4000-8000-000000000001', 'r', 'key-old-0001', 'hash-hash', now() - interval '2 days'),
+  ('f2000000-0000-4000-8000-000000000001', 'r', 'key-old-0002', 'hash-hash', now() - interval '1 second'),
+  ('f2000000-0000-4000-8000-000000000001', 'r', 'key-new-0003', 'hash-hash', now() + interval '1 hour');
 select is(public.cleanup_purge_expired_keys(), 2, 'keys past their retention are removed');
-select is((select count(*) from private.idempotency_keys), 1::bigint, 'and a current key is kept');
+select is((select count(*) from private.idempotency_keys where user_id = 'f2000000-0000-4000-8000-000000000001'), 1::bigint, 'and a current key is kept');
 
 select * from finish();
 rollback;
