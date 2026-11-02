@@ -285,6 +285,15 @@ describe("SQL and TypeScript agree [SIT-244]", () => {
       expect(data.today, zone).toBe(base);
       expect(data.overdueTasks, zone).toBe(rows.filter((r) => isOverdue(r, now, zone)).length);
       expect(data.tasksDueNext7Days, zone).toBe(rows.filter((r) => isDueSoon(r, now, zone)).length);
+      // the lists the dashboard cards link to hold exactly the counted tasks
+      const list = async (qs: string) =>
+        (
+          await (
+            await server.request(`/api/v1/tasks?${qs}&limit=100`, who, { headers: hdr(o) })
+          ).json()
+        ).meta.total as number;
+      expect(await list("overdue=true"), `${zone} overdue list`).toBe(data.overdueTasks);
+      expect(await list("dueSoon=true"), `${zone} due-soon list`).toBe(data.tasksDueNext7Days);
     }
   });
 });

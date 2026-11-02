@@ -48,6 +48,7 @@ const DEFAULTS: TaskListState = {
   priority: "",
   mine: "",
   overdue: "",
+  soon: "",
   group: "",
   sort: "due_date",
   order: "asc",

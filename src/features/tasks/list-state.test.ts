@@ -66,12 +66,24 @@ describe("task list URL state [SIT-237]", () => {
   });
   it("hasActiveFilters is true for any narrowing filter and false for sort, grouping and paging", () => {
     expect(hasActiveFilters(parse("sort=priority&group=status&page=2"))).toBe(false);
-    for (const qs of ["q=x", "status=done", "priority=low", "mine=true", "overdue=true"])
+    for (const qs of [
+      "q=x",
+      "status=done",
+      "priority=low",
+      "mine=true",
+      "overdue=true",
+      "soon=true",
+    ])
       expect(hasActiveFilters(parse(qs)), qs).toBe(true);
   });
   it("priority sorts most urgent first by default; the others start ascending", () => {
     expect(defaultOrderFor("priority")).toBe("desc");
     expect(defaultOrderFor("due_date")).toBe("asc");
     expect(defaultOrderFor("created_at")).toBe("asc");
+  });
+  it("[SIT-255] soon=true becomes the dueSoon API filter, and anything else is ignored", () => {
+    expect(toApiQuery(parse("soon=true")).dueSoon).toBe("true");
+    expect(toApiQuery(parse("soon=yes")).dueSoon).toBeUndefined();
+    expect(toApiQuery(parse("")).dueSoon).toBeUndefined();
   });
 });

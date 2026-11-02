@@ -27,6 +27,7 @@ export function useMoveStage() {
   const { fetch: call } = useApi();
   const queryClient = useQueryClient();
   const prefix = useScopedKey([...BOARD_KEY]);
+  const dashboardPrefix = useScopedKey(["dashboard"]);
 
   return useMutation<ApiResponse<OpportunityDto>, Error, Move, { snapshot: Snapshot }>({
     mutationFn: ({ deal, to, lostReason }) =>
@@ -84,6 +85,10 @@ export function useMoveStage() {
         notify.error("The deal was not moved", error.message);
       }
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: prefix }),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: prefix });
+      // the dashboard's pipeline numbers follow the deal
+      void queryClient.invalidateQueries({ queryKey: dashboardPrefix });
+    },
   });
 }

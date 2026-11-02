@@ -85,6 +85,8 @@ export const taskListQuery = listQuery({
     assignedToMe: flag().optional(),
     /** `true`: not done and due before today in the ORGANIZATION's time zone. */
     overdue: flag().optional(),
+    /** `true`: not done and due from today through today + 7 days in the ORGANIZATION's time zone. */
+    dueSoon: flag().optional(),
     customerId: uuid().optional(),
     opportunityId: uuid().optional(),
     /** `false` (default): active only; `true`: archived only; `all`: both. */

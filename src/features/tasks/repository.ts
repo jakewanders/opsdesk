@@ -3,6 +3,7 @@ import { updateIfCurrent } from "@/lib/api/concurrency";
 import type { Database } from "@/lib/supabase/database.types";
 import { paginate } from "@/lib/validation";
 import { escapeLike } from "@/features/customers/repository";
+import { addDays, DUE_SOON_DAYS } from "@/lib/domain/tasks";
 import {
   PATCH_COLUMNS,
   TASK_COLUMNS,
@@ -31,6 +32,8 @@ type Filterable = {
   not(column: string, operator: string, value: unknown): unknown;
   neq(column: string, value: unknown): unknown;
   lt(column: string, value: unknown): unknown;
+  gte(column: string, value: unknown): unknown;
+  lte(column: string, value: unknown): unknown;
   ilike(column: string, pattern: string): unknown;
 };
 
@@ -51,6 +54,12 @@ function applyFilters<T extends Filterable>(request: T, scope: TaskScope, query:
   if (query.overdue === "true") {
     r = r.neq("status", "done") as T;
     r = r.lt("due_date", scope.today) as T;
+  }
+  // due soon = not done and due from today through today + 7 (both included), the same rule as `isDueSoon`
+  if (query.dueSoon === "true") {
+    r = r.neq("status", "done") as T;
+    r = r.gte("due_date", scope.today) as T;
+    r = r.lte("due_date", addDays(scope.today, DUE_SOON_DAYS)) as T;
   }
   if (query.q) r = r.ilike("title", `%${escapeLike(query.q)}%`) as T;
   return r;

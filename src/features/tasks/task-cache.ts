@@ -39,6 +39,7 @@ type Cached = ApiResponse<TaskDto[]>;
 function stillListed(task: TaskDto, params: Params): boolean {
   if (params?.status && params.status !== task.status) return false;
   if (params?.overdue === "true" && task.dueState !== "overdue") return false;
+  if (params?.dueSoon === "true" && task.dueState !== "due_soon") return false;
   return true;
 }
 

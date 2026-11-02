@@ -14,6 +14,7 @@ export const taskListUrl = defineUrlState({
   priority: urlField.enum(["", ...TASK_PRIORITIES], ""),
   mine: urlField.enum(["", "true"], ""),
   overdue: urlField.enum(["", "true"], ""),
+  soon: urlField.enum(["", "true"], ""),
   group: urlField.enum(["", "status"], ""),
   sort: urlField.enum(TASK_SORT_OPTIONS, "due_date"),
   order: urlField.enum(["asc", "desc"], "asc"),
@@ -36,12 +37,15 @@ export function toApiQuery(state: TaskListState): Record<string, string | number
     priority: state.priority || undefined,
     assignedToMe: state.mine === "true" ? "true" : undefined,
     overdue: state.overdue === "true" ? "true" : undefined,
+    dueSoon: state.soon === "true" ? "true" : undefined,
   };
 }
 
 /** True when any search or filter narrows the list (drives "no results" versus "no tasks yet"). */
 export function hasActiveFilters(state: TaskListState): boolean {
-  return Boolean(state.q || state.status || state.priority || state.mine || state.overdue);
+  return Boolean(
+    state.q || state.status || state.priority || state.mine || state.overdue || state.soon,
+  );
 }
 
 /** Priority sorts most urgent first by default; the others start ascending. */

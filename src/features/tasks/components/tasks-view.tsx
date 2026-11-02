@@ -88,7 +88,8 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
   const from = total === 0 ? 0 : (state.page - 1) * state.limit + 1;
   const to = Math.min(total, (state.page - 1) * state.limit + items.length);
   const pastTheEnd = items.length === 0 && total > 0;
-  const clear = () => setState({ q: "", status: "", priority: "", mine: "", overdue: "" });
+  const clear = () =>
+    setState({ q: "", status: "", priority: "", mine: "", overdue: "", soon: "" });
 
   const groups = useMemo(() => {
     if (state.group !== "status") return [{ key: "", label: "", rows: items }];
@@ -234,6 +235,14 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
               onChange={(e) => setState({ overdue: e.target.checked ? "true" : "" })}
             />
             Overdue
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={state.soon === "true"}
+              onChange={(e) => setState({ soon: e.target.checked ? "true" : "" })}
+            />
+            Due in the next 7 days
           </label>
           <label className="flex items-center gap-2">
             <input

@@ -875,6 +875,12 @@ paths:
             schema: { type: string, enum: ["true", "false"] },
             description: "`true`: not done and due before today in the ORGANIZATION's time zone. A task due today is not overdue.",
           }
+        - {
+            name: dueSoon,
+            in: query,
+            schema: { type: string, enum: ["true", "false"] },
+            description: "`true`: not done and due from today through today + 7 days (both included) in the ORGANIZATION's time zone.",
+          }
         - { name: customerId, in: query, schema: { type: string, format: uuid } }
         - { name: opportunityId, in: query, schema: { type: string, format: uuid } }
         - {
