@@ -751,7 +751,17 @@ Entries per issue:
 
 ## M3 — Dashboard, Reporting Foundations & Activity
 
-Not started. No checks run.
+In progress. Entries are added per issue.
+
+### SIT-258 — Verify and enrich the demo seed content (done)
+
+- **Finding:** a fresh demo already had exactly 18 customers, 10 opportunities and 24 tasks, but its 52 activity events were all `created` events dated the moment of bootstrap: nothing spread over 90 days, no stage moves, no completions, no archive events.
+- **Change:** migration `20261101002700_demo_activity_history.sql` replaces the activity seeder (position 990, version 2). It removes the "just now" events of the seeded records and writes a history dated from the records themselves, all by the System: customer created (18) and archived (3, at `archived_at`), opportunity created (10) and one `stage_changed` into its current stage (8; won and lost at `closed_at`, never before the deal existed), task completed at `completed_at` (5). **44 events**, 32 different days, from 86 days ago to 2 days ago. Other seeders' events are left alone, so M4's quotes seeder can add its own history.
+- `supabase/tests/demo-seed-content.test.sql` (43 assertions): exact counts (18 / 10 / 24 / 44 / 3 archived), relationships (every deal has a customer, task links stay in the workspace, 16 tasks linked), all six stages with won deals closed and a lost reason, overdue / due today / upcoming / done tasks, dashboard inputs non-trivial (open pipeline > 0, a deal won in the last 30 days, leads), history rules (none older than 90 days or in the future, at least 25 distinct days, events in all three 30-day periods, System actor, each event points at an existing record, none older than its record, every won or lost deal has a stage event between created and closed, every done task and archived customer has its event at the exact time), determinism (a second guest has an identical fingerprint of all four tables; after `reset_demo_workspace` the fingerprint equals the first seed's), and a lint over every seeded string (reserved `example.com`, `555-01xx`, no links, phone-like or SSN-like numbers, or real mail providers).
+- Three existing pgTAP expectations that encoded the old history were updated (`activity-matrix`: every seeded event reads as `System ...`; `tasks`: 5 System completed events instead of 24 created; `activity-logging` was already satisfied once the seeder stopped deleting other seeders' events). `docs/DEMO.md` has the manifest.
+- `npm run check`: all 10 steps passed (unit 1535 / 99 files, pgTAP PASS, integration 410 / 38 files, Playwright 3 / 3).
+- **Mutation check:** dating the stage events 3 days after `closed_at` (and null for open deals) failed 5 assertions (no future events, 30-day periods, won/lost event window, two-guest and post-reset fingerprints); restored and green.
+- Not verifiable yet: "first dashboard view shows all KPI cards with meaningful values" needs the dashboard (SIT-244, SIT-255); the inputs it will aggregate are asserted here, and SIT-259 asserts the dashboard itself.
 
 ## M4 — Advanced Business Features (P1)
 

@@ -104,7 +104,7 @@ select tests.act_as_uid('aa000000-0000-4000-8000-0000000000a1', true);
 create temp table boot as select public.bootstrap_demo_workspace() r;
 grant select on boot to authenticated;
 select tests.reset();
-select is((select count(*) from public.activity_events e where e.organization_id = (select (r ->> 'organization_id')::uuid from boot) and e.entity_type = c.entity_type and e.actor_user_id is null and e.summary like 'System created %'), (select count(*) from public.activity_events e where e.organization_id = (select (r ->> 'organization_id')::uuid from boot) and e.entity_type = c.entity_type), c.tbl || ': every seeded event has no actor and reads as System') from cases c;
+select is((select count(*) from public.activity_events e where e.organization_id = (select (r ->> 'organization_id')::uuid from boot) and e.entity_type = c.entity_type and e.actor_user_id is null and e.summary like 'System %'), (select count(*) from public.activity_events e where e.organization_id = (select (r ->> 'organization_id')::uuid from boot) and e.entity_type = c.entity_type), c.tbl || ': every seeded event has no actor and reads as System (created, moved, archived, completed)') from cases c;
 select is((select count(*) from public.activity_events e where e.organization_id = (select (r ->> 'organization_id')::uuid from boot) and e.entity_type = c.entity_type) > 0, true, c.tbl || ': the seed does log events') from cases c;
 
 -- ---- shared: no client can write events or call the writer (once)
