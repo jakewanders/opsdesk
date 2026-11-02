@@ -108,7 +108,7 @@ export function ActivityTimeline({ items, timeZone, label, now = new Date() }: P
               </p>
               <p>
                 {href ? (
-                  <Link href={href} className="underline-offset-4 hover:underline">
+                  <Link href={href} className="touch-link underline-offset-4 hover:underline">
                     {e.summary}
                   </Link>
                 ) : (

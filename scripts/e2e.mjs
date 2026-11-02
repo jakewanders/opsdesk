@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { withDockerPath } from "./lib/docker-path.mjs";
 
 /**
@@ -26,5 +27,7 @@ const env = {
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
 };
 const run = (cmd, args) => spawnSync(cmd, args, { stdio: "inherit", env }).status ?? 1;
+// a clean build directory: a cached build once served stale CSS to the browser tests
+rmSync(".next-e2e", { recursive: true, force: true });
 if (run("node_modules/.bin/next", ["build"]) !== 0) process.exit(1);
 process.exit(run("node_modules/.bin/playwright", ["test", ...process.argv.slice(2)]));

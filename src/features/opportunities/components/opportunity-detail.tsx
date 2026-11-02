@@ -117,7 +117,7 @@ export function OpportunityDetail({ initial, canWrite }: Props) {
           for{" "}
           <Link
             href={`/app/customers/${deal.customerId}`}
-            className="font-medium text-foreground underline underline-offset-2"
+            className="touch-link font-medium text-foreground underline underline-offset-2"
           >
             {deal.customerName ?? "customer"}
           </Link>

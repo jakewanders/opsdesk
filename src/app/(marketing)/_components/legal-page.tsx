@@ -26,7 +26,10 @@ export function LegalPage({ title, intro, children }: LegalPageProps) {
       </a>
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="rounded-md px-1 text-base font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="touch-link rounded-md px-1 text-base font-semibold tracking-tight"
+          >
             OpsDesk
           </Link>
           <nav aria-label="Legal" className="flex gap-4 text-sm">

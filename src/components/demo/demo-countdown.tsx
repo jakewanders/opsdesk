@@ -70,7 +70,7 @@ export function DemoCountdown({ expiresAt, serverNow, actions }: DemoCountdownPr
           {actions}
           <Link
             href="/signup"
-            className="rounded-md px-1 font-medium underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring"
+            className="touch-link rounded-md px-1 font-medium underline underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
             Create an account
           </Link>

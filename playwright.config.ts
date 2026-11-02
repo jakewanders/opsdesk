@@ -17,7 +17,22 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   reporter: [["list"]],
+  projects: [
+    { name: "desktop", testIgnore: /mobile\.spec\.ts/ },
+    // E2E scenario 9: a phone-sized browser (375 x 812, touch), used by e2e/mobile.spec.ts
+    {
+      name: "mobile",
+      testMatch: /mobile\.spec\.ts/,
+      use: {
+        viewport: { width: 375, height: 812 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+      },
+    },
+  ],
   use: {
+    actionTimeout: 15_000,
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
     ...devices["Desktop Chrome"],

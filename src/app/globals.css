@@ -189,3 +189,46 @@
     }
   }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Phones and zoom (SIT-260). Shared rules, so no page needs its own fix.
+   --------------------------------------------------------------------------------------------- */
+
+/* A scroll container must also contain its visually hidden (absolutely positioned) children, or a wide table drags the
+   whole page sideways. */
+.overflow-x-auto {
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  /* Touch targets are at least 44 x 44 CSS px. */
+  button,
+  [role="tab"],
+  [role="menuitem"],
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+    min-height: 44px;
+  }
+  button {
+    min-width: 44px;
+  }
+  /* A checkbox or radio is pressed through its label, so the label is the target. */
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  /* Links standing on their own (not inside a sentence): list rows, table cells, headings of widgets. */
+  .touch-link,
+  nav a,
+  footer a,
+  td a,
+  th a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

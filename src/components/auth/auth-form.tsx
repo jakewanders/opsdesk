@@ -159,7 +159,7 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
         </p>
       ) : (
         <p className="text-sm">
-          <Link href="/forgot-password" className="underline underline-offset-2">
+          <Link href="/forgot-password" className="touch-link underline underline-offset-2">
             Forgot your password?
           </Link>
         </p>

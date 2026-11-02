@@ -39,7 +39,7 @@ function Section({
     <section aria-label={title} className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <Link href={seeAll} className="text-sm underline-offset-4 hover:underline">
+        <Link href={seeAll} className="touch-link text-sm underline-offset-4 hover:underline">
           See all
           <span className="sr-only"> {title.toLowerCase()}</span>
         </Link>

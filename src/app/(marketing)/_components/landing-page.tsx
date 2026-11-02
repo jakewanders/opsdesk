@@ -66,7 +66,10 @@ export function LandingPage({ repoUrl }: LandingPageProps) {
       </a>
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" className="rounded-md px-1 text-base font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="touch-link rounded-md px-1 text-base font-semibold tracking-tight"
+          >
             OpsDesk
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1 text-sm sm:gap-4">

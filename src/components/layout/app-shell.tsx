@@ -32,7 +32,7 @@ function Brand() {
   return (
     <Link
       href="/"
-      className="rounded-md px-1 text-base font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring"
+      className="touch-link rounded-md px-1 text-base font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring"
     >
       OpsDesk
     </Link>

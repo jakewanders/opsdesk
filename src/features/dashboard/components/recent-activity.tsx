@@ -25,7 +25,10 @@ export function RecentActivity({ events, currentUserId, timeZone }: Props) {
         <h2 id="dash-activity" className="text-lg font-semibold">
           Recent activity
         </h2>
-        <Link href="/app/activity" className="text-sm underline-offset-4 hover:underline">
+        <Link
+          href="/app/activity"
+          className="touch-link text-sm underline-offset-4 hover:underline"
+        >
           View all<span className="sr-only"> activity</span>
         </Link>
       </div>
