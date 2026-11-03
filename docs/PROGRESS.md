@@ -24,6 +24,10 @@ No workable M0 to M5 issue remains: every one left is blocked on something only 
 
 **State of the code:** everything P0 and P1 is built and tested locally; nothing is deployed, no DNS or certificate exists, and no live site was measured. The last full local `npm run check` passed all 10 steps, and GitHub Actions (lint, types, unit, build; database, RLS and API integration) is green on `main`.
 
+## Netlify site created (2026-11-03, after the loop summary)
+
+The owner created the Netlify site `sitelaunch-opsdesk` from `jakewanders/opsdesk` (branch `main`). Checked with curl from this machine: the site is up (`/`, `/privacy`, `/demo` return 200, `/api/health` reports `web ok, database unavailable` because the Supabase values are still placeholders). Details and what is still unverified are in `docs/DEPLOYMENT.md`, "Records". SIT-177 stays open until a pull-request deploy preview is checked for `noindex` and the shell is looked at at 375 px and desktop. **Correction to the final summary above:** Netlify itself adds `Strict-Transport-Security` and `X-Content-Type-Options`; what is still missing is the CSP, frame options and referrer policy.
+
 ## Waiting on Jake
 
 Items only Jake can unblock. Each is also an action item in the tracker.

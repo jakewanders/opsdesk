@@ -27,9 +27,11 @@ Verified locally (see `docs/PROGRESS.md`): a build with `CONTEXT=deploy-preview`
 
 ## Records (fill in only after verifying)
 
-- Netlify site name: _not created_
-- Assigned hostname (`*.netlify.app`): _not recorded_
-- Latest verified preview URL: _none_
+- Netlify site name: `sitelaunch-opsdesk` (created by the owner 2026-11-03; first deploy of `main`)
+- Assigned hostname: `https://sitelaunch-opsdesk.netlify.app`
+- **Verified 2026-11-03 with curl** (production context, placeholder Supabase values): `/` 200, `/privacy` 200, `/demo` 200; `/api/health` answers `{"web":"ok","database":"unavailable"}` (expected while the placeholder Supabase URL is set); the responses carry `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` and `X-Content-Type-Options: nosniff` (added by Netlify, not by this repository) and **no** `Content-Security-Policy`, frame-options or referrer-policy header (still to do in SIT-272); no `X-Robots-Tag` (this is the production context, so the page is indexable until SIT-273 redirects this hostname to the custom domain).
+- Not yet verified: a deploy preview for a pull request (and its `noindex`), the layouts at 375 px and desktop on the live site, `cleanup-demo` listed as scheduled, real Supabase values.
+- Latest verified preview URL: _none yet_
 - Custom domain, DNS provider, record, certificate: _not configured (SIT-272, P-13)_
 
 ## Verification commands (after the first deploy)
