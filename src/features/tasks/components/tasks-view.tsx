@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import { ArchivedBadge } from "@/components/shared/archived-badge";
 import { ScopeNote } from "@/components/shared/scope-note";
 import { Check, ListTodo, Plus, RotateCcw, Search } from "lucide-react";
@@ -127,6 +128,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton />
+          <ExportCsvButton entity="tasks" query={apiQuery} noun="task list" />
           {canWrite ? (
             <Button type="button" onClick={() => setDrawer({ mode: "create" })}>
               <Plus aria-hidden="true" />

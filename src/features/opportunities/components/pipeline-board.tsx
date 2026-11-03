@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import Link from "next/link";
 import { useState } from "react";
@@ -87,6 +88,7 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton />
+          <ExportCsvButton entity="opportunities" query={base} noun="pipeline" />
           <ViewToggle view="board" onChange={(view) => setFilters({ view })} />
           {canWrite ? (
             <Link href="/app/opportunities/new" className={buttonVariants()}>

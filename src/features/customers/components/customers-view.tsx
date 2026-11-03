@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import {
   createColumnHelper,
   flexRender,
@@ -300,6 +301,7 @@ export function CustomersView({
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton />
+          <ExportCsvButton entity="customers" query={apiQuery} noun="customer list" />
           {canImport ? (
             <Link href="/app/customers/import" className={buttonVariants({ variant: "outline" })}>
               <Upload aria-hidden="true" />

@@ -25,7 +25,7 @@ import {
   type ReportUrlState,
 } from "../report-data";
 import type { ReportDto } from "../service";
-import { ExportReportButton } from "./export-report-button";
+import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import { BasisTag, ReportChart } from "./report-chart";
 import { RangeControl } from "./range-control";
 
@@ -123,7 +123,7 @@ export function ReportsView({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton />
-          <ExportReportButton query={apiQuery} />
+          <ExportCsvButton entity="reports" query={apiQuery} noun="report" />
         </div>
       </header>
 

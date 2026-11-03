@@ -1,5 +1,6 @@
 "use client";
 
+import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import { ArchivedBadge } from "@/components/shared/archived-badge";
 import { ScopeNote } from "@/components/shared/scope-note";
 import { CopyLinkButton } from "@/components/shared/copy-link-button";
@@ -194,6 +195,7 @@ export function OpportunityList({ canWrite, currentUserId }: Props) {
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton />
+          <ExportCsvButton entity="opportunities" query={apiQuery} noun="opportunity list" />
           <ViewToggle view="list" onChange={(view) => setState({ view })} />
           {canWrite ? (
             <Link href="/app/opportunities/new" className={buttonVariants()}>
