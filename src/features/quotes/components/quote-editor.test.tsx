@@ -407,7 +407,10 @@ describe("QuoteEditor: editing a draft", () => {
     const dialog = await screen.findByRole("alertdialog", {
       name: "Someone else changed this quote",
     });
-    await userEvent.click(within(dialog).getByRole("button", { name: "Load the latest version" }));
+    await within(dialog).findByText(/Changed by them:/);
+    expect(dialog).toHaveTextContent("Changed by them: Title.");
+    expect(dialog).toHaveTextContent("Changed by you: Notes.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reload latest" }));
     await waitFor(() =>
       expect((screen.getByLabelText(/Title/) as HTMLInputElement).value).toBe(
         "Changed by someone else",
@@ -418,6 +421,49 @@ describe("QuoteEditor: editing a draft", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
     await waitFor(() => expect(writes()).toHaveLength(2));
     expect(body(writes()[1]).expectedVersion).toBe(3);
+  });
+
+  it("'Apply my changes on top' puts a change to different fields on the latest draft, unsaved, and saves against the new version", async () => {
+    let first = true;
+    mockApi((url, init) => {
+      if (init.method === "PATCH") {
+        if (first) {
+          first = false;
+          return respond(409, {
+            error: {
+              code: "STALE_EDIT",
+              message: "changed",
+              requestId: "r",
+              meta: { current: { version: 3 } },
+            },
+          });
+        }
+        return respond(200, { data: saved({ version: 4 }), meta: {} });
+      }
+      return respond(200, {
+        data: saved({ title: "Changed by someone else", version: 3 }),
+        meta: {},
+      });
+    });
+    renderEditor({ quote: saved() });
+    await userEvent.type(screen.getByLabelText(/Notes/), "mine");
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Someone else changed this quote",
+    });
+    await within(dialog).findByText(/Changed by them:/);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Apply my changes on top" }));
+    await waitFor(() =>
+      expect((screen.getByLabelText(/Title/) as HTMLInputElement).value).toBe(
+        "Changed by someone else",
+      ),
+    );
+    expect((screen.getByLabelText(/Notes/) as HTMLTextAreaElement).value).toContain("mine");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(writes()).toHaveLength(2));
+    expect(body(writes()[1]).expectedVersion).toBe(3);
+    expect(body(writes()[1]).notes).toContain("mine");
   });
 
   it("a quote sent meanwhile (409 QUOTE_LOCKED) says so and offers the current quote", async () => {

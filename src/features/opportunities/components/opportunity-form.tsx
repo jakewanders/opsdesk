@@ -1,5 +1,8 @@
 "use client";
 
+import { ConflictDialog } from "@/components/shared/conflict-dialog";
+import { applyConflictToForm } from "@/lib/api-client/conflict-form";
+import { useConflict } from "@/lib/api-client/use-conflict";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -65,7 +68,6 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
   const closed = deal ? deal.stage === "won" || deal.stage === "lost" : false;
   const [version, setVersion] = useState(deal?.updatedAt ?? "");
   const [formError, setFormError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
 
   const form = useForm<OpportunityFormValues>({
     resolver: opportunityResolver(editing ? { mode: "edit", version, closed } : { mode: "create" }),
@@ -79,7 +81,7 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
-  const { register, control, handleSubmit, setError, reset, setValue, formState } = form;
+  const { register, control, handleSubmit, setError, reset, setValue, formState, getValues } = form;
   const { errors, isDirty, isSubmitting, submitCount } = formState;
   const stage = useWatch({ control, name: "stage" });
   const customerName = useWatch({ control, name: "customerName" });
@@ -102,13 +104,33 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
   });
 
   const guard = useUnsavedChangesGuard(isDirty);
+  const [baseline, setBaseline] = useState<OpportunityFormValues>(
+    deal ? toOpportunityFormValues(deal) : EMPTY_OPPORTUNITY,
+  );
+  const conflict = useConflict<OpportunityFormValues>({
+    labels: LABELS,
+    getBaseline: () => baseline,
+    getMine: () => getValues(),
+    loadLatest: async () => {
+      const latest = await call<OpportunityDto>(`/opportunities/${deal?.id}`);
+      return { values: toOpportunityFormValues(latest.data), version: latest.data.updatedAt };
+    },
+    apply: (values, nextVersion, how, latest) => {
+      const mine = getValues();
+      applyConflictToForm(form, values, latest, how, setBaseline);
+      // the picker shows the customer's name, which is not an editable field of its own: keep it with the id the person chose
+      if (how === "merge" && mine.customerId === values.customerId)
+        setValue("customerName", mine.customerName);
+      setVersion(String(nextVersion));
+    },
+  });
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    setStale(false);
     try {
       const res = await save.mutateAsync(values);
       reset(toOpportunityFormValues(res.data));
+      setBaseline(toOpportunityFormValues(res.data));
       setVersion(res.data.updatedAt);
       notify.success(editing ? "Opportunity saved" : "Opportunity added", res.data.title);
       router.push(`/app/opportunities/${res.data.id}`);
@@ -117,7 +139,7 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
         setFormError("Something went wrong and the opportunity was not saved. Try again.");
         return;
       }
-      if (error.isStaleEdit) return setStale(true);
+      if (error.isStaleEdit) return void conflict.report();
       if (error.code === "CUSTOMER_NOT_FOUND" || (error.status === 404 && !editing)) {
         setError("customerId", {
           type: "server",
@@ -145,19 +167,6 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
     }
   });
 
-  const reload = async () => {
-    if (!deal) return;
-    try {
-      const latest = await call<OpportunityDto>(`/opportunities/${deal.id}`);
-      reset(toOpportunityFormValues(latest.data));
-      setVersion(latest.data.updatedAt);
-      setStale(false);
-      notify.info("Loaded the latest version", "Your changes were discarded.");
-    } catch {
-      setFormError("The latest version could not be loaded. Reload the page.");
-    }
-  };
-
   const summary: ErrorSummaryItem[] = useMemo(
     () =>
       submitCount === 0
@@ -184,20 +193,6 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
         aria-label={editing ? "Edit opportunity" : "Add opportunity"}
       >
         <ErrorSummary errors={summary} focusKey={submitCount} />
-        {stale ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive-subtle p-4 text-sm"
-          >
-            <p className="font-semibold">Someone else changed this opportunity.</p>
-            <p className="mt-1">
-              Your changes were not saved. Load the latest version, then make your edit again.
-            </p>
-            <Button type="button" variant="outline" className="mt-3" onClick={() => void reload()}>
-              Load the latest version
-            </Button>
-          </div>
-        ) : null}
         {formError ? (
           <div
             role="alert"
@@ -366,6 +361,7 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
         </div>
       </form>
 
+      <ConflictDialog noun="opportunity" labels={LABELS} conflict={conflict} />
       <ConfirmDialog
         open={guard.pendingHref !== null}
         onOpenChange={(open) => {

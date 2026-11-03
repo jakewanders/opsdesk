@@ -1,5 +1,8 @@
 "use client";
 
+import { ConflictDialog } from "@/components/shared/conflict-dialog";
+import { applyConflictToForm } from "@/lib/api-client/conflict-form";
+import { useConflict } from "@/lib/api-client/use-conflict";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -62,6 +65,19 @@ const fieldId = (name: string) => `quote-${name}`;
  * calculation module. Saving sends lines, discount and rate only: the SERVER computes and returns the saved totals (and, for a
  * new quote, its number), which then replace the preview. A stale version (409) offers to load the latest.
  */
+/** The fields a conflict can be about, in the words the form uses. */
+const CONFLICT_LABELS = {
+  customerId: "Customer",
+  opportunityId: "Deal",
+  title: "Title",
+  issueDate: "Issue date",
+  validUntil: "Valid until",
+  taxRate: "Tax rate",
+  discount: "Discount",
+  notes: "Notes",
+  items: "Line items",
+} as const;
+
 export function QuoteEditor({ quote, initial }: Props) {
   const router = useRouter();
   const { fetch: call } = useApi();
@@ -70,7 +86,7 @@ export function QuoteEditor({ quote, initial }: Props) {
   const [saved, setSaved] = useState<QuoteDetailDto | null>(null);
   const [savedPreview, setSavedPreview] = useState<ReturnType<typeof quotePreview> | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [stale, setStale] = useState<"stale" | "locked" | null>(null);
+  const [stale, setStale] = useState<"locked" | null>(null);
 
   const form = useForm<QuoteFormValues>({
     resolver: quoteResolver(editing ? { mode: "edit", version } : { mode: "create" }),
@@ -85,7 +101,7 @@ export function QuoteEditor({ quote, initial }: Props) {
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
-  const { register, control, handleSubmit, setError, reset, setValue, formState } = form;
+  const { register, control, handleSubmit, setError, reset, setValue, formState, getValues } = form;
   const { errors, isDirty, isSubmitting, submitCount } = formState;
   const values = useWatch({ control }) as QuoteFormValues;
   const customerId = useWatch({ control, name: "customerId" });
@@ -118,6 +134,40 @@ export function QuoteEditor({ quote, initial }: Props) {
 
   const guard = useUnsavedChangesGuard(isDirty);
 
+  const [baseline, setBaseline] = useState<QuoteFormValues>(
+    quote
+      ? toQuoteFormValues(quote)
+      : {
+          ...EMPTY_QUOTE,
+          customerId: initial?.customerId ?? "",
+          customerName: initial?.customerName ?? "",
+          opportunityId: initial?.opportunityId ?? "",
+        },
+  );
+  const conflict = useConflict<QuoteFormValues>({
+    labels: CONFLICT_LABELS,
+    getBaseline: () => baseline,
+    getMine: () => getValues(),
+    loadLatest: async () => {
+      const latest = await call<QuoteDetailDto>(`/quotes/${quote?.id}`);
+      if (latest.data.status !== "draft") {
+        // it was sent while the person was editing: the quote page is the only place left to go
+        router.refresh();
+        router.push(`/app/quotes/${quote?.id}`);
+        return null;
+      }
+      return { values: toQuoteFormValues(latest.data), version: latest.data.version };
+    },
+    apply: (values, nextVersion, how, latest) => {
+      const mine = getValues();
+      applyConflictToForm(form, values, latest, how, setBaseline);
+      if (how === "merge" && mine.customerId === values.customerId)
+        setValue("customerName", mine.customerName);
+      setVersion(Number(nextVersion));
+      setSaved(null);
+    },
+  });
+
   const onSubmit = handleSubmit(async (v) => {
     setFormError(null);
     setStale(null);
@@ -128,6 +178,7 @@ export function QuoteEditor({ quote, initial }: Props) {
       setSaved(next);
       setSavedPreview(submittedPreview);
       reset(toQuoteFormValues(next));
+      setBaseline(toQuoteFormValues(next));
       setVersion(next.version);
       notify.success(
         editing ? "Draft saved" : "Quote created",
@@ -139,7 +190,7 @@ export function QuoteEditor({ quote, initial }: Props) {
         setFormError("Something went wrong and the quote was not saved. Try again.");
         return;
       }
-      if (error.isStaleEdit) return setStale("stale");
+      if (error.isStaleEdit) return void conflict.report();
       if (error.code === "QUOTE_LOCKED") return setStale("locked");
       if (error.isValidation && error.fieldErrors) {
         let placed = 0;
@@ -184,6 +235,7 @@ export function QuoteEditor({ quote, initial }: Props) {
         return;
       }
       reset(toQuoteFormValues(latest.data));
+      setBaseline(toQuoteFormValues(latest.data));
       setVersion(latest.data.version);
       setSaved(null);
       setStale(null);
@@ -424,18 +476,7 @@ export function QuoteEditor({ quote, initial }: Props) {
         </aside>
       </form>
 
-      <ConfirmDialog
-        open={stale === "stale"}
-        onOpenChange={(open) => {
-          if (!open) setStale(null);
-        }}
-        title="Someone else changed this quote"
-        description="Your changes were not saved. Load the latest version, then make your edit again."
-        confirmLabel="Load the latest version"
-        cancelLabel="Keep editing"
-        destructive={false}
-        onConfirm={reload}
-      />
+      <ConflictDialog noun="quote" labels={CONFLICT_LABELS} conflict={conflict} />
       <ConfirmDialog
         open={guard.pendingHref !== null}
         onOpenChange={(open) => {

@@ -342,9 +342,11 @@ describe("task drawer: editing, archiving, conflicts [SIT-242]", () => {
     const d = drawer();
     await userEvent.type(within(d).getByLabelText(/Title/), "!");
     await userEvent.click(within(d).getByRole("button", { name: "Save changes" }));
-    const alert = await within(d).findByRole("alert");
-    expect(alert).toHaveTextContent("Someone else changed this task.");
-    await userEvent.click(within(alert).getByRole("button", { name: "Load the latest version" }));
+    const conflictDialog = await screen.findByRole("alertdialog");
+    expect(conflictDialog).toHaveTextContent("Someone else changed this task");
+    await within(conflictDialog).findByText(/Changed by them:/);
+    expect(conflictDialog).toHaveTextContent("Changed by them: Title.");
+    await userEvent.click(within(conflictDialog).getByRole("button", { name: "Reload latest" }));
     await waitFor(() => expect(within(d).getByLabelText(/Title/)).toHaveValue("Changed elsewhere"));
     await userEvent.type(within(d).getByLabelText(/Title/), "!");
     await userEvent.click(within(d).getByRole("button", { name: "Save changes" }));

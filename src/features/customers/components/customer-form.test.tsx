@@ -275,7 +275,11 @@ describe("CustomerForm: editing", () => {
       expectedUpdatedAt: existing.updatedAt,
     });
   });
-  it("a stale edit (409) says someone else changed it, offers to load the latest and then saves against the new version", async () => {
+  const stale409 = respond.bind(null, 409, {
+    error: { code: "STALE_EDIT", message: "changed", requestId: "r2", meta: { current: {} } },
+  });
+
+  it("a stale edit (409) opens the conflict dialog; Reload latest discards mine, and the next save sends the new version", async () => {
     const latest = {
       ...existing,
       displayName: "Acme (edited elsewhere)",
@@ -283,32 +287,105 @@ describe("CustomerForm: editing", () => {
     };
     mockApi((url, init) => {
       if (init.method === "PATCH" && body({ init }).expectedUpdatedAt === existing.updatedAt)
-        return respond(409, {
-          error: {
-            code: "STALE_EDIT",
-            message: "changed",
-            requestId: "r2",
-            meta: { current: { updatedAt: latest.updatedAt } },
-          },
-        });
-      if (init.method === "PATCH") return respond(200, { data: latest, meta: {} });
+        return stale409();
       return respond(200, { data: latest, meta: {} });
     });
     renderForm({ customer: existing });
     await userEvent.clear(screen.getByLabelText(/Display name/));
     await userEvent.type(screen.getByLabelText(/Display name/), "My edit");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Someone else changed this customer.");
-    await userEvent.click(within(alert).getByRole("button", { name: "Load the latest version" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Someone else changed this customer");
+    await within(dialog).findByText(/Changed by them:/);
+    expect(dialog).toHaveTextContent("Changed by them: Display name.");
+    expect(dialog).toHaveTextContent("Changed by you: Display name.");
+    // the same field on both sides: no "on top"
+    expect(within(dialog).queryByRole("button", { name: "Apply my changes on top" })).toBeNull();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reload latest" }));
     await waitFor(() =>
       expect(screen.getByLabelText(/Display name/)).toHaveValue("Acme (edited elsewhere)"),
     );
-    expect(screen.queryByText("Someone else changed this customer.")).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await userEvent.type(screen.getByLabelText(/Display name/), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(push).toHaveBeenCalled());
     expect(body(writes().at(-1)!).expectedUpdatedAt).toBe(latest.updatedAt);
+  });
+
+  it("when we changed different fields, 'Apply my changes on top' puts mine on the latest, unsaved, and the next save sends the new version", async () => {
+    const latest = {
+      ...existing,
+      phone: "555-0199",
+      updatedAt: "2026-11-02T12:00:00.000000+00:00",
+    };
+    mockApi((url, init) => {
+      if (init.method === "PATCH" && body({ init }).expectedUpdatedAt === existing.updatedAt)
+        return stale409();
+      return respond(200, {
+        data: init.method === "PATCH" ? { ...latest, displayName: "My edit" } : latest,
+        meta: {},
+      });
+    });
+    renderForm({ customer: existing });
+    await userEvent.clear(screen.getByLabelText(/Display name/));
+    await userEvent.type(screen.getByLabelText(/Display name/), "My edit");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await within(dialog).findByText(/Changed by them:/);
+    expect(dialog).toHaveTextContent("Changed by them: Phone.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Apply my changes on top" }));
+    await waitFor(() => expect(screen.getByLabelText(/Phone/)).toHaveValue("555-0199"));
+    expect(screen.getByLabelText(/Display name/)).toHaveValue("My edit");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    const patchesBefore = writes().length;
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(writes().length).toBe(patchesBefore + 1);
+    const sent = body(writes().at(-1)!);
+    expect(sent.expectedUpdatedAt).toBe(latest.updatedAt);
+    expect(sent.displayName).toBe("My edit");
+    expect(sent.phone).toBe("555-0199");
+  });
+
+  it("'Keep editing' leaves the form as typed, and saving again conflicts again instead of overwriting", async () => {
+    mockApi((url, init) => {
+      if (init.method === "PATCH") return stale409();
+      return respond(200, {
+        data: { ...existing, updatedAt: "2026-11-02T12:00:00.000000+00:00" },
+        meta: {},
+      });
+    });
+    renderForm({ customer: existing });
+    await userEvent.clear(screen.getByLabelText(/Display name/));
+    await userEvent.type(screen.getByLabelText(/Display name/), "My edit");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Keep editing" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByLabelText(/Display name/)).toHaveValue("My edit");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(writes().every((w) => body(w).expectedUpdatedAt === existing.updatedAt)).toBe(true);
+  });
+
+  it("'Copy my changes' copies only the person's own changed fields", async () => {
+    mockApi((url, init) =>
+      init.method === "PATCH"
+        ? stale409()
+        : respond(200, {
+            data: { ...existing, updatedAt: "2026-11-02T12:00:00.000000+00:00" },
+            meta: {},
+          }),
+    );
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    renderForm({ customer: existing });
+    await user.clear(screen.getByLabelText(/Display name/));
+    await user.type(screen.getByLabelText(/Display name/), "My edit");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(await within(dialog).findByRole("button", { name: "Copy my changes" }));
+    expect(writeText).toHaveBeenCalledWith("Display name: My edit");
   });
 });
 

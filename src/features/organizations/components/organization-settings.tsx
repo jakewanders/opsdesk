@@ -1,5 +1,8 @@
 "use client";
 
+import { ConflictDialog } from "@/components/shared/conflict-dialog";
+import { applyConflictToForm } from "@/lib/api-client/conflict-form";
+import { useConflict } from "@/lib/api-client/use-conflict";
 import { LogOut, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -58,7 +61,6 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
   const clearCache = useClearApiCache();
   const [version, setVersion] = useState(settings.updatedAt);
   const [formError, setFormError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
 
   const form = useForm<SettingsFormValues>({
     resolver: settingsResolver,
@@ -66,9 +68,23 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
-  const { register, handleSubmit, setError, reset, formState } = form;
+  const { register, handleSubmit, setError, reset, formState, getValues } = form;
   const { errors, isDirty, isSubmitting, submitCount } = formState;
   const guard = useUnsavedChangesGuard(canEdit && isDirty);
+  const [baseline, setBaseline] = useState<SettingsFormValues>(toFormValues(settings));
+  const conflict = useConflict<SettingsFormValues>({
+    labels: LABELS,
+    getBaseline: () => baseline,
+    getMine: () => getValues(),
+    loadLatest: async () => {
+      const latest = await call<OrganizationSettingsDto>(`/organizations/${settings.id}`);
+      return { values: toFormValues(latest.data), version: latest.data.updatedAt };
+    },
+    apply: (values, nextVersion, how, latest) => {
+      applyConflictToForm(form, values, latest, how, setBaseline);
+      setVersion(String(nextVersion));
+    },
+  });
 
   const save = useApiMutation<OrganizationSettingsDto, SettingsFormValues>({
     mutationFn: (values, { call: c }) =>
@@ -80,11 +96,11 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    setStale(false);
     const zoneChanged = values.timezone !== settings.timezone;
     try {
       const res = await save.mutateAsync(values);
       reset(toFormValues(res.data));
+      setBaseline(toFormValues(res.data));
       setVersion(res.data.updatedAt);
       // Dates in every cached list and number depend on the zone; drop them and re-read the server-rendered parts.
       clearCache();
@@ -99,7 +115,7 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
         return;
       }
       if (error.isStaleEdit) {
-        setStale(true);
+        void conflict.report();
         return;
       }
       if (error.isValidation && error.fieldErrors) {
@@ -121,18 +137,6 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
       );
     }
   });
-
-  const reload = async () => {
-    try {
-      const latest = await call<OrganizationSettingsDto>(`/organizations/${settings.id}`);
-      reset(toFormValues(latest.data));
-      setVersion(latest.data.updatedAt);
-      setStale(false);
-      notify.info("Loaded the latest version", "Your changes were discarded.");
-    } catch {
-      setFormError("The latest version could not be loaded. Reload the page.");
-    }
-  };
 
   const summary: ErrorSummaryItem[] = useMemo(
     () =>
@@ -161,80 +165,64 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
       </header>
 
       {canEdit ? (
-        <form
-          noValidate
-          onSubmit={onSubmit}
-          aria-label="Organization settings"
-          className="flex max-w-xl flex-col gap-5"
-        >
-          <ErrorSummary errors={summary} focusKey={submitCount} />
-          {stale ? (
-            <div
-              role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive-subtle p-4 text-sm"
-            >
-              <p className="font-semibold">Someone else changed these settings.</p>
-              <p className="mt-1">
-                Your changes were not saved. Load the latest version, then make your edit again.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-3"
-                onClick={() => void reload()}
+        <>
+          <form
+            noValidate
+            onSubmit={onSubmit}
+            aria-label="Organization settings"
+            className="flex max-w-xl flex-col gap-5"
+          >
+            <ErrorSummary errors={summary} focusKey={submitCount} />
+            {formError ? (
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/40 bg-destructive-subtle p-4 text-sm"
               >
-                Load the latest version
+                {formError}
+              </div>
+            ) : null}
+            <FormField
+              id={fieldId("name")}
+              label={LABELS.name}
+              required
+              error={err("name")}
+              hint="2 to 80 characters."
+            >
+              {(c) => <Input {...c} {...register("name")} autoComplete="organization" />}
+            </FormField>
+            <FormField
+              id={fieldId("industry")}
+              label={LABELS.industry}
+              error={err("industry")}
+              hint="Optional, up to 80 characters."
+            >
+              {(c) => <Input {...c} {...register("industry")} autoComplete="off" />}
+            </FormField>
+            <FormField
+              id={fieldId("timezone")}
+              label={LABELS.timezone}
+              required
+              error={err("timezone")}
+              hint="Decides what counts as today, so it sets which tasks are overdue."
+            >
+              {(c) => (
+                <select {...c} {...register("timezone")} className={SELECT_CLASS}>
+                  {zones.map((z) => (
+                    <option key={z} value={z}>
+                      {z.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+            <div>
+              <Button type="submit" disabled={isSubmitting || !isDirty}>
+                {isSubmitting ? "Saving…" : "Save changes"}
               </Button>
             </div>
-          ) : null}
-          {formError ? (
-            <div
-              role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive-subtle p-4 text-sm"
-            >
-              {formError}
-            </div>
-          ) : null}
-          <FormField
-            id={fieldId("name")}
-            label={LABELS.name}
-            required
-            error={err("name")}
-            hint="2 to 80 characters."
-          >
-            {(c) => <Input {...c} {...register("name")} autoComplete="organization" />}
-          </FormField>
-          <FormField
-            id={fieldId("industry")}
-            label={LABELS.industry}
-            error={err("industry")}
-            hint="Optional, up to 80 characters."
-          >
-            {(c) => <Input {...c} {...register("industry")} autoComplete="off" />}
-          </FormField>
-          <FormField
-            id={fieldId("timezone")}
-            label={LABELS.timezone}
-            required
-            error={err("timezone")}
-            hint="Decides what counts as today, so it sets which tasks are overdue."
-          >
-            {(c) => (
-              <select {...c} {...register("timezone")} className={SELECT_CLASS}>
-                {zones.map((z) => (
-                  <option key={z} value={z}>
-                    {z.replace(/_/g, " ")}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <div>
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
-              {isSubmitting ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
-        </form>
+          </form>
+          <ConflictDialog noun="workspace's settings" labels={LABELS} conflict={conflict} />
+        </>
       ) : (
         <div className="flex max-w-xl flex-col gap-5">
           <p className="flex items-start gap-2 text-sm text-muted-foreground">

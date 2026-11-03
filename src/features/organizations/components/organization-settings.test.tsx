@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientProvider } from "@/lib/api-client/provider";
@@ -151,7 +151,7 @@ describe("OrganizationSettings: an owner or admin", () => {
     expect(document.body.textContent).toMatch(/Error:.*Choose a valid time zone/);
   });
 
-  it("on a stale edit keeps the typing, says who won, and offers the latest version", async () => {
+  it("on a stale edit opens the shared conflict dialog, keeps the typing until Reload latest, and names the fields", async () => {
     mockApi((url, init) => {
       if (init.method === "PATCH")
         return respond(409, {
@@ -175,13 +175,26 @@ describe("OrganizationSettings: an owner or admin", () => {
     renderPage();
     await user.type(screen.getByLabelText(/Industry/), " x");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(await screen.findByText("Someone else changed these settings.")).toBeInTheDocument();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Someone else changed this workspace's settings");
+    await within(dialog).findByText(/Changed by them:/);
+    expect(dialog).toHaveTextContent("Changed by them: Workspace name.");
+    expect(dialog).toHaveTextContent("Changed by you: Industry.");
+    // different fields: mine can go on top
+    expect(within(dialog).getByRole("button", { name: "Apply my changes on top" })).toBeEnabled();
+    await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
     expect(screen.getByLabelText(/Industry/)).toHaveValue("Plumbing x");
-    await user.click(screen.getByRole("button", { name: "Load the latest version" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await user.click(
+      await within(await screen.findByRole("alertdialog")).findByRole("button", {
+        name: "Reload latest",
+      }),
+    );
     await waitFor(() =>
       expect(screen.getByLabelText(/Workspace name/)).toHaveValue("Renamed Elsewhere"),
     );
-    expect(screen.queryByText("Someone else changed these settings.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Industry/)).toHaveValue("Plumbing");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("explains a 403 in words", async () => {

@@ -1,5 +1,8 @@
 "use client";
 
+import { ConflictDialog } from "@/components/shared/conflict-dialog";
+import { applyConflictToForm } from "@/lib/api-client/conflict-form";
+import { useConflict } from "@/lib/api-client/use-conflict";
 import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -80,7 +83,6 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
   const editing = task !== undefined;
   const [version, setVersion] = useState(task?.updatedAt ?? "");
   const [formError, setFormError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
   // The control that opened the drawer (this body is mounted fresh each time it opens): focus goes back to it on close.
   const [opener] = useState(() =>
     typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null),
@@ -98,7 +100,7 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
-  const { register, control, handleSubmit, setError, reset, setValue, formState } = form;
+  const { register, control, handleSubmit, setError, reset, setValue, formState, getValues } = form;
   const { errors, isDirty, isSubmitting, submitCount } = formState;
   const status = useWatch({ control, name: "status" });
   const customerName = useWatch({ control, name: "customerName" });
@@ -122,20 +124,48 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
     invalidate: [["tasks"], ["dashboard"]],
   });
 
+  const [baseline, setBaseline] = useState<TaskFormValues>(
+    task
+      ? toTaskFormValues(task)
+      : state?.mode === "create" && state.customer
+        ? { ...EMPTY_TASK, customerId: state.customer.id, customerName: state.customer.name }
+        : EMPTY_TASK,
+  );
+  const conflict = useConflict<TaskFormValues>({
+    labels: LABELS,
+    getBaseline: () => baseline,
+    getMine: () => getValues(),
+    loadLatest: async () => {
+      const latest = await call<TaskDto>(`/tasks/${task?.id}`);
+      return { values: toTaskFormValues(latest.data), version: latest.data.updatedAt };
+    },
+    apply: (values, nextVersion, how, latest) => {
+      const mine = getValues();
+      applyConflictToForm(form, values, latest, how, setBaseline);
+      // the pickers show names that are not editable fields of their own: keep them with the ids the person chose
+      if (how === "merge") {
+        if (mine.customerId === values.customerId) setValue("customerName", mine.customerName);
+        if (mine.opportunityId === values.opportunityId)
+          setValue("opportunityTitle", mine.opportunityTitle);
+      }
+      setVersion(String(nextVersion));
+    },
+  });
+
   const requestClose = () => (isDirty ? setConfirmDiscard(true) : onClose());
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    setStale(false);
     try {
       const res = await save.mutateAsync(values);
       notify.success(editing ? "Task saved" : "Task added", res.data.title);
       reset(toTaskFormValues(res.data));
+      setBaseline(toTaskFormValues(res.data));
       onClose();
     } catch (error) {
       if (!isClientApiError(error))
         return setFormError("Something went wrong and the task was not saved. Try again.");
-      if (error.isStaleEdit) return setStale(true);
+      if (error.isStaleEdit) return void conflict.report();
       if (error.code === "CUSTOMER_NOT_FOUND" || error.code === "OPPORTUNITY_NOT_FOUND") {
         const field: TaskField =
           error.code === "CUSTOMER_NOT_FOUND" ? "customerId" : "opportunityId";
@@ -163,19 +193,6 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
       );
     }
   });
-
-  const reload = async () => {
-    if (!task) return;
-    try {
-      const latest = await call<TaskDto>(`/tasks/${task.id}`);
-      reset(toTaskFormValues(latest.data));
-      setVersion(latest.data.updatedAt);
-      setStale(false);
-      notify.info("Loaded the latest version", "Your changes were discarded.");
-    } catch {
-      setFormError("The latest version could not be loaded. Close the drawer and try again.");
-    }
-  };
 
   const summary: ErrorSummaryItem[] = useMemo(
     () =>
@@ -229,25 +246,6 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
             aria-label={editing ? "Edit task" : "Add task"}
           >
             <ErrorSummary errors={summary} focusKey={submitCount} />
-            {stale ? (
-              <div
-                role="alert"
-                className="rounded-lg border border-destructive/40 bg-destructive-subtle p-3 text-sm"
-              >
-                <p className="font-semibold">Someone else changed this task.</p>
-                <p className="mt-1">
-                  Your changes were not saved. Load the latest version, then make your edit again.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-2"
-                  onClick={() => void reload()}
-                >
-                  Load the latest version
-                </Button>
-              </div>
-            ) : null}
             {formError ? (
               <div
                 role="alert"
@@ -413,6 +411,8 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
           </form>
         </SheetContent>
       </Sheet>
+
+      <ConflictDialog noun="task" labels={LABELS} conflict={conflict} />
 
       <ConfirmDialog
         open={confirmDiscard}

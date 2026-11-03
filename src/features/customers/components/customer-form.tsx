@@ -1,5 +1,8 @@
 "use client";
 
+import { ConflictDialog } from "@/components/shared/conflict-dialog";
+import { applyConflictToForm } from "@/lib/api-client/conflict-form";
+import { useConflict } from "@/lib/api-client/use-conflict";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -74,7 +77,6 @@ export function CustomerForm({ customer, currentUserId }: Props) {
   const editing = customer !== undefined;
   const [version, setVersion] = useState(customer?.updatedAt ?? "");
   const [formError, setFormError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
   const [saved, setSaved] = useState<{ customer: CustomerDto; warnings: Warning[] } | null>(null);
 
   const form = useForm<CustomerFormValues>({
@@ -83,7 +85,7 @@ export function CustomerForm({ customer, currentUserId }: Props) {
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
-  const { register, control, handleSubmit, setError, reset, formState } = form;
+  const { register, control, handleSubmit, setError, reset, formState, getValues } = form;
   const { errors, isDirty, isSubmitting, submitCount } = formState;
 
   const members = useApiQuery<MemberDto[]>(["members"], "/members");
@@ -104,15 +106,33 @@ export function CustomerForm({ customer, currentUserId }: Props) {
 
   const guard = useUnsavedChangesGuard(isDirty && saved === null);
 
+  // What the form was last reset to: the version the person started from, for working out what a conflict is about.
+  const [baseline, setBaseline] = useState<CustomerFormValues>(
+    customer ? toFormValues(customer) : EMPTY_CUSTOMER,
+  );
+  const conflict = useConflict<CustomerFormValues>({
+    labels: FIELD_LABELS,
+    getBaseline: () => baseline,
+    getMine: () => getValues(),
+    loadLatest: async () => {
+      const latest = await call<CustomerDto>(`/customers/${customer?.id}`);
+      return { values: toFormValues(latest.data), version: latest.data.updatedAt };
+    },
+    apply: (values, nextVersion, how, latest) => {
+      applyConflictToForm(form, values, latest, how, setBaseline);
+      setVersion(String(nextVersion));
+    },
+  });
+
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    setStale(false);
     try {
       const res = await save.mutateAsync(values);
       const warnings = ((res.meta.warnings as Warning[] | undefined) ?? []).filter(
         (w) => w.code === "DUPLICATE_EMAIL",
       );
       reset(toFormValues(res.data));
+      setBaseline(toFormValues(res.data));
       setVersion(res.data.updatedAt);
       notify.success(editing ? "Customer saved" : "Customer added", res.data.displayName);
       if (warnings.length > 0) setSaved({ customer: res.data, warnings });
@@ -123,7 +143,7 @@ export function CustomerForm({ customer, currentUserId }: Props) {
         return;
       }
       if (error.isStaleEdit) {
-        setStale(true);
+        void conflict.report();
         return;
       }
       if (error.isValidation && error.fieldErrors) {
@@ -145,19 +165,6 @@ export function CustomerForm({ customer, currentUserId }: Props) {
       );
     }
   });
-
-  const reload = async () => {
-    if (!customer) return;
-    try {
-      const latest = await call<CustomerDto>(`/customers/${customer.id}`);
-      reset(toFormValues(latest.data));
-      setVersion(latest.data.updatedAt);
-      setStale(false);
-      notify.info("Loaded the latest version", "Your changes were discarded.");
-    } catch {
-      setFormError("The latest version could not be loaded. Reload the page.");
-    }
-  };
 
   const summary: ErrorSummaryItem[] = useMemo(
     () =>
@@ -220,20 +227,6 @@ export function CustomerForm({ customer, currentUserId }: Props) {
         aria-label={editing ? "Edit customer" : "Add customer"}
       >
         <ErrorSummary errors={summary} focusKey={submitCount} />
-        {stale ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive-subtle p-4 text-sm"
-          >
-            <p className="font-semibold">Someone else changed this customer.</p>
-            <p className="mt-1">
-              Your changes were not saved. Load the latest version, then make your edit again.
-            </p>
-            <Button type="button" variant="outline" className="mt-3" onClick={() => void reload()}>
-              Load the latest version
-            </Button>
-          </div>
-        ) : null}
         {formError ? (
           <div
             role="alert"
@@ -388,6 +381,7 @@ export function CustomerForm({ customer, currentUserId }: Props) {
         </div>
       </form>
 
+      <ConflictDialog noun="customer" labels={FIELD_LABELS} conflict={conflict} />
       <ConfirmDialog
         open={guard.pendingHref !== null}
         onOpenChange={(open) => {

@@ -422,9 +422,11 @@ describe("OpportunityForm: editing", () => {
     renderForm({ deal });
     await userEvent.type(screen.getByLabelText(/Title/), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Someone else changed this opportunity.");
-    await userEvent.click(within(alert).getByRole("button", { name: "Load the latest version" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Someone else changed this opportunity");
+    await within(dialog).findByText(/Changed by them:/);
+    expect(dialog).toHaveTextContent("Changed by them: Title.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reload latest" }));
     await waitFor(() => expect(screen.getByLabelText(/Title/)).toHaveValue("Changed elsewhere"));
     await userEvent.type(screen.getByLabelText(/Title/), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
