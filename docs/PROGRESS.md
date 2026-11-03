@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-263, SIT-265, SIT-267 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-269, SIT-263, SIT-265, SIT-267 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -1033,6 +1033,16 @@ Most of the quote suite was written with the issues it proves (SIT-174, 222, 230
 - **EXPLAIN ANALYZE as the signed-in owner (RLS applied), selective filters:** customers created range **1.1 ms** (Index Scan `customers_org_created_idx`), opportunities amount range **1.0 ms** (`opportunities_org_amount_idx`), opportunities close range **1.1 ms** (`opportunities_org_close_date_idx`), tasks due range **0.8 ms** (`tasks_org_due_idx`), quotes issue range **0.9 ms** (`quotes_org_issue_date_idx`), quotes valid range **2.4 ms** (Bitmap Index Scan `quotes_org_valid_until_idx`). The test fails if any of these stops using its index.
 - **Finding, stated plainly:** `customers.tags @>` and the trigram search **cannot use their indexes under row level security** (Seq Scan, with `private.is_member(organization_id)` evaluated on each of the 10,000 rows, even with sequential scans switched off): the policy's check must run before any filter whose operator is not leakproof, and array containment and ILIKE are not. They cost **74 ms** (tags) and **83 ms** (search) at 10,000 customers, within the budget. A tags GIN index was therefore not added. A faster path needs a policy or operator change (see DECISIONS).
 - **Counts:** exact (`count: exact` on the same filtered query), which is fine at this scale: the counted queries above include it.
+
+### SIT-269 — GET /api/v1/exports/:entity CSV export (done)
+
+- **What it does:** `GET /api/v1/exports/{customers|opportunities|tasks|reports}` streams a CSV. Any other entity is a 404 (`EXPORT_NOT_FOUND`). The query string is the matching list endpoint's, validated by the **same schema** (every filter, `sort`, `order`; unknown or invalid values are 422); `page`/`limit` are ignored because an export is the whole filtered set. For `reports` it is the reports endpoint's (`range`, or `from`+`to`) and the file is the displayed data in long form (`section,key,period_start,period_end,metric,value`). Same filters are applied by the same `applyFilters` functions as the lists (the repositories gained `export…Chunks` generators that read 1,000 rows at a time in the list's own order).
+- **Safety:** shared `escapeCsvCell()` (`src/lib/csv/write.ts`, also now used by the import error report): a text cell starting with `=`, `+`, `-`, `@`, tab, CR, LF or any other control character (NUL to US, DEL) gets one leading `'`; real numbers stay numbers; RFC 4180 quoting; CRLF rows. Read as the caller (row level security), so no other workspace's rows. All roles that can read can export (viewer included); classified `read` in the endpoint matrix.
+- **File shape:** fixed snake_case headers; money in whole cents; ISO dates; tags joined by "; "; every row ends with `exported_at` (the generation instant). A demo workspace's file also has a last column named `Sample / fictional data` with that value on every row (so even a header-only file carries it); a real workspace's file never does. `Content-Disposition: attachment; filename="<entity>-<YYYY-MM-DD>.csv"` (the date in the workspace's zone), `X-Export-Rows`, `Cache-Control: private, no-store`. `bom=true` adds a UTF-8 byte-order mark for Excel.
+- **Cap:** more than 10,000 rows is a 422 `EXPORT_TOO_LARGE` that says how many rows there are and to add filters; checked with a count before any byte is sent.
+- **Tests run:** `src/lib/csv/write.test.ts` (19 unit: 11 formula vectors incl. the ones in the issue, safe text untouched, numbers vs numeric-looking text, quoting, BOM, round trip through our own reader); `src/features/exports/exports.integration.test.ts` (30, real HTTP against the production build: 401/404/422, every role, fixed headers, inert formula cells in all three entities, awkward text intact, 14 filter/sort cases each equal to the list endpoint's rows in the same order, page/limit ignored, empty result, BOM on/off, cross-tenant, reports equal GET /reports, demo marker on header and every row of all four entities and absent from a real workspace, exactly 10,000 rows streamed once each in order, 10,001 refused, a filter bringing it back under). Mutation check: disabling the neutralizer fails 13 unit tests (reverted). Typecheck clean.
+- **Real numbers:** exporting 10,000 customers (2.4 MB) takes **1.7 s** over HTTP on this machine, parsed back to exactly 10,000 unique rows.
+- OpenAPI updated (`/exports/{entity}`).
 
 ### SIT-264 — GET /api/v1/reports with date-range aggregates in organization time (done)
 

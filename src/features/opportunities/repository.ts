@@ -3,7 +3,7 @@ import { updateIfCurrent } from "@/lib/api/concurrency";
 import { totalsByStage, pipelineTotal, weightedPipeline, type Stage } from "@/lib/domain/pipeline";
 import type { Database } from "@/lib/supabase/database.types";
 import { paginate } from "@/lib/validation";
-import { escapeLike } from "@/features/customers/repository";
+import { EXPORT_CHUNK, escapeLike } from "@/features/customers/repository";
 import {
   OPPORTUNITY_COLUMNS,
   PATCH_COLUMNS,
@@ -281,4 +281,45 @@ export async function moveStage(
   const row = await findOpportunity(supabase, orgId, id);
   if (!row) throw new Error("The opportunity disappeared after its stage changed.");
   return toOpportunityDto(row);
+}
+
+/** The number of opportunities an export covers (the list's filters, no paging). */
+export async function countOpportunitiesForExport(
+  supabase: Client,
+  orgId: string,
+  query: OpportunityListQuery,
+): Promise<number> {
+  const customerIds = query.q ? await matchingCustomerIds(supabase, orgId, query.q) : null;
+  const { count, error } = await applyFilters(
+    supabase.from("opportunities").select("id", { count: "exact", head: true }),
+    orgId,
+    query,
+    customerIds,
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** The opportunities an export covers, in the list's own order, in chunks (see exportCustomerChunks). */
+export async function* exportOpportunityChunks(
+  supabase: Client,
+  orgId: string,
+  query: OpportunityListQuery,
+): AsyncGenerator<OpportunityDto[]> {
+  const customerIds = query.q ? await matchingCustomerIds(supabase, orgId, query.q) : null;
+  for (let offset = 0; ; offset += EXPORT_CHUNK) {
+    const { data, error } = await applyFilters(
+      supabase.from("opportunities").select(OPPORTUNITY_COLUMNS),
+      orgId,
+      query,
+      customerIds,
+    )
+      .order(SORT_COLUMN[query.sort], { ascending: query.order === "asc", nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + EXPORT_CHUNK - 1);
+    if (error) throw error;
+    const rows = ((data ?? []) as unknown as OpportunityRow[]).map(toOpportunityDto);
+    if (rows.length > 0) yield rows;
+    if (rows.length < EXPORT_CHUNK) return;
+  }
 }

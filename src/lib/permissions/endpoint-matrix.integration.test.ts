@@ -44,6 +44,7 @@ const B: Record<string, (c: Ctx) => Req> = {
     path: `/customers/${c.ids.customer}/restore`,
   }),
   "GET /dashboard": () => ({ method: "GET", path: "/dashboard" }),
+  "GET /exports/{entity}": () => ({ method: "GET", path: "/exports/customers" }),
   "GET /reports": () => ({ method: "GET", path: "/reports" }),
   "POST /demo/bootstrap": () => ({ method: "POST", path: "/demo/bootstrap" }),
   "POST /demo/reset": () => ({ method: "POST", path: "/demo/reset" }),

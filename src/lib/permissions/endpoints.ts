@@ -36,6 +36,7 @@ export const ENDPOINTS: Record<string, EndpointRule> = {
   "DELETE /customers/{id}": write,
   "POST /customers/{id}/restore": write,
   "GET /dashboard": read,
+  "GET /exports/{entity}": read,
   "GET /reports": read,
   "POST /demo/bootstrap": { who: "guest-only" },
   "POST /demo/reset": { who: "guest-only" },

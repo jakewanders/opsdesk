@@ -1,3 +1,4 @@
+import { escapeCsvCell } from "@/lib/csv/write";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertCan } from "@/lib/permissions";
 import type { OrgContext } from "@/lib/api/org-context";
@@ -169,10 +170,7 @@ const REPORT_MESSAGES: Record<string, string> = {
   REPORT_TRUNCATED: "More problems exist than are listed here.",
 };
 
-const csvCell = (value: string | number | null) => {
-  const text = value === null ? "" : String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
+const csvCell = escapeCsvCell;
 
 /**
  * The error report of an import job as CSV: row number, field, code and a fixed explanation. Built from the job's stored summary, which

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { updateIfCurrent } from "@/lib/api/concurrency";
 import type { Database } from "@/lib/supabase/database.types";
 import { paginate } from "@/lib/validation";
-import { escapeLike } from "@/features/customers/repository";
+import { EXPORT_CHUNK, escapeLike } from "@/features/customers/repository";
 import { addDays, DUE_SOON_DAYS } from "@/lib/domain/tasks";
 import {
   PATCH_COLUMNS,
@@ -196,4 +196,43 @@ export async function archiveTask(supabase: Client, orgId: string, id: string): 
     .eq("id", id)
     .is("archived_at", null);
   if (error) throw error;
+}
+
+/** The number of tasks an export covers (the list's filters, no paging). */
+export async function countTasksForExport(
+  supabase: Client,
+  scope: TaskScope,
+  query: TaskListQuery,
+): Promise<number> {
+  const { count, error } = await applyFilters(
+    supabase.from("tasks").select("id", { count: "exact", head: true }),
+    scope,
+    query,
+  );
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** The tasks an export covers, in the list's own order, in chunks (see exportCustomerChunks). */
+export async function* exportTaskChunks(
+  supabase: Client,
+  scope: TaskScope,
+  timeZone: string,
+  query: TaskListQuery,
+): AsyncGenerator<TaskDto[]> {
+  const now = new Date();
+  for (let offset = 0; ; offset += EXPORT_CHUNK) {
+    const { data, error } = await applyFilters(
+      supabase.from("tasks").select(TASK_COLUMNS),
+      scope,
+      query,
+    )
+      .order(SORT_COLUMN[query.sort], { ascending: query.order === "asc", nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + EXPORT_CHUNK - 1);
+    if (error) throw error;
+    const rows = ((data ?? []) as unknown as TaskRow[]).map((row) => toTaskDto(row, timeZone, now));
+    if (rows.length > 0) yield rows;
+    if (rows.length < EXPORT_CHUNK) return;
+  }
 }

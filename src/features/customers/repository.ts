@@ -107,7 +107,7 @@ export async function listCustomers(
   };
 }
 
-async function countCustomers(
+export async function countCustomers(
   supabase: Client,
   orgId: string,
   query: CustomerListQuery,
@@ -278,4 +278,35 @@ export async function setArchived(
   if (error) throw error;
   const row = (data as unknown as CustomerRow[] | null)?.[0];
   return row ? toCustomerDto(row) : null;
+}
+
+/** How many rows one export read returns: PostgREST's default `max_rows` is 1,000. */
+export const EXPORT_CHUNK = 1000;
+
+/**
+ * The customers an export covers, in the list's own order, in chunks (the same filters as {@link listCustomers}). Rows are read as the
+ * caller, so row level security applies. A write between two chunks can move a row across the boundary: an export is a snapshot of the
+ * moment each chunk was read, not of one instant.
+ */
+export async function* exportCustomerChunks(
+  supabase: Client,
+  orgId: string,
+  query: CustomerListQuery,
+  timeZone: string,
+): AsyncGenerator<CustomerDto[]> {
+  for (let offset = 0; ; offset += EXPORT_CHUNK) {
+    const { data, error } = await applyFilters(
+      supabase.from("customers").select(CUSTOMER_COLUMNS),
+      orgId,
+      query,
+      timeZone,
+    )
+      .order(SORT_COLUMN[query.sort], { ascending: query.order === "asc" })
+      .order("id", { ascending: true })
+      .range(offset, offset + EXPORT_CHUNK - 1);
+    if (error) throw error;
+    const rows = ((data ?? []) as unknown as CustomerRow[]).map(toCustomerDto);
+    if (rows.length > 0) yield rows;
+    if (rows.length < EXPORT_CHUNK) return;
+  }
 }

@@ -2093,6 +2093,55 @@ paths:
           description: "The workspace is not one the caller belongs to"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /exports/{entity}:
+    get:
+      summary: Download customers, opportunities, tasks or report data as CSV
+      description: >
+        `entity` is `customers`, `opportunities`, `tasks` or `reports`; anything else is a 404 (`EXPORT_NOT_FOUND`). The query
+        string is the matching list endpoint's (the same filters, `sort` and `order`, validated by the same schema; `page`
+        and `limit` are ignored because an export is the whole filtered set) or, for `reports`, the reports endpoint's
+        (`range`, or `from` and `to`). A list export may contain at most 10,000 rows; a bigger result is a 422
+        (`EXPORT_TOO_LARGE`) that asks for narrower filters. Columns and header names are fixed (snake_case). Money is whole
+        cents, instants are ISO 8601 in UTC, calendar dates are `YYYY-MM-DD`, tags are joined with "; ". Every row ends with
+        `exported_at` (the instant the file was generated). A demo workspace's file also carries a final `Sample / fictional
+        data` column, in the header and on every row; a real workspace's file does not. Text cells that start with `=`, `+`,
+        `-`, `@` or a control character (tab, CR, LF ...) are prefixed with a single quote so spreadsheets show them as
+        text; commas, quotes and line breaks are quoted per RFC 4180; rows end with CRLF. `bom=true` adds a UTF-8 byte-order
+        mark so Excel opens the file as UTF-8. The response is streamed; `Content-Disposition` is
+        `attachment; filename="<entity>-<YYYY-MM-DD>.csv"` (the date in the organization's zone) and `X-Export-Rows` is the
+        number of data rows. Read as the caller, so another workspace's rows are never included. Any member, viewers
+        included, can export.
+      parameters:
+        - {
+            name: entity,
+            in: path,
+            required: true,
+            schema: { type: string, enum: [customers, opportunities, tasks, reports] },
+          }
+        - { name: bom, in: query, schema: { type: boolean, default: false } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The CSV file
+          headers:
+            X-Export-Rows: { schema: { type: integer } }
+            Content-Disposition: { schema: { type: string } }
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "Unknown entity, or a workspace the caller is not in"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Invalid filters, or more than 10,000 rows (EXPORT_TOO_LARGE)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /reports:
     get:
       summary: Date-range aggregates in the organization's time zone
