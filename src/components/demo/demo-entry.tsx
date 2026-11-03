@@ -49,6 +49,14 @@ export function DemoEntry({ siteKey, repoUrl, deps }: Props) {
   }
 
   function fail(f: DemoFailure) {
+    // Client-side only: the browser console is where a developer looks first. It carries the failure kind, the Auth or API code and the
+    // request id, nothing about the visitor, so it bypasses no server-side redaction.
+    // eslint-disable-next-line no-console
+    console.warn("[opsdesk] demo start failed", {
+      kind: f.kind,
+      code: f.code,
+      requestId: f.requestId,
+    });
     setFailure(f);
     go("error");
     token.current = "";
@@ -137,17 +145,19 @@ export function DemoEntry({ siteKey, repoUrl, deps }: Props) {
           </p>
           {failure.requestId ? (
             <p className="text-xs text-muted-foreground">Reference: {failure.requestId}</p>
+          ) : failure.code ? (
+            <p className="text-xs text-muted-foreground">Error code: {failure.code}</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             {failure.retryable ? (
               <Button type="button" onClick={retry} className="h-10">
                 Try again
               </Button>
-            ) : (
+            ) : failure.kind === "member" ? (
               <Link href="/app" className={cn(buttonVariants(), "h-10")}>
                 Open my workspace
               </Link>
-            )}
+            ) : null}
             <Link href="/#technical-overview" className="underline underline-offset-4">
               Read the technical overview
             </Link>

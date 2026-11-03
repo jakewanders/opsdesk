@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   // DEPLOY_PRIME_URL (the deploy's own URL) is inlined the same way: src/lib/api/trusted-origins.ts
   // trusts it for mutations in preview contexts only. It is a public URL, not a secret.
   env: { CONTEXT: process.env.CONTEXT ?? "", DEPLOY_PRIME_URL: process.env.DEPLOY_PRIME_URL ?? "" },
+  // Netlify gives every deploy an id (DEPLOY_ID at build time). With it set, Next.js tags assets and navigation requests with the deploy,
+  // and a page from an older deploy does a full reload on its next navigation instead of mixing old and new code. A form left open across
+  // a deploy can still post an action id the new build lacks: the forms and error boundaries handle that (src/lib/auth/stale-action.ts).
+  ...(process.env.DEPLOY_ID ? { deploymentId: process.env.DEPLOY_ID } : {}),
   cacheComponents: true,
   partialPrefetching: true,
   // The settings index redirect lives in src/proxy.ts: a redirect declared here would answer without the

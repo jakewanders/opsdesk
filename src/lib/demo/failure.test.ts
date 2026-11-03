@@ -12,7 +12,8 @@ describe("classifyDemoFailure", () => {
     [{ step: "bootstrap", network: true }, "unavailable"],
     [{ step: "bootstrap", status: 503 }, "unavailable"],
     [{ step: "signin", status: 500, code: "unexpected_failure" }, "unavailable"],
-    [{ step: "signin", code: "anonymous_provider_disabled", status: 422 }, "unavailable"],
+    [{ step: "signin", code: "anonymous_provider_disabled", status: 422 }, "disabled"],
+    [{ step: "signin", code: "signup_disabled", status: 422 }, "disabled"],
     [{ step: "bootstrap", status: 403, code: "GUEST_ONLY" }, "member"],
     [{ step: "bootstrap", status: 422, code: "VALIDATION_ERROR" }, "setup"],
     [{ step: "bootstrap", status: 401, code: "UNAUTHENTICATED" }, "setup"],
@@ -21,7 +22,7 @@ describe("classifyDemoFailure", () => {
     expect(classifyDemoFailure(input).kind).toBe(kind);
   });
 
-  it("is retryable for everything except a signed-in member, and carries the request id", () => {
+  it("is retryable for everything except a signed-in member and a switched-off demo, and carries the request id and the error code", () => {
     for (const kind of ["rate_limit", "captcha", "unavailable", "setup"] as const) {
       const input = {
         rate_limit: { status: 429 },
@@ -38,6 +39,24 @@ describe("classifyDemoFailure", () => {
       requestId: "r-1",
     });
     expect(member).toMatchObject({ retryable: false, requestId: "r-1" });
+    const off = classifyDemoFailure({
+      step: "signin",
+      status: 422,
+      code: "anonymous_provider_disabled",
+    });
+    expect(off).toMatchObject({ retryable: false, code: "anonymous_provider_disabled" });
+  });
+
+  it("does not call a switched-off demo unreachable, and says so in words", () => {
+    const off = classifyDemoFailure({
+      step: "signin",
+      status: 422,
+      code: "anonymous_provider_disabled",
+    });
+    expect(off.title).toMatch(/switched off/i);
+    expect(off.message).not.toMatch(/could not reach|paused|restarting/i);
+    const down = classifyDemoFailure({ step: "signin", network: true });
+    expect(down.message).toMatch(/could not reach/i);
   });
 
   it("never uses success wording", () => {

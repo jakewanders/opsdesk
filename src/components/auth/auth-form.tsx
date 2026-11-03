@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, type ReactNode } from "react";
-import { ErrorAlert } from "@/components/shared/error-alert";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/shared/error-summary";
 import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import { guardStaleAction } from "@/lib/auth/stale-action";
+import { LinkProblemNotice } from "./link-problem-notice";
 import { TurnstileField } from "./turnstile-field";
 
 type Action = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
@@ -34,7 +35,7 @@ const IDS = { email: "email", password: "password", captcha: "captcha" } as cons
  * error summary and re-issues the CAPTCHA token (a token can be used once).
  */
 export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps) {
-  const [state, formAction, pending] = useActionState(action, initial);
+  const [state, formAction, pending] = useActionState(guardStaleAction(action), initial);
   const fieldErrors = state.fieldErrors ?? {};
   const errorFor = (name: string) => fieldErrors[name]?.[0];
 
@@ -80,7 +81,7 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-5" aria-busy={pending}>
-      {notice ? <ErrorAlert title="Link problem" message={notice} /> : null}
+      {notice ? <LinkProblemNotice fallback={notice} /> : null}
       <ErrorSummary errors={summary} focusKey={state.attempt} />
       {next ? <input type="hidden" name="next" value={next} /> : null}
 

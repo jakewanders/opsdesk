@@ -2,7 +2,8 @@
  * What went wrong while opening the demo, in words a visitor can act on. Every failure is retryable except a
  * signed-in member (they have a workspace to open). The demo flow never shows success for a failure.
  */
-export type DemoFailureKind = "rate_limit" | "captcha" | "unavailable" | "setup" | "member";
+export type DemoFailureKind =
+  "rate_limit" | "captcha" | "unavailable" | "disabled" | "setup" | "member";
 
 export type DemoFailureInput = {
   /** Where it failed: the anonymous sign-in, or the bootstrap request. */
@@ -22,6 +23,8 @@ export type DemoFailure = {
   message: string;
   retryable: boolean;
   requestId?: string;
+  /** The error code from Supabase Auth or the API, shown as a reference and logged to the console. */
+  code?: string;
 };
 
 const COPY: Record<DemoFailureKind, Pick<DemoFailure, "title" | "message" | "retryable">> = {
@@ -42,6 +45,12 @@ const COPY: Record<DemoFailureKind, Pick<DemoFailure, "title" | "message" | "ret
     message:
       "We could not reach the demo service. It may be paused or restarting. Try again in a moment.",
     retryable: true,
+  },
+  disabled: {
+    title: "The live demo is switched off right now",
+    message:
+      "Guest demos are turned off on this site at the moment, so nothing was started. Please check back soon.",
+    retryable: false,
   },
   setup: {
     title: "We could not set up your demo",
@@ -65,6 +74,9 @@ const RATE_LIMIT_CODES = new Set([
   "DEMO_QUOTA",
 ]);
 
+/** Supabase Auth answers these when the project has guest sign-in switched off: the demo cannot start, whatever the visitor does. */
+const DISABLED_CODES = new Set(["anonymous_provider_disabled", "signup_disabled"]);
+
 export function classifyDemoFailure(input: DemoFailureInput): DemoFailure {
   const { step, status, code, network, requestId } = input;
   let kind: DemoFailureKind;
@@ -72,12 +84,8 @@ export function classifyDemoFailure(input: DemoFailureInput): DemoFailure {
   else if (code === "captcha_failed" || (step === "signin" && status === 400 && !code))
     kind = "captcha";
   else if (step === "bootstrap" && status === 403 && code === "GUEST_ONLY") kind = "member";
-  else if (
-    network ||
-    (status !== undefined && status >= 500) ||
-    code === "anonymous_provider_disabled"
-  )
-    kind = "unavailable";
+  else if (code && DISABLED_CODES.has(code)) kind = "disabled";
+  else if (network || (status !== undefined && status >= 500)) kind = "unavailable";
   else kind = "setup";
-  return { kind, ...COPY[kind], ...(requestId ? { requestId } : {}) };
+  return { kind, ...COPY[kind], ...(requestId ? { requestId } : {}), ...(code ? { code } : {}) };
 }

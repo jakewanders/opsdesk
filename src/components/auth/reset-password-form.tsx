@@ -7,6 +7,7 @@ import { FormField } from "@/components/shared/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AuthFormState } from "@/lib/auth/form-state";
+import { guardStaleAction } from "@/lib/auth/stale-action";
 
 type Action = (state: AuthFormState, formData: FormData) => Promise<AuthFormState>;
 const initial: AuthFormState = { status: "idle", attempt: 0 };
@@ -17,7 +18,7 @@ const IDS = { password: "new-password", confirm: "confirm-password" } as const;
  * on the server; a failed submit focuses the error summary, and the button is locked while pending.
  */
 export function ResetPasswordForm({ action }: { action: Action }) {
-  const [state, formAction, pending] = useActionState(action, initial);
+  const [state, formAction, pending] = useActionState(guardStaleAction(action), initial);
   const errors = state.fieldErrors ?? {};
 
   const summary: ErrorSummaryItem[] = [];
