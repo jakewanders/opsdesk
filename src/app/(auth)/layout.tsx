@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
+
+// Account pages are never indexed (SIT-273); robots.txt disallows them too.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // Auth pages are rendered per request and never shared-cached (PRD 5.2).
 async function Dynamic({ children }: { children: ReactNode }) {

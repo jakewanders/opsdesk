@@ -12,3 +12,12 @@
 # Environment variable VALUES (Supabase URL and keys, Turnstile site key, secrets) are never kept in this file:
 # they are set per deploy context in the Netlify dashboard (production, Deploy Previews, Branch deploys; see
 # docs/DEPLOYMENT.md). Deploy previews and branch deploys use the separate Supabase TEST project (SIT-274).
+
+# The production *.netlify.app hostname sends visitors to the custom domain (301, path and query kept). A rule that names the
+# hostname applies to that hostname only: deploy previews, branch deploys and per-deploy URLs have other hostnames and are not affected.
+# Health checks and monitors must use https://opsdesk.sitelaunch.dev (SIT-273).
+[[redirects]]
+  from = "https://sitelaunch-opsdesk.netlify.app/*"
+  to = "https://opsdesk.sitelaunch.dev/:splat"
+  status = 301
+  force = true

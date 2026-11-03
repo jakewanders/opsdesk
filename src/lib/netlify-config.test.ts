@@ -34,7 +34,20 @@ describe("netlify.toml", () => {
     expect(toml).not.toMatch(/SECRET|SERVICE_ROLE|WEBHOOK|sb_secret|eyJ/);
   });
 
-  it("does not attach the production origin or touch the apex domain", () => {
-    expect(toml).not.toContain("sitelaunch.dev");
+  it("names the custom domain only as the target of the netlify.app redirect, and never the apex", () => {
+    const withoutRedirect = toml
+      .replace(/\[\[redirects\]\][\s\S]*$/, "")
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .join("\n");
+    expect(withoutRedirect).not.toContain("sitelaunch.dev");
+    const redirect = /\[\[redirects\]\][\s\S]*$/.exec(toml)?.[0] ?? "";
+    expect(redirect).toMatch(/from = "https:\/\/sitelaunch-opsdesk\.netlify\.app\/\*"/);
+    expect(redirect).toMatch(/to = "https:\/\/opsdesk\.sitelaunch\.dev\/:splat"/);
+    expect(redirect).toMatch(/status = 301/);
+    // the only hosts in the file: the netlify.app production host and the custom subdomain; no apex, www or wildcard
+    const hosts = [...toml.matchAll(/https:\/\/([a-z0-9.-]+)/gi)].map((m) => m[1]);
+    for (const h of hosts)
+      expect(["sitelaunch-opsdesk.netlify.app", "opsdesk.sitelaunch.dev"]).toContain(h);
   });
 });

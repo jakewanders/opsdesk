@@ -7,6 +7,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import "@/lib/zod-browser-config";
 import { apiFetch, type ApiFetchOptions, type ApiResponse } from "./api-fetch";
 import { makeQueryClient } from "./query-client";
 

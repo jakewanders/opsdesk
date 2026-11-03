@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppShell } from "@/components/layout/app-shell";
@@ -19,6 +20,9 @@ import { OrgSelector } from "@/components/org/org-selector";
 import { ACTIVE_ORG_COOKIE, resolveActiveWorkspace } from "@/lib/org/active-org";
 import { selectWorkspaceAction } from "@/lib/org/actions";
 import type { WorkspaceSummary } from "@/lib/api/organizations";
+
+// The application is never indexed (SIT-273); robots.txt disallows it too.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 // With cacheComponents enabled, `export const dynamic` is not allowed. `connection()` opts the
 // shell into request-time rendering: authenticated pages are never prerendered or shared-cached

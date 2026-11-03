@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildSecurityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   // The end-to-end run builds into its own directory (scripts/e2e.mjs): its browser bundle bakes in the LOCAL Supabase
@@ -15,6 +16,18 @@ const nextConfig: NextConfig = {
   // and a page from an older deploy does a full reload on its next navigation instead of mixing old and new code. A form left open across
   // a deploy can still post an action id the new build lacks: the forms and error boundaries handle that (src/lib/auth/stale-action.ts).
   ...(process.env.DEPLOY_ID ? { deploymentId: process.env.DEPLOY_ID } : {}),
+  // Security headers on every response, including the CSP that allows only this site, the Supabase project and Turnstile.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: buildSecurityHeaders({
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          production: process.env.NODE_ENV === "production",
+        }),
+      },
+    ];
+  },
   cacheComponents: true,
   partialPrefetching: true,
   // The settings index redirect lives in src/proxy.ts: a redirect declared here would answer without the
