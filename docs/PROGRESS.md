@@ -1194,7 +1194,8 @@ In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being 
 - `.github/workflows/ci.yml` gained the job **"Database, RLS and API integration tests"**: `npm run db:start` (a throwaway local Supabase stack in Docker on the runner), `npm run test:db` (pgTAP), `npm run build`, `npm run test:integration`, then `db:stop --no-backup` (always). The existing job keeps lint, format, types, the environment-name guard, unit tests, the build and the client-bundle secret scan.
 - **No secrets, no production credentials:** the workflow reads the repository only, has no `secrets.` reference and names no hosted address. `src/lib/ci-workflow.test.ts` (5 tests) checks that from the file; a mutation run (adding `secrets.X` and a write scope) failed 2 of its tests and the restored file passes 5 of 5.
 - `docs/CI.md` documents the jobs, the required checks (to be set by you in branch protection) and the secret rule.
-- **Not verified here:** "a PR with a broken policy fails CI". The same suites fail on a broken policy locally (the mutation runs under P-04: 16 of 16 caught), but I did not open a pull request with a deliberately broken policy, so I do not claim the red CI run. The actual first run of the new job is recorded in the commit's CI result below.
+- **First real run (GitHub Actions, run 41637867621, commit ending the P-11 push):** both jobs **succeeded** — "Lint, types, unit tests, build" in 4 min and "Database, RLS and API integration tests" in 15 min 20 s (the whole pgTAP suite and the integration suite on the runner's own Supabase stack).
+- **Not verified here:** "a PR with a broken policy fails CI". The same suites fail on a broken policy locally (the mutation runs under P-04: 16 of 16 caught), but I did not open a pull request with a deliberately broken policy, so I do not claim the red CI run.
 
 ### P-10 — Performance verification against the PRD §11.6 targets (done; parent SIT-145)
 
