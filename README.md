@@ -78,30 +78,31 @@ Netlify (free plan) with the custom domain `opsdesk.sitelaunch.dev` added as a C
 
 ## Commands
 
-| Command                           | Purpose                                                                                                                                         |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                     | Start the dev server                                                                                                                            |
-| `npm run build` / `start`         | Production build / serve it                                                                                                                     |
-| `npm run lint`                    | ESLint                                                                                                                                          |
-| `npm run format` / `format:check` | Prettier write / check                                                                                                                          |
-| `npm run typecheck`               | `next typegen && tsc --noEmit` (strict)                                                                                                         |
-| `npm run test:unit`               | Vitest (jsdom + Testing Library)                                                                                                                |
-| `npm run test:coverage`           | Vitest with v8 coverage                                                                                                                         |
-| `npm run test:db`                 | pgTAP tests in `supabase/tests` against the local database (run `npm run db:start` first)                                                       |
-| `npm run test:integration`        | API and database integration tests over real HTTP against the local Supabase stack (builds the app if needed)                                   |
-| `npm run test:e2e`                | Playwright end-to-end tests against a production build; scans the server's log output for leaks when it finishes                                |
-| `npm run test:e2e:scenarios`      | PRD end-to-end scenarios 1 to 6 together; `test:e2e:scenarios-7-10` runs 7 to 10                                                                |
-| `npm test`                        | Unit, database, integration and end-to-end tests                                                                                                |
-| `npm run check`                   | Everything above plus lint, types, build and the bundle secret scan; stops at the first failure                                                 |
-| `npm run check:env`               | Fails if a `NEXT_PUBLIC_*` name contains `SECRET`, `SERVICE` or `WEBHOOK`                                                                       |
-| `npm run check:bundle`            | After a build, fails if a server-only variable name or value is in `.next/static`                                                               |
-| `npm run mutation:security`       | Breaks the RLS and grants on purpose, one change at a time, and shows the tests that catch each (also `mutation:membership`, `mutation:quotes`) |
-| `npm run smoke:routes`            | Hits every PRD route on a running server (`-- http://host:port`, `--flags-on`)                                                                  |
-| `npm run db:start` / `db:stop`    | Start/stop the local Supabase stack (needs Docker)                                                                                              |
-| `npm run db:reset`                | Rebuild the LOCAL database from migrations and `supabase/seed.sql`                                                                              |
-| `npm run db:types`                | Regenerate TypeScript types from the local database                                                                                             |
-| `npm run demo:seed`               | Create a throwaway demo workspace with the fictional sample data in the LOCAL database                                                          |
-| `npm run demo:cleanup`            | Remove expired demo workspaces and their guests (local by default; a remote project needs `--confirm-remote`)                                   |
+| Command                           | Purpose                                                                                                                                                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                     | Start the dev server                                                                                                                                        |
+| `npm run build` / `start`         | Production build / serve it                                                                                                                                 |
+| `npm run lint`                    | ESLint                                                                                                                                                      |
+| `npm run format` / `format:check` | Prettier write / check                                                                                                                                      |
+| `npm run typecheck`               | `next typegen && tsc --noEmit` (strict)                                                                                                                     |
+| `npm run test:unit`               | Vitest (jsdom + Testing Library)                                                                                                                            |
+| `npm run test:coverage`           | Vitest with v8 coverage                                                                                                                                     |
+| `npm run test:db`                 | pgTAP tests in `supabase/tests` against the local database (run `npm run db:start` first)                                                                   |
+| `npm run test:integration`        | API and database integration tests over real HTTP against the local Supabase stack (builds the app if needed)                                               |
+| `npm run test:e2e`                | Playwright end-to-end tests against a production build; scans the server's log output for leaks when it finishes                                            |
+| `npm run test:e2e:scenarios`      | PRD end-to-end scenarios 1 to 6 together; `test:e2e:scenarios-7-10` runs 7 to 10                                                                            |
+| `npm test`                        | Unit, database, integration and end-to-end tests                                                                                                            |
+| `npm run check`                   | Everything above plus lint, types, build and the bundle secret scan; stops at the first failure                                                             |
+| `npm run check:env`               | Fails if a `NEXT_PUBLIC_*` name contains `SECRET`, `SERVICE` or `WEBHOOK`                                                                                   |
+| `npm run check:bundle`            | After a build, fails if a server-only variable name or value is in `.next/static`                                                                           |
+| `npm run mutation:security`       | Breaks the RLS and grants on purpose, one change at a time, and shows the tests that catch each (also `mutation:membership`, `mutation:quotes`)             |
+| `npm run smoke:routes`            | Hits every PRD route on a running server (`-- http://host:port`, `--flags-on`)                                                                              |
+| `npm run db:start` / `db:stop`    | Start/stop the local Supabase stack (needs Docker)                                                                                                          |
+| `npm run db:reset`                | Rebuild the LOCAL database from migrations and `supabase/seed.sql`                                                                                          |
+| `npm run db:types`                | Regenerate TypeScript types from the local database                                                                                                         |
+| `npm run demo:seed`               | Create a throwaway demo workspace with the fictional sample data in the LOCAL database                                                                      |
+| `npm run demo:cleanup`            | Remove expired demo workspaces and their guests (local by default; a remote project needs `--confirm-remote`)                                               |
+| `npm run usage:report`            | Print the last 30 days of first-party demo usage counts (counts and rates only; `-- --days N`; local by default, a remote project needs `--confirm-remote`) |
 
 Two audits are off by default because they take minutes and depend on the machine: `LIGHTHOUSE=1 node scripts/e2e.mjs e2e/lighthouse.spec.ts --project=desktop` and `PERF=1 node scripts/e2e.mjs e2e/performance.spec.ts --project=desktop`.
 

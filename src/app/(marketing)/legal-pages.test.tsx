@@ -85,7 +85,6 @@ describe("Privacy page content", () => {
     expect(text).toMatch(/fictional/);
     expect(text).toMatch(/technical identifiers/);
     expect(text).toMatch(/does\s+not\s+claim that no data is collected/);
-    expect(text).toMatch(/optional/i);
     expect(text).toMatch(/until you archive or delete it/);
     expect(text).toMatch(/Nothing deletes real workspaces\s+automatically/);
   });
@@ -93,7 +92,13 @@ describe("Privacy page content", () => {
   it("states what is true today about analytics and local storage", () => {
     const { container } = render(<PrivacyPage />);
     const text = container.textContent ?? "";
-    expect(text).toMatch(/No analytics are collected today/);
+    expect(text).toMatch(/does not use cookies for analytics/);
+    expect(text).toMatch(/does not use any third-party analytics\s+service/);
+    expect(text).toMatch(/daily aggregate counts of how many demo workspaces were started/);
+    expect(text).toMatch(/no personal data, identifiers, or IP addresses/);
+    expect(text).not.toMatch(/No analytics are collected today/);
+    // the aggregate counts are named; nothing here promises an opt-in banner or a third-party tool
+    expect(text).not.toMatch(/Google Analytics|Plausible|PostHog|Mixpanel/i);
     expect(text).toMatch(/local\s+storage/);
   });
 });

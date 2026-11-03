@@ -9,7 +9,7 @@ type LegalPageProps = {
 };
 
 /** Last time the legal copy was reviewed against the product. Update with every copy change. */
-export const LEGAL_LAST_UPDATED = "1 November 2026";
+export const LEGAL_LAST_UPDATED = "3 November 2026";
 
 /**
  * Shared layout for /privacy and /terms: a readable column with a back link and cross links.

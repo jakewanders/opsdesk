@@ -1008,6 +1008,14 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      usage_report: {
+        Args: { days?: number };
+        Returns: {
+          day: string;
+          metric: string;
+          total: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

@@ -31,6 +31,7 @@
     "db:types": "node scripts/supabase.mjs gen types typescript --local > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "demo:seed": "node scripts/demo-seed.mjs",
     "demo:cleanup": "tsx scripts/demo-cleanup.mts",
+    "usage:report": "tsx scripts/usage-report.mts",
     "smoke:routes": "node scripts/smoke-routes.mjs"
   },
   "dependencies": {

@@ -93,10 +93,12 @@ export default function PrivacyPage() {
 
       <LegalSection heading="Analytics">
         <p>
-          No analytics are collected today. If analytics are added later they will be optional, off
-          by default, and limited to anonymous counts of events such as &ldquo;demo started&rdquo;.
-          They will not record IP addresses, names, email addresses, the text you type, or full page
-          addresses with query strings, and this page will say so before they are switched on.
+          This site does not use cookies for analytics and does not use any third-party analytics
+          service. It does keep daily aggregate counts of how many demo workspaces were started and
+          which features they used, for example whether a visitor created a customer or completed a
+          task. The counts are worked out on the server from the demo workspace before it is
+          deleted, and they contain no personal data, identifiers, or IP addresses. They exist only
+          to understand whether the demo works.
         </p>
       </LegalSection>
 

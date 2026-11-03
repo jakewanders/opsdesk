@@ -192,6 +192,38 @@ Both entry points run the same core (`src/lib/cleanup/cleanup.ts`) behind the sa
 - **Scheduled:** `netlify/functions/cleanup-demo.mts` is a Netlify Scheduled Function with `schedule: "@hourly"`. It has no HTTP route of its own and no command line, so there is no confirmation flag; it needs the same two variables in the site's environment and refuses (500, a code) without them. It answers with counts and returns 500 when any step failed, so a failed run shows as a failed invocation in the Netlify UI.
 - **Not yet verified:** that the function is registered on a Netlify site and runs there, and where the last run and its failures appear in the Netlify UI. That needs the Netlify site (SIT-177) and the production secret key; it is checked in the deployment issues (P-16). Nothing in the repository claims it has run on Netlify.
 
+## Usage counts: what is counted, what is never stored (P-03, SIT-146)
+
+The site has no analytics script, cookie or tracker. To learn whether visitors try the demo and how far they get, the server keeps **daily aggregate counts**, worked out from data the app already holds. Migration `20261101004400_usage_daily.sql`; pure formatting in `src/lib/usage/report.ts`; the command is `scripts/usage-report.mts`.
+
+**What is counted** (per demo workspace, on the UTC day the demo was _created_; a demo counts once):
+
+| Metric                        | Meaning                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `demos_started`               | demo workspaces created that day                                                                              |
+| `demos_with_customer_created` | the visitor created a customer (by hand or through a CSV import)                                              |
+| `demos_with_stage_move`       | the visitor moved a deal to another stage                                                                     |
+| `demos_with_task_completed`   | the visitor completed a task                                                                                  |
+| `demos_with_quote_created`    | the visitor created a quote                                                                                   |
+| `demos_reset`                 | the visitor reset the demo at least once                                                                      |
+| `demos_expired_unused`        | the visitor changed nothing and never reset (only for demos that have expired)                                |
+| `real_accounts_created`       | registered (non-guest) accounts created that day; read live from the accounts table by the report, not stored |
+| `demos_in_progress`           | report only: demos still inside their 24 hours (never classified "unused" yet)                                |
+
+**How the visitor is told from the seed.** A workspace's activity history records who made each change. The seed is written by the System (`actor_user_id` is null); a visitor's own changes carry their guest id. Only events with an actor count, so the seeded customers, the seeded deals, completed tasks and quotes never inflate anything (a pgTAP assertion proves a freshly seeded demo has no visitor action).
+
+**When it is added to the counters.** Demo data is deleted 24 hours after creation, so before that happens `private.usage_rollup_demo` adds the demo's yes/no facts to the counter row for its day, in the same transaction as the delete: in the expiry cleanup (`cleanup_purge_expired_demos`), and in `bootstrap_demo_workspace` when it replaces a guest's own expired demo. It is idempotent (a `rolled_up` flag, plus the demo is deleted in the same transaction), so running the cleanup twice never counts a demo twice. A **reset** deletes the visitor's data, so `reset_demo_workspace` first records the facts (`private.usage_capture_demo`); what a visitor did before a reset still counts, and a rolled-back (failed or throttled) reset records nothing. A demo that already ran the rollup is never counted again.
+
+**What is never stored.** No cookie and no browser-side code is involved. The counter table `private.usage_daily` has three columns: `day` (a date), `metric` (a fixed list, enforced by a check constraint) and `total` (a count). No id, no email, no name, no organization id, no IP address, no time finer than a day. The scratch table `private.demo_usage` holds yes/no flags keyed by the organization and is deleted with it (cascade), so after cleanup no organization id survives anywhere. Both tables have row level security on, no policy and no grant for `anon` or `authenticated`; the functions are executable by `service_role` only; neither table is reachable through the API (they are in `private`).
+
+**Retention.** Counter rows are kept 400 days (about 13 months); each cleanup deletes older rows. At most 7 rows per day are written, so size is negligible.
+
+**What cannot be measured.** Page views and visitors who only looked around (a demo where nothing was changed counts as "unused"), repeat visits, how long someone stayed, where they came from, and who they are. A demo deleted by hand (`delete from public.organizations`) instead of by the cleanup or the bootstrap is not counted. A visitor's change is only seen while it is in the activity history or captured by a reset; a guest whose account is deleted before their demo would lose attribution, but the cleanup deletes the demo first. Today's numbers come from the live demos, so they can still grow until those demos expire.
+
+**Reading it.** `npm run usage:report` prints the last 30 days (`-- --days N` for 1 to 400): one row per UTC day, the totals, and each feature as a percentage of demos started, with notes. It calls `public.usage_report(days)`, which merges the rolled-up days with the demos still alive (computed live), so today is not missing. It reads `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY` from the environment, runs on a local project as is, and **refuses any other project (exit 2) until the hostname is repeated:** `npm run usage:report -- --confirm-remote <hostname>`; it prints counts and rates only. In SQL as `postgres`: `select * from private.usage_daily order by day desc, metric;`.
+
+**Tests.** `supabase/tests/usage-daily.test.sql` (isolation, a fixture with known actions, idempotency, the three counting paths, no ids, retention), `src/lib/usage/usage.integration.test.ts` (real HTTP: guests act through the API, demos expire, the real cleanup runs, the day's counts match, a second cleanup changes nothing; the command's output and its remote refusal), `src/lib/usage/report.test.ts` (aggregation and formatting), and the privacy page test.
+
 ## Entry flow: `/demo` and `POST /api/v1/demo/bootstrap` (SIT-204)
 
 The path from "Try the live demo" to a seeded dashboard is one click: the landing page link opens `/demo`, and everything after that runs by itself.
