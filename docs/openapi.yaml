@@ -8,6 +8,7 @@ info:
     `Cache-Control: private, no-store` and an `X-Request-Id`. Cookie session; mutations must come from the app's
     own origin (CSRF check). Tenant routes choose the workspace with the `X-Organization-Id` header.
     Any other path under `/api/v1` answers 404 `ENDPOINT_NOT_FOUND` in the same envelope, with a request id.
+    Runnable examples: `scripts/api-collection.sh` (see docs/API.md, "Runnable curl collection").
 servers:
   - url: /api/v1
 paths:

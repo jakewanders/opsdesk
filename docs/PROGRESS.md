@@ -1189,6 +1189,13 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-19 — OpenAPI and a working curl collection (done; parent SIT-148)
+
+- `docs/openapi.yaml` already documented every implemented route (a test fails when a route and the file disagree, and unimplemented routes are not advertised); it now also notes the unknown-path 404 and points at the collection. The org-context convention (`X-Organization-Id`) and the error envelope are written up in `docs/API.md` under "Runnable curl collection".
+- **`scripts/api-collection.sh`:** a runnable curl collection. It signs up a guest on the local stack (refuses any non-local Supabase URL), then makes about 27 real calls: session, demo bootstrap with an `Idempotency-Key`, customers (list, create, read, edit, a stale edit 409, archive 204, restore), an opportunity and its stage move, a task and its completion, a quote with tax, the dashboard, reports, activity, a CSV export, the error envelope (404 with request id, 422 with field errors, unknown path 404, foreign origin 403, signed out 401). It exits non-zero on any unexpected status. I ran it against a real production server by hand and read the output (all statuses as documented).
+- **`src/lib/api/curl-collection.integration.test.ts`** (2 tests) runs it in the integration suite against a real server, checks key lines, that no cookie or token is printed, and that it refuses a hosted URL. A single run passed 2 of 2; the full integration suite runs in CI.
+- Not done: the collection covers the main paths, not all 40 endpoints (members, invitations, imports, organization settings are in the OpenAPI file and covered by the contract matrix, not by curl examples).
+
 ### P-18 — Finalize ARCHITECTURE, SECURITY, DEMO and DECISIONS docs (done; parent SIT-148)
 
 - **`docs/SECURITY.md`:** a new **Threat model (as built)** section at the top: 13 threats (cross-tenant access, role abuse, escalation and forged audit data, demo visitors, demo abuse, CSRF, session confusion, shared caches, invitation tokens, formula injection and hostile CSVs, log leaks, secrets in the browser, cleanup deleting real data), each with its defense and the named tests that prove it, and a "Limits, stated plainly" paragraph (no third-party penetration test; hosted configuration not set up; the in-memory rate limiter is per instance and not a security boundary; no MFA). The role table is the generated permission matrix already in the file, kept in sync with the code by a test.

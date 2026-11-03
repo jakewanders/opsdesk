@@ -217,3 +217,22 @@ One client data system: TanStack Query, through `src/lib/api-client/`. Server Co
 - **`useApiMutation({ mutationFn, idempotent, optimistic, invalidate })`**: a second call while one is pending returns the same promise (one request); `idempotent` sends one key per intent, reused when the same intent is retried after a failure and dropped on success; `optimistic: { key, update }` updates the cached `data` at once and puts the old value back on any error; `invalidate` refetches the listed queries when the write settles.
 - **URL state** (`url-state.ts`, `use-url-state.ts`): `defineUrlState({ q: urlField.string(), page: urlField.int(1), sort: urlField.enum([...], "name"), stage: urlField.list([...]) })`, then `const [state, set] = useUrlState(schema)`. Defaults are omitted, invalid values fall back to defaults, equal states give equal URLs, any change but `page` returns to page 1 (filters replace the history entry, pages push one). `useDebouncedUrlParam(state.q, (q) => set({ q }))` debounces the search box (300 ms). `defineUrlState` throws for sensitive-looking names (token, secret, password, session, key, email, phone, ...).
 - **Free text is rendered as text.** ESLint bans `dangerouslySetInnerHTML` (JSX prop and props object) everywhere.
+
+## Runnable curl collection (P-19)
+
+`scripts/api-collection.sh` is a working, self-checking walk through the API with `curl`: it starts a guest session on the **local** stack (it refuses any other Supabase URL), then calls session, demo bootstrap, customers (list, create, read, edit, a stale edit, archive, restore), an opportunity and its stage move, a task and its completion, a quote, the dashboard, reports, activity, a CSV export, the error envelope (404, 422, an unknown path, a foreign origin, signed out), and exits non-zero if any status is not the one it documents.
+
+```bash
+npm run db:start
+npm run build && npm run start            # or: npm run dev
+BASE=http://localhost:3000 bash scripts/api-collection.sh
+```
+
+What it demonstrates, in one place:
+
+- **Session:** a cookie named `sb-<host>-auth-token` (a base64url-encoded Auth session). Every mutation also needs an `Origin` header equal to the app's own origin, or it is `403 ORIGIN_FORBIDDEN`.
+- **Workspace (org-context convention):** the `X-Organization-Id` header names the workspace for tenant routes. It must be one the caller belongs to; anything else, including another tenant's id, answers `404` exactly as an unknown id does. A guest's workspace id comes from `POST /api/v1/demo/bootstrap`.
+- **Envelope:** `{ data, meta }` on success, `{ error: { code, message, fieldErrors?, requestId } }` on failure, with the same id in the `X-Request-Id` header. An unknown path under `/api/v1` is `404 ENDPOINT_NOT_FOUND` in the same envelope.
+- **Concurrency:** edits send the `updatedAt` you read as `expectedUpdatedAt`; a stale one is `409 STALE_EDIT`. Creating calls that must not repeat accept an `Idempotency-Key` header.
+
+`src/lib/api/curl-collection.integration.test.ts` runs the script against a real production server in the integration suite, so the examples cannot drift from the API. The full reference is `docs/openapi.yaml`, which a test keeps in step with the implemented routes (unimplemented routes are not advertised).

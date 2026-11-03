@@ -70,7 +70,7 @@ Netlify (free plan) with the custom domain `opsdesk.sitelaunch.dev` added as a C
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): every deviation from the PRD and why.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): design tokens, app shell, route map, accessibility checklist.
 - [`docs/SECURITY.md`](docs/SECURITY.md): threat model, roles, and which test proves each rule.
-- [`docs/API.md`](docs/API.md) and [`docs/openapi.yaml`](docs/openapi.yaml): the `/api/v1` conventions and every implemented route.
+- [`docs/API.md`](docs/API.md) and [`docs/openapi.yaml`](docs/openapi.yaml): the `/api/v1` conventions and every implemented route; `bash scripts/api-collection.sh` is a runnable curl walk-through against the local stack.
 - [`docs/DEMO.md`](docs/DEMO.md): demo isolation, expiry, reset, cleanup, Turnstile keys.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): Netlify setup, DNS, Supabase Auth URLs, health check, triage runbook.
 - [`docs/CI.md`](docs/CI.md): the CI jobs and required checks.
