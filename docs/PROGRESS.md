@@ -1186,4 +1186,11 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 ## M5 — Production Readiness & Public Portfolio Launch
 
-Not started. No checks run.
+In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
+
+### P-04 — Complete the pgTAP RLS suite across all tables, roles and definer functions (done; parent SIT-145)
+
+- **What was added.** `supabase/tests/security-suite.test.sql` (113 assertions, `no_plan` because the loops follow the catalog): every PRD 11.2 bullet has named assertions tagged `[1]` to `[8]`, plus 14 catalog guards `[C1]` to `[C14]`. The full bullet-to-test map (and where the deeper per-feature files are) is in `docs/SECURITY.md` ("Database security test map").
+- **Results.** The new file passes (113 assertions); `npm run test:db` passes with all files. **Mutation check:** `npm run mutation:security` (new, `scripts/mutation-security.mjs`) applies 16 weakenings inside the test transaction and requires the suite to fail for each: policies opened to `true` (reads and writes), RLS off, a policy for `anon`, DELETE / write grants to `authenticated`, SELECT to `anon`, audit-event and membership and quote-total write grants, the cleanup function made callable, a definer function without `search_path`, the composite foreign key dropped, a leaking view, an unreviewed browser-callable function, the policy-less counter table opened. **16 of 16 caught** on the final run. The first run caught 14 of 16: two stray write grants (`activity_events`, `memberships`) were harmless in behaviour because RLS still refused every row, which led to the exact-grant-map assertion `[C14]`.
+- **Findings, stated plainly.** (1) An activity event has no foreign key to the record it describes, so a trusted writer could record an event about another organization's record; no client can write events (`[6]`), so there is no exposure, and it is noted in the suite. (2) Reset and cleanup of a record that is not yours answers "not found" (OD404), not "forbidden": consistent with hiding other tenants. (3) Idempotency functions are scoped to the caller's own id rather than an organization, covered in `idempotency.test.sql`.
+- Remaining acceptance: "every bullet in PRD 11.2 maps to a named test" is met by the tags and the map; the HTTP half of bullet 4 is the existing endpoint matrix.

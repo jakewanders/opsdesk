@@ -24,6 +24,7 @@
     "db:stop": "node scripts/supabase.mjs stop",
     "db:reset": "node scripts/db-reset.mjs",
     "mutation:membership": "node scripts/mutation-membership.mjs",
+    "mutation:security": "node scripts/mutation-security.mjs",
     "mutation:quotes": "node scripts/mutation-quotes.mjs",
     "db:types": "node scripts/supabase.mjs gen types typescript --local > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "demo:seed": "node scripts/demo-seed.mjs",
