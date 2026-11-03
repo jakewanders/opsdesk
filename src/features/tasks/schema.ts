@@ -115,8 +115,10 @@ export type TaskDto = {
   assignedTo: string | null;
   customerId: string | null;
   customerName: string | null;
+  customerArchived: boolean;
   opportunityId: string | null;
   opportunityTitle: string | null;
+  opportunityArchived: boolean;
   completedAt: string | null;
   createdBy: string | null;
   createdAt: string;
@@ -139,8 +141,8 @@ export type TaskRow = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-  customer?: { display_name: string } | null;
-  opportunity?: { title: string } | null;
+  customer?: { display_name: string; archived_at: string | null } | null;
+  opportunity?: { title: string; archived_at: string | null } | null;
 };
 
 export function toTaskDto(row: TaskRow, timeZone: string, now: Date = new Date()): TaskDto {
@@ -157,8 +159,10 @@ export function toTaskDto(row: TaskRow, timeZone: string, now: Date = new Date()
     assignedTo: row.assigned_to,
     customerId: row.customer_id,
     customerName: row.customer?.display_name ?? null,
+    customerArchived: Boolean(row.customer?.archived_at),
     opportunityId: row.opportunity_id,
     opportunityTitle: row.opportunity?.title ?? null,
+    opportunityArchived: Boolean(row.opportunity?.archived_at),
     completedAt: row.completed_at,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -169,4 +173,4 @@ export function toTaskDto(row: TaskRow, timeZone: string, now: Date = new Date()
 
 /** The columns the API selects, with the linked customer's name and deal's title. */
 export const TASK_COLUMNS =
-  "id, title, description, status, priority, due_date, assigned_to, customer_id, opportunity_id, completed_at, created_by, created_at, updated_at, archived_at, customer:customers!tasks_customer_fkey(display_name), opportunity:opportunities!tasks_opportunity_fkey(title)";
+  "id, title, description, status, priority, due_date, assigned_to, customer_id, opportunity_id, completed_at, created_by, created_at, updated_at, archived_at, customer:customers!tasks_customer_fkey(display_name, archived_at), opportunity:opportunities!tasks_opportunity_fkey(title, archived_at)";

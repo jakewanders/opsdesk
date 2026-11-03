@@ -39,6 +39,7 @@ const defaults = {
   q: "",
   status: "",
   customerId: "",
+  opportunityId: "",
   issueFrom: "",
   issueTo: "",
   archived: "false",

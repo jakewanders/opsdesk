@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import Link from "next/link";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -85,6 +86,7 @@ export function PipelineBoard({ canWrite, currentUserId }: Props) {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
           <ViewToggle view="board" onChange={(view) => setFilters({ view })} />
           {canWrite ? (
             <Link href="/app/opportunities/new" className={buttonVariants()}>

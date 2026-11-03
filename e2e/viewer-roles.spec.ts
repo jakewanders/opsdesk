@@ -71,6 +71,8 @@ test("a viewer's pages offer no control that changes anything", async ({ page, c
       .evaluateAll((els) =>
         els
           .filter((e) => (e as HTMLElement).offsetParent !== null)
+          // the stage chips are read-only links named after the stages ("New (1)"), not an action
+          .filter((e) => !e.closest('nav[aria-label="Open a stage in the list"]'))
           .map((e) => ({
             name: (e.getAttribute("aria-label") || (e as HTMLElement).innerText || "")
               .replace(/\s+/g, " ")

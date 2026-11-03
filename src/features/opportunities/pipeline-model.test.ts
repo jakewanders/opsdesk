@@ -13,6 +13,7 @@ const deal = (
   id,
   customerId: "c",
   customerName: "Acme",
+  customerArchived: false,
   title: id,
   description: null,
   stage,

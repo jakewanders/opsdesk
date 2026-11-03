@@ -10,6 +10,8 @@ export const quoteListUrl = defineUrlState({
   q: urlField.string("", 100),
   status: urlField.enum(["", ...QUOTE_STATUSES], ""),
   customerId: urlField.string("", 36),
+  /** Only quotes for this deal (set by the link on the opportunity page). */
+  opportunityId: urlField.string("", 36),
   issueFrom: urlField.string("", 10),
   issueTo: urlField.string("", 10),
   /** `false` (default) lists active quotes, `true` lists archived ones. */
@@ -41,6 +43,7 @@ export function toApiQuery(state: QuoteListState): Record<string, string | numbe
     q: state.q || undefined,
     status: state.status || undefined,
     customerId: UUID.test(state.customerId) ? state.customerId : undefined,
+    opportunityId: UUID.test(state.opportunityId) ? state.opportunityId : undefined,
     issueFrom: isRealDay(state.issueFrom) ? state.issueFrom : undefined,
     issueTo: isRealDay(state.issueTo) ? state.issueTo : undefined,
     archived: state.archived === "true" ? "true" : undefined,
@@ -50,5 +53,7 @@ export function toApiQuery(state: QuoteListState): Record<string, string | numbe
 /** True when any search or filter narrows the list (drives "no results" versus "no quotes yet"). */
 export function hasActiveFilters(state: QuoteListState): boolean {
   const q = toApiQuery(state);
-  return Boolean(q.q || q.status || q.customerId || q.issueFrom || q.issueTo || q.archived);
+  return Boolean(
+    q.q || q.status || q.customerId || q.opportunityId || q.issueFrom || q.issueTo || q.archived,
+  );
 }

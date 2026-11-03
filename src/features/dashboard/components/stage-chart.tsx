@@ -2,6 +2,8 @@
 
 import { BarChart3, Table2 } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSyncExternalStore, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatUsd } from "@/lib/money/format";
@@ -31,6 +33,9 @@ function usePrefersReducedMotion(): boolean {
   );
 }
 
+/** Where a stage leads: the opportunities list filtered to that stage. */
+export const stageHref = (stage: string) => `/app/opportunities?view=list&stage=${stage}`;
+
 function StageTable({ rows, hidden }: { rows: StageRow[]; hidden?: boolean }) {
   const total = rows.reduce((n, r) => n + r.count, 0);
   return (
@@ -56,7 +61,17 @@ function StageTable({ rows, hidden }: { rows: StageRow[]; hidden?: boolean }) {
           {rows.map((r) => (
             <tr key={r.stage} className="border-b border-border last:border-0">
               <th scope="row" className="px-3 py-2 font-normal">
-                {r.label}
+                {hidden ? (
+                  r.label
+                ) : (
+                  <Link
+                    href={stageHref(r.stage)}
+                    className="touch-link underline-offset-4 hover:underline"
+                  >
+                    {r.label}
+                    <span className="sr-only"> deals, open in the list</span>
+                  </Link>
+                )}
               </th>
               <td className="px-3 py-2 text-right tabular-nums">{r.count}</td>
               <td className="px-3 py-2 text-right tabular-nums">{formatUsd(r.amountCents)}</td>
@@ -77,6 +92,7 @@ export function StageChart({ byStage }: { byStage: DashboardDto["opportunitiesBy
   const rows = stageRows(byStage);
   const [asTable, setAsTable] = useState(false);
   const reduced = usePrefersReducedMotion();
+  const router = useRouter();
   const empty = rows.every((r) => r.count === 0);
 
   return (
@@ -106,7 +122,22 @@ export function StageChart({ byStage }: { byStage: DashboardDto["opportunitiesBy
         <StageTable rows={rows} />
       ) : (
         <>
-          <Impl rows={rows} animate={!reduced} />
+          <Impl
+            rows={rows}
+            animate={!reduced}
+            onSelect={(stage) => router.push(stageHref(stage))}
+          />
+          <nav aria-label="Open a stage in the list" className="flex flex-wrap gap-1.5">
+            {rows.map((r) => (
+              <Link
+                key={r.stage}
+                href={stageHref(r.stage)}
+                className="touch-link rounded-md border border-border px-2 py-0.5 text-sm underline-offset-4 hover:bg-muted"
+              >
+                {r.label} ({r.count})
+              </Link>
+            ))}
+          </nav>
           <StageTable rows={rows} hidden />
         </>
       )}

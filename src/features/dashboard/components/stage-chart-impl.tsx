@@ -9,13 +9,13 @@ const FILL: Record<string, string> = {
   lost: "var(--chart-5)",
 };
 
-type Props = { rows: StageRow[]; animate: boolean };
+type Props = { rows: StageRow[]; animate: boolean; onSelect?: (stage: string) => void };
 
 /**
  * Recharts is loaded only when this file is (see `stage-chart.tsx`). Bars are deal counts; each bar has a direct text label
  * "N deals, $amount", so no meaning rests on colour. It reads only the rows it is given (the dashboard payload).
  */
-export default function StageChartImpl({ rows, animate }: Props) {
+export default function StageChartImpl({ rows, animate, onSelect }: Props) {
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
     <div className="h-72 w-full" aria-hidden="true">
@@ -30,7 +30,15 @@ export default function StageChartImpl({ rows, animate }: Props) {
             axisLine={false}
             tick={{ fill: "var(--foreground)", fontSize: 13 }}
           />
-          <Bar dataKey="count" radius={4} isAnimationActive={animate} barSize={22} minPointSize={3}>
+          <Bar
+            dataKey="count"
+            radius={4}
+            isAnimationActive={animate}
+            barSize={22}
+            minPointSize={3}
+            cursor={onSelect ? "pointer" : undefined}
+            onClick={(bar: { stage?: string }) => bar.stage && onSelect?.(bar.stage)}
+          >
             {rows.map((r) => (
               <Cell key={r.stage} fill={FILL[r.stage] ?? "var(--chart-1)"} />
             ))}

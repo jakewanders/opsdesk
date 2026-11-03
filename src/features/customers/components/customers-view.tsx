@@ -37,6 +37,8 @@ import { useApiQuery } from "@/lib/api-client/provider";
 import { serializeUrlState } from "@/lib/api-client/url-state";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
 import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import type { ApiMeta } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import {
@@ -121,6 +123,7 @@ export function CustomersView({
   canImport = false,
 }: Props) {
   const [state, setState] = useUrlState(customerListUrl);
+  useRememberList("customers");
   const [search, onSearch] = useDebouncedUrlParam(state.q, (q) => setState({ q }));
   const [archiving, setArchiving] = useState<CustomerDto | null>(null);
   /** The row whose menu opened the archive dialog; focus goes back to that row's actions button. */
@@ -296,6 +299,7 @@ export function CustomersView({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
           {canImport ? (
             <Link href="/app/customers/import" className={buttonVariants({ variant: "outline" })}>
               <Upload aria-hidden="true" />

@@ -1,5 +1,8 @@
 "use client";
 
+import { ArchivedBadge } from "@/components/shared/archived-badge";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { ListLink } from "@/components/shared/list-crumb";
 import { CircleCheck, CircleDot, CircleX } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -20,7 +23,12 @@ import type { MemberDto } from "@/features/members/service";
 import type { OpportunityDto } from "../schema";
 import { LostReasonDialog } from "./lost-reason-dialog";
 
-type Props = { initial: OpportunityDto; canWrite: boolean };
+type Props = {
+  initial: OpportunityDto;
+  canWrite: boolean;
+  /** The quotes feature is on: the deal links to its quotes. */
+  quotesEnabled?: boolean;
+};
 
 const day = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 const when = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -43,7 +51,7 @@ export function StageBadge({ stage }: { stage: Stage }) {
  * changes besides the board). Lost asks for a reason first. A stale version or a refusal shows a message here and the
  * deal is reloaded; nothing is shown as saved until the API has said so.
  */
-export function OpportunityDetail({ initial, canWrite }: Props) {
+export function OpportunityDetail({ initial, canWrite, quotesEnabled = false }: Props) {
   const query = useApiQuery<OpportunityDto>(
     ["opportunity", initial.id],
     `/opportunities/${initial.id}`,
@@ -105,6 +113,15 @@ export function OpportunityDetail({ initial, canWrite }: Props) {
 
   return (
     <div className="flex max-w-3xl flex-col gap-5">
+      <Breadcrumbs
+        items={[
+          {
+            label: "Opportunities",
+            node: <ListLink list="opportunities">Opportunities</ListLink>,
+          },
+          { label: deal.title },
+        ]}
+      />
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
@@ -121,6 +138,7 @@ export function OpportunityDetail({ initial, canWrite }: Props) {
           >
             {deal.customerName ?? "customer"}
           </Link>
+          {deal.customerArchived ? <ArchivedBadge /> : null}
         </p>
         <div className="flex flex-wrap items-center gap-3">
           {canWrite ? (
@@ -153,9 +171,9 @@ export function OpportunityDetail({ initial, canWrite }: Props) {
               </div>
             </>
           ) : null}
-          <Link href="/app/opportunities" className={buttonVariants({ variant: "outline" })}>
+          <ListLink list="opportunities" className={buttonVariants({ variant: "outline" })}>
             Back to pipeline
-          </Link>
+          </ListLink>
         </div>
         {problem ? (
           <div
@@ -213,6 +231,29 @@ export function OpportunityDetail({ initial, canWrite }: Props) {
           {deal.description ?? <span className="text-muted-foreground">No description.</span>}
         </p>
       </section>
+
+      <nav aria-label="Related records" className="flex flex-wrap gap-2">
+        <Link
+          href={`/app/customers/${deal.customerId}`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Customer: {deal.customerName ?? "customer"}
+        </Link>
+        <Link
+          href={`/app/tasks?opportunityId=${deal.id}`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Tasks for this deal
+        </Link>
+        {quotesEnabled ? (
+          <Link
+            href={`/app/quotes?opportunityId=${deal.id}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Quotes for this deal
+          </Link>
+        ) : null}
+      </nav>
 
       <LostReasonDialog
         deal={lostOpen ? deal : null}

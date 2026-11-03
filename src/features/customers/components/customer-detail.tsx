@@ -1,5 +1,7 @@
 "use client";
 
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { ListLink } from "@/components/shared/list-crumb";
 import { Archive, ArchiveRestore, Building2, Pencil, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -99,6 +101,12 @@ export function CustomerDetail({
 
   return (
     <div className="flex max-w-4xl flex-col gap-5">
+      <Breadcrumbs
+        items={[
+          { label: "Customers", node: <ListLink list="customers">Customers</ListLink> },
+          { label: customer.displayName },
+        ]}
+      />
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
           {customer.type === "company" ? (
@@ -163,9 +171,9 @@ export function CustomerDetail({
               Restore
             </Button>
           ) : null}
-          <Link href="/app/customers" className={buttonVariants({ variant: "outline" })}>
+          <ListLink list="customers" className={buttonVariants({ variant: "outline" })}>
             Back to customers
-          </Link>
+          </ListLink>
         </div>
         {!canWrite && !archived ? (
           <p id="archive-note" className="text-sm text-muted-foreground">

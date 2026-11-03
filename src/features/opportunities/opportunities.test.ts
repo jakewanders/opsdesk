@@ -53,7 +53,7 @@ const row = (over: Partial<OpportunityRow> = {}): OpportunityRow => ({
   created_at: "2026-11-01T00:00:00+00:00",
   updated_at: UPDATED,
   archived_at: null,
-  customer: { display_name: "Acme" },
+  customer: { display_name: "Acme", archived_at: null },
   ...over,
 });
 const ID = row().id;
@@ -197,6 +197,7 @@ describe("toOpportunityDto", () => {
   it("camelCases, carries the customer's name and keeps money as integer cents", () => {
     expect(toOpportunityDto(row())).toMatchObject({
       customerName: "Acme",
+      customerArchived: false,
       amountCents: 250000,
       probabilityPercent: 25,
       stage: "qualified",

@@ -20,6 +20,7 @@ vi.mock("@/components/shared/toast", () => ({ notify }));
 const CUSTOMER = {
   customerId: "c0000000-0000-4000-8000-000000000001",
   customerName: "Acme Plumbing",
+  customerArchived: false,
 };
 const NOW = "2026-11-02T10:00:00.000000+00:00";
 const saved = (over: Partial<QuoteDetailDto> = {}): QuoteDetailDto => ({
@@ -27,6 +28,9 @@ const saved = (over: Partial<QuoteDetailDto> = {}): QuoteDetailDto => ({
   quoteNumber: "Q-000007",
   customerId: CUSTOMER.customerId,
   customerName: CUSTOMER.customerName,
+  customerArchived: false,
+  opportunityTitle: null,
+  opportunityArchived: false,
   opportunityId: null,
   title: "Kitchen rewiring",
   currency: "USD",

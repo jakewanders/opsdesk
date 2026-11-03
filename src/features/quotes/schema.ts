@@ -140,6 +140,9 @@ export type QuoteDto = {
   quoteNumber: string;
   customerId: string;
   customerName: string | null;
+  customerArchived: boolean;
+  opportunityTitle: string | null;
+  opportunityArchived: boolean;
   opportunityId: string | null;
   title: string;
   currency: "USD";
@@ -191,7 +194,8 @@ export type QuoteRow = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-  customer?: { display_name: string } | null;
+  customer?: { display_name: string; archived_at: string | null } | null;
+  opportunity?: { title: string; archived_at: string | null } | null;
 };
 
 export function toQuoteDto(row: QuoteRow): QuoteDto {
@@ -200,6 +204,9 @@ export function toQuoteDto(row: QuoteRow): QuoteDto {
     quoteNumber: row.quote_number,
     customerId: row.customer_id,
     customerName: row.customer?.display_name ?? null,
+    customerArchived: Boolean(row.customer?.archived_at),
+    opportunityTitle: row.opportunity?.title ?? null,
+    opportunityArchived: Boolean(row.opportunity?.archived_at),
     opportunityId: row.opportunity_id,
     title: row.title,
     currency: "USD",
@@ -222,7 +229,7 @@ export function toQuoteDto(row: QuoteRow): QuoteDto {
 }
 
 export const QUOTE_COLUMNS =
-  "id, quote_number, customer_id, opportunity_id, title, currency, status, issue_date, valid_until, tax_rate_bps, discount_cents, subtotal_cents, tax_cents, total_cents, notes, version, revises_quote_id, created_by, created_at, updated_at, archived_at, customer:customers!quotes_customer_fkey(display_name)";
+  "id, quote_number, customer_id, opportunity_id, title, currency, status, issue_date, valid_until, tax_rate_bps, discount_cents, subtotal_cents, tax_cents, total_cents, notes, version, revises_quote_id, created_by, created_at, updated_at, archived_at, customer:customers!quotes_customer_fkey(display_name, archived_at), opportunity:opportunities!quotes_opportunity_fkey(title, archived_at)";
 
 /** For the editor's items: the shape the functions take. */
 export const toLineInputs = (

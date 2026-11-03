@@ -2,6 +2,7 @@
 
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
 import { useViewport } from "@/lib/use-viewport";
 import { effectiveView, opportunityPageUrl } from "../filter-state";
 import { OpportunityList } from "./opportunity-list";
@@ -16,6 +17,7 @@ type Props = { canWrite: boolean; currentUserId: string };
  */
 export function OpportunitiesView({ canWrite, currentUserId }: Props) {
   const [state] = useUrlState(opportunityPageUrl);
+  useRememberList("opportunities");
   const viewport = useViewport();
   if (state.view === "" && viewport === "pending")
     return <TableSkeleton label="Loading the pipeline" columns={6} rows={6} />;

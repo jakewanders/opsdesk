@@ -1,5 +1,8 @@
 "use client";
 
+import { ArchivedBadge } from "@/components/shared/archived-badge";
+import { ScopeNote } from "@/components/shared/scope-note";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import {
   createColumnHelper,
   flexRender,
@@ -128,6 +131,7 @@ export function OpportunityList({ canWrite, currentUserId }: Props) {
             className="relative z-10 underline-offset-4 hover:underline"
           >
             {row.original.customerName ?? "Customer"}
+            {row.original.customerArchived ? <ArchivedBadge /> : null}
           </Link>
         ),
       }),
@@ -189,6 +193,7 @@ export function OpportunityList({ canWrite, currentUserId }: Props) {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
           <ViewToggle view="list" onChange={(view) => setState({ view })} />
           {canWrite ? (
             <Link href="/app/opportunities/new" className={buttonVariants()}>
@@ -283,6 +288,12 @@ export function OpportunityList({ canWrite, currentUserId }: Props) {
           </Button>
         ) : null}
       </form>
+      {toListQuery(state).customerId ? (
+        <ScopeNote
+          text="Showing only deals for one customer."
+          onClear={() => setState({ customerId: "" })}
+        />
+      ) : null}
 
       {meta?.stageTotals ? (
         <section

@@ -11,6 +11,8 @@ import { StageChart } from "@/features/dashboard/components/stage-chart";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import {
   eventTotals,
   formatRange,
@@ -68,6 +70,7 @@ export function ReportsView({
   workspaceCreatedAt,
 }: Props) {
   const [state, setState] = useUrlState(reportUrl);
+  useRememberList("reports");
   const apiQuery = useMemo(() => toApiQuery(state), [state]);
   const seeded = JSON.stringify(toApiQuery(initialState)) === JSON.stringify(apiQuery);
   const query = useApiQuery<ReportDto>(["reports", apiQuery], "/reports", {
@@ -118,7 +121,10 @@ export function ReportsView({
             )}
           </p>
         </div>
-        <ExportReportButton query={apiQuery} />
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
+          <ExportReportButton query={apiQuery} />
+        </div>
       </header>
 
       {isDemo ? <FictionalDataNote /> : null}

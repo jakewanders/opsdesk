@@ -78,13 +78,43 @@ describe("QuoteHeader", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Rooftop unit replacement" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Q-000007")).toBeInTheDocument();
+    expect(screen.getAllByText("Q-000007")).toHaveLength(2); // the breadcrumb's current page and the identity line
     expect(screen.getByText("Sent")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Acme Plumbing" })).toHaveAttribute(
       "href",
       "/app/customers/c1",
     );
-    expect(screen.getByRole("link", { name: "All quotes" })).toHaveAttribute("href", "/app/quotes");
+    const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Quotes" })).toHaveAttribute(
+      "href",
+      "/app/quotes",
+    );
+    expect(within(trail).getByText("Q-000007")).toHaveAttribute("aria-current", "page");
+    await expectNoA11yViolations(container);
+  });
+
+  it("links the deal and marks archived targets, which stay reachable", async () => {
+    const { container } = render(
+      <QuoteHeader
+        quote={{
+          title: "Rooftop unit replacement",
+          quoteNumber: "Q-000007",
+          status: "sent",
+          customerId: "c1",
+          customerName: "Acme Plumbing",
+          customerArchived: true,
+          opportunityId: "o1",
+          opportunityTitle: "Rooftop deal",
+          opportunityArchived: true,
+        }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Rooftop deal" })).toHaveAttribute(
+      "href",
+      "/app/opportunities/o1",
+    );
+    expect(screen.getByRole("link", { name: "Acme Plumbing" })).toBeInTheDocument();
+    expect(screen.getAllByText("Archived")).toHaveLength(2);
     await expectNoA11yViolations(container);
   });
 });

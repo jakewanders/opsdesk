@@ -46,6 +46,7 @@ const deal: OpportunityDto = {
   id: "d0000000-0000-4000-8000-000000000001",
   customerId: CUSTOMERS[0].id,
   customerName: "Acme Plumbing",
+  customerArchived: false,
   title: "Warehouse retrofit",
   description: "Scope agreed",
   stage: "proposal",

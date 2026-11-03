@@ -133,6 +133,8 @@ export type OpportunityDto = {
   id: string;
   customerId: string;
   customerName: string | null;
+  /** The customer is archived (still reachable; the link says so). */
+  customerArchived: boolean;
   title: string;
   description: string | null;
   stage: Stage;
@@ -164,7 +166,7 @@ export type OpportunityRow = {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
-  customer?: { display_name: string } | null;
+  customer?: { display_name: string; archived_at: string | null } | null;
 };
 
 export function toOpportunityDto(row: OpportunityRow): OpportunityDto {
@@ -172,6 +174,7 @@ export function toOpportunityDto(row: OpportunityRow): OpportunityDto {
     id: row.id,
     customerId: row.customer_id,
     customerName: row.customer?.display_name ?? null,
+    customerArchived: Boolean(row.customer?.archived_at),
     title: row.title,
     description: row.description,
     stage: row.stage as Stage,
@@ -190,4 +193,4 @@ export function toOpportunityDto(row: OpportunityRow): OpportunityDto {
 
 /** The columns the API selects, with the customer's name. */
 export const OPPORTUNITY_COLUMNS =
-  "id, customer_id, title, description, stage, amount_cents, probability_percent, expected_close_date, assigned_to, lost_reason, closed_at, created_by, created_at, updated_at, archived_at, customer:customers!opportunities_customer_fkey(display_name)";
+  "id, customer_id, title, description, stage, amount_cents, probability_percent, expected_close_date, assigned_to, lost_reason, closed_at, created_by, created_at, updated_at, archived_at, customer:customers!opportunities_customer_fkey(display_name, archived_at)";

@@ -125,6 +125,32 @@ describe("StageChart [SIT-256]", () => {
     expect(await screen.findByTestId("bars")).toBeInTheDocument();
   });
 
+  it("every stage leads to the opportunities list filtered to it: from the chips, from the visible table, and from a bar [SIT-270]", async () => {
+    const user = userEvent.setup();
+    render(<StageChart byStage={BY_STAGE} />);
+    await screen.findByTestId("bars");
+    const chips = screen.getByRole("navigation", { name: "Open a stage in the list" });
+    expect(
+      within(chips)
+        .getAllByRole("link")
+        .map((a) => a.getAttribute("href")),
+    ).toEqual([
+      "/app/opportunities?view=list&stage=new",
+      "/app/opportunities?view=list&stage=qualified",
+      "/app/opportunities?view=list&stage=proposal",
+      "/app/opportunities?view=list&stage=negotiation",
+      "/app/opportunities?view=list&stage=won",
+      "/app/opportunities?view=list&stage=lost",
+    ]);
+    expect(within(chips).getByRole("link", { name: "Negotiation (3)" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View as table" }));
+    const table = screen.getByRole("table", { name: /Opportunities by stage/ });
+    expect(within(table).getByRole("link", { name: /^Won/ })).toHaveAttribute(
+      "href",
+      "/app/opportunities?view=list&stage=won",
+    );
+  });
+
   it("with no opportunities there is no chart, no table and no toggle: just a sentence", () => {
     render(<StageChart byStage={ZERO} />);
     expect(screen.getByText(/No opportunities yet/)).toBeInTheDocument();

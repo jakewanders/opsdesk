@@ -30,6 +30,7 @@ const mk = (
   id,
   customerId: "c1",
   customerName: "Acme Plumbing",
+  customerArchived: false,
   title,
   description: null,
   stage,

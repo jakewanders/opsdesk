@@ -29,6 +29,7 @@ const mk = (id: string, title: string, stage: Stage, amountCents: number): Oppor
   id,
   customerId: "c1",
   customerName: "Acme Plumbing",
+  customerArchived: false,
   title,
   description: null,
   stage,

@@ -9,6 +9,8 @@ import type { MemberDto } from "@/features/members/service";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import { ACTIVITY_ACTIONS, ACTIVITY_ENTITY_TYPES } from "../schema";
 import { activityPageUrl, hasActiveFilters, PAGE_SIZES, toActivityQuery } from "../filter-state";
 import type { ActivityItemDto } from "../service";
@@ -46,6 +48,7 @@ type Props = { currentUserId: string; timeZone: string };
  */
 export function ActivityView({ currentUserId, timeZone }: Props) {
   const [state, setState] = useUrlState(activityPageUrl);
+  useRememberList("activity");
   const apiQuery = toActivityQuery(state);
   const query = useApiQuery<ActivityItemDto[]>(["activity", apiQuery], "/activity", {
     query: apiQuery,
@@ -63,11 +66,14 @@ export function ActivityView({ currentUserId, timeZone }: Props) {
 
   return (
     <div className="flex max-w-4xl flex-col gap-4">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-        <p className="text-sm text-muted-foreground">
-          Everything that changed in this workspace, newest first.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
+          <p className="text-sm text-muted-foreground">
+            Everything that changed in this workspace, newest first.
+          </p>
+        </div>
+        <CopyLinkButton />
       </header>
 
       <form

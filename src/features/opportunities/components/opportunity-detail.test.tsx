@@ -15,6 +15,7 @@ const deal: OpportunityDto = {
   id: "d0000000-0000-4000-8000-000000000001",
   customerId: "c0000000-0000-4000-8000-000000000001",
   customerName: "Acme Plumbing",
+  customerArchived: false,
   title: "Warehouse retrofit",
   description: "Scope agreed.\n<script>alert(1)</script>",
   stage: "proposal",
@@ -71,11 +72,11 @@ function installApi() {
     return json(200, { data: current, meta: {} });
   });
 }
-const renderDetail = (canWrite = true, initial = deal) => {
+const renderDetail = (canWrite = true, initial = deal, quotesEnabled = false) => {
   current = initial;
   return render(
     <ApiClientProvider organizationId="org-1">
-      <OpportunityDetail initial={initial} canWrite={canWrite} />
+      <OpportunityDetail initial={initial} canWrite={canWrite} quotesEnabled={quotesEnabled} />
     </ApiClientProvider>,
   );
 };
@@ -88,6 +89,46 @@ beforeEach(() => {
   installApi();
 });
 afterEach(() => vi.restoreAllMocks());
+
+describe("OpportunityDetail links [SIT-270]", () => {
+  it("has breadcrumbs back to the list, and links to the customer, the deal's tasks and (when quotes are on) its quotes", async () => {
+    const { container } = renderDetail(true, deal, true);
+    const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(trail).getByRole("link", { name: "Opportunities" })).toHaveAttribute(
+      "href",
+      "/app/opportunities",
+    );
+    expect(within(trail).getByText("Warehouse retrofit")).toHaveAttribute("aria-current", "page");
+    const related = screen.getByRole("navigation", { name: "Related records" });
+    expect(within(related).getByRole("link", { name: "Customer: Acme Plumbing" })).toHaveAttribute(
+      "href",
+      `/app/customers/${deal.customerId}`,
+    );
+    expect(within(related).getByRole("link", { name: "Tasks for this deal" })).toHaveAttribute(
+      "href",
+      `/app/tasks?opportunityId=${deal.id}`,
+    );
+    expect(within(related).getByRole("link", { name: "Quotes for this deal" })).toHaveAttribute(
+      "href",
+      `/app/quotes?opportunityId=${deal.id}`,
+    );
+    await expectNoA11yViolations(container);
+  });
+
+  it("does not link to quotes while the feature is off", () => {
+    renderDetail(true, deal, false);
+    expect(screen.queryByRole("link", { name: "Quotes for this deal" })).not.toBeInTheDocument();
+  });
+
+  it("an archived customer is marked but still linked", () => {
+    renderDetail(true, { ...deal, customerArchived: true });
+    expect(screen.getAllByRole("link", { name: /Acme Plumbing/ })[0]).toHaveAttribute(
+      "href",
+      `/app/customers/${deal.customerId}`,
+    );
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+  });
+});
 
 describe("OpportunityDetail", () => {
   it("shows the stage as an icon and a word, the amount, the weighted value (rounded per deal), owner and dates", async () => {

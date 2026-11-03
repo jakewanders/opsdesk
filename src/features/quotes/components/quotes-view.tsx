@@ -1,5 +1,6 @@
 "use client";
 
+import { ScopeNote } from "@/components/shared/scope-note";
 import {
   createColumnHelper,
   flexRender,
@@ -18,6 +19,8 @@ import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { serializeUrlState } from "@/lib/api-client/url-state";
 import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import type { ApiMeta } from "@/lib/api/types";
 import type { CustomerDto } from "@/features/customers/schema";
 import { formatUsd } from "@/lib/money/format";
@@ -92,6 +95,7 @@ function SortHeader({
  */
 export function QuotesView({ initial, initialState, canWrite }: Props) {
   const [state, setState] = useUrlState(quoteListUrl);
+  useRememberList("quotes");
   const [search, onSearch] = useDebouncedUrlParam(state.q, (q) => setState({ q }));
 
   const apiQuery = toApiQuery(state);
@@ -205,12 +209,15 @@ export function QuotesView({ initial, initialState, canWrite }: Props) {
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
-        {canWrite ? (
-          <Link href="/app/quotes/new" className={buttonVariants()}>
-            <Plus aria-hidden="true" />
-            New quote
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
+          {canWrite ? (
+            <Link href="/app/quotes/new" className={buttonVariants()}>
+              <Plus aria-hidden="true" />
+              New quote
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <form
@@ -297,6 +304,12 @@ export function QuotesView({ initial, initialState, canWrite }: Props) {
           </Button>
         ) : null}
       </form>
+      {toApiQuery(state).opportunityId ? (
+        <ScopeNote
+          text="Showing only quotes for one deal."
+          onClear={() => setState({ opportunityId: "" })}
+        />
+      ) : null}
 
       {query.isError ? (
         <ErrorAlert

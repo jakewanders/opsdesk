@@ -14,6 +14,8 @@ export const opportunityPageUrl = defineUrlState({
   view: urlField.enum(["", "board", "list"], ""),
   q: urlField.string("", 100),
   assignedTo: urlField.string("", 36),
+  /** Only this customer's deals (set by the link on the customer page). */
+  customerId: urlField.string("", 36),
   stage: urlField.enum(["", ...STAGES], ""),
   closeFrom: urlField.string("", 10),
   closeTo: urlField.string("", 10),
@@ -25,6 +27,8 @@ export const opportunityPageUrl = defineUrlState({
 export type OpportunityPageState = UrlState<typeof opportunityPageUrl>;
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A date typed into the URL counts only if it is a real `YYYY-MM-DD` day; anything else is ignored rather than sent to the API. */
 const validDate = (value: string): string | undefined =>
@@ -42,6 +46,7 @@ export function toListQuery(
     q: state.q || undefined,
     stage: state.stage || undefined,
     assignedTo: state.assignedTo || undefined,
+    customerId: UUID.test(state.customerId) ? state.customerId : undefined,
     closeFrom: validDate(state.closeFrom),
     closeTo: validDate(state.closeTo),
   };
@@ -53,6 +58,7 @@ export function hasActiveFilters(state: OpportunityPageState): boolean {
     state.q ||
     state.stage ||
     state.assignedTo ||
+    UUID.test(state.customerId) ||
     validDate(state.closeFrom) ||
     validDate(state.closeTo),
   );

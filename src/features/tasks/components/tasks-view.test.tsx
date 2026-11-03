@@ -33,8 +33,10 @@ const task = (n: number, over: Partial<TaskDto> = {}): TaskDto => ({
   assignedTo: null,
   customerId: null,
   customerName: null,
+  customerArchived: false,
   opportunityId: null,
   opportunityTitle: null,
+  opportunityArchived: false,
   completedAt: null,
   createdBy: ME,
   createdAt: NOW,
@@ -47,6 +49,8 @@ const DEFAULTS: TaskListState = {
   status: "",
   priority: "",
   mine: "",
+  customerId: "",
+  opportunityId: "",
   overdue: "",
   soon: "",
   group: "",
@@ -110,6 +114,70 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+describe("TasksView links and shareable views [SIT-270]", () => {
+  const CUSTOMER = "c0000000-0000-4000-8000-000000000001";
+
+  it("marks an archived customer or deal in the related-record links, which still work", async () => {
+    mockMembers();
+    renderView(
+      page([
+        task(1, {
+          customerId: "c1",
+          customerName: "Old Customer",
+          customerArchived: true,
+          opportunityId: "o1",
+          opportunityTitle: "Old Deal",
+          opportunityArchived: true,
+        }),
+      ]),
+    );
+    const [row] = rows();
+    expect(within(row).getByRole("link", { name: /Old Customer/ })).toHaveAttribute(
+      "href",
+      "/app/customers/c1",
+    );
+    expect(within(row).getByRole("link", { name: /Old Deal/ })).toHaveAttribute(
+      "href",
+      "/app/opportunities/o1",
+    );
+    expect(within(row).getAllByText("Archived")).toHaveLength(2);
+  });
+
+  it("opened from a customer, it says the list is narrowed, asks the API for it, and 'Show all' removes it from the URL", async () => {
+    search = `customerId=${CUSTOMER}`;
+    const spy = mockMembers((url) =>
+      url.pathname.endsWith("/tasks") ? json(200, asApi(page([task(1)]))) : undefined,
+    );
+    const user = userEvent.setup();
+    renderView(null, { initialState: { ...DEFAULTS, customerId: CUSTOMER } });
+    expect(
+      await screen.findByText("Showing only tasks linked to one customer."),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(spy.mock.calls.some(([u]) => String(u).includes(`customerId=${CUSTOMER}`))).toBe(true),
+    );
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+    expect(replace).toHaveBeenCalledWith("/app/tasks", { scroll: false });
+  });
+
+  it("a hand-edited, non-UUID customerId is ignored rather than sent to the API", async () => {
+    search = "customerId=not-a-uuid";
+    const spy = mockMembers((url) =>
+      url.pathname.endsWith("/tasks") ? json(200, asApi(page([task(1)]))) : undefined,
+    );
+    renderView(null, { initialState: { ...DEFAULTS, customerId: "not-a-uuid" } });
+    await screen.findByText("Task 1");
+    expect(spy.mock.calls.every(([u]) => !String(u).includes("customerId"))).toBe(true);
+    expect(screen.queryByText(/Showing only tasks/)).not.toBeInTheDocument();
+  });
+
+  it("has a Copy link action beside Add task", async () => {
+    mockMembers();
+    renderView(page([task(1)]));
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
+  });
+});
+
 describe("TasksView [SIT-237]", () => {
   it("renders the server's first page without a task request, with title, priority, due date, status, owner and related links", async () => {
     const spy = mockMembers();
@@ -120,8 +188,10 @@ describe("TasksView [SIT-237]", () => {
           assignedTo: ME,
           customerId: "c1",
           customerName: "Acme Plumbing",
+          customerArchived: false,
           opportunityId: "o1",
           opportunityTitle: "Acme Retrofit",
+          opportunityArchived: false,
           status: "in_progress",
         }),
         task(2, { dueDate: null, dueState: "none" }),

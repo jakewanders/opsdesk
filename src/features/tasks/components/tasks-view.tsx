@@ -1,5 +1,7 @@
 "use client";
 
+import { ArchivedBadge } from "@/components/shared/archived-badge";
+import { ScopeNote } from "@/components/shared/scope-note";
 import { Check, ListTodo, Plus, RotateCcw, Search } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
@@ -12,6 +14,8 @@ import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { serializeUrlState } from "@/lib/api-client/url-state";
 import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-state";
+import { useRememberList } from "@/lib/api-client/use-remember-list";
+import { CopyLinkButton } from "@/components/shared/copy-link-button";
 import type { ApiMeta } from "@/lib/api/types";
 import type { MemberDto } from "@/features/members/service";
 import { cn } from "@/lib/utils";
@@ -57,6 +61,7 @@ const SELECT =
  */
 export function TasksView({ initial, initialState, canWrite, currentUserId, timeZone }: Props) {
   const [state, setState] = useUrlState(taskListUrl);
+  useRememberList("tasks");
   const [search, onSearch] = useDebouncedUrlParam(state.q, (q) => setState({ q }));
 
   const apiQuery = toApiQuery(state);
@@ -89,7 +94,16 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
   const to = Math.min(total, (state.page - 1) * state.limit + items.length);
   const pastTheEnd = items.length === 0 && total > 0;
   const clear = () =>
-    setState({ q: "", status: "", priority: "", mine: "", overdue: "", soon: "" });
+    setState({
+      q: "",
+      status: "",
+      priority: "",
+      mine: "",
+      overdue: "",
+      soon: "",
+      customerId: "",
+      opportunityId: "",
+    });
 
   const groups = useMemo(() => {
     if (state.group !== "status") return [{ key: "", label: "", rows: items }];
@@ -111,12 +125,15 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-        {canWrite ? (
-          <Button type="button" onClick={() => setDrawer({ mode: "create" })}>
-            <Plus aria-hidden="true" />
-            Add task
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton />
+          {canWrite ? (
+            <Button type="button" onClick={() => setDrawer({ mode: "create" })}>
+              <Plus aria-hidden="true" />
+              Add task
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <form
@@ -259,6 +276,18 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
           </Button>
         ) : null}
       </form>
+      {state.customerId && toApiQuery(state).customerId ? (
+        <ScopeNote
+          text="Showing only tasks linked to one customer."
+          onClear={() => setState({ customerId: "" })}
+        />
+      ) : null}
+      {state.opportunityId && toApiQuery(state).opportunityId ? (
+        <ScopeNote
+          text="Showing only tasks linked to one deal."
+          onClear={() => setState({ opportunityId: "" })}
+        />
+      ) : null}
 
       {query.isError ? (
         <ErrorAlert
@@ -457,6 +486,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                               className="block py-1 underline-offset-4 hover:underline"
                             >
                               {task.customerName ?? "Customer"}
+                              {task.customerArchived ? <ArchivedBadge /> : null}
                             </Link>
                           ) : null}
                           {task.opportunityId ? (
@@ -465,6 +495,7 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                               className="block py-1 underline-offset-4 hover:underline"
                             >
                               {task.opportunityTitle ?? "Opportunity"}
+                              {task.opportunityArchived ? <ArchivedBadge /> : null}
                             </Link>
                           ) : null}
                           {!task.customerId && !task.opportunityId ? (

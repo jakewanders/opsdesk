@@ -30,8 +30,10 @@ const base = (over: Partial<TaskDto> = {}): TaskDto => ({
   assignedTo: null,
   customerId: null,
   customerName: null,
+  customerArchived: false,
   opportunityId: null,
   opportunityTitle: null,
+  opportunityArchived: false,
   completedAt: null,
   createdBy: ME,
   createdAt: NOW,
@@ -44,6 +46,8 @@ const DEFAULTS: TaskListState = {
   status: "",
   priority: "",
   mine: "",
+  customerId: "",
+  opportunityId: "",
   overdue: "",
   soon: "",
   group: "",
@@ -70,6 +74,7 @@ const DEALS = [
     id: "d0000000-0000-4000-8000-000000000001",
     title: "Warehouse retrofit",
     customerName: "Acme Plumbing",
+    customerArchived: false,
   },
 ];
 

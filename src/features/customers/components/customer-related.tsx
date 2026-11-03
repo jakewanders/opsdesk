@@ -95,7 +95,17 @@ export function RelatedOpportunities({
 
   return (
     <div className="flex flex-col gap-3">
-      {add && items.length > 0 ? <div className="flex justify-end">{addLink}</div> : null}
+      {items.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href={`/app/opportunities?view=list&customerId=${customer.id}`}
+            className="touch-link text-sm underline-offset-4 hover:underline"
+          >
+            Open these in the Opportunities list
+          </Link>
+          {add ? addLink : null}
+        </div>
+      ) : null}
       {query.isError ? (
         <ErrorAlert
           title="Opportunities could not be loaded"
@@ -225,7 +235,17 @@ export function RelatedTasks({
 
   return (
     <div className="flex flex-col gap-3">
-      {add && items.length > 0 ? <div className="flex justify-end">{addButton}</div> : null}
+      {items.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href={`/app/tasks?customerId=${customer.id}`}
+            className="touch-link text-sm underline-offset-4 hover:underline"
+          >
+            Open these in the Tasks list
+          </Link>
+          {add ? addButton : null}
+        </div>
+      ) : null}
       {query.isError ? (
         <ErrorAlert
           title="Tasks could not be loaded"

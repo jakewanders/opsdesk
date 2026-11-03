@@ -191,7 +191,7 @@ describe("toTaskDto", () => {
     const now = new Date("2026-11-02T03:00:00Z"); // still Nov 1 in New York
     expect(
       toTaskDto(
-        row({ due_date: "2026-11-01", customer: { display_name: "Acme" } }),
+        row({ due_date: "2026-11-01", customer: { display_name: "Acme", archived_at: null } }),
         "America/New_York",
         now,
       ),

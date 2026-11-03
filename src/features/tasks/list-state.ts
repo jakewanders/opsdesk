@@ -13,6 +13,9 @@ export const taskListUrl = defineUrlState({
   status: urlField.enum(["", ...TASK_STATUSES], ""),
   priority: urlField.enum(["", ...TASK_PRIORITIES], ""),
   mine: urlField.enum(["", "true"], ""),
+  /** Only tasks linked to this customer or deal (set by the links on their pages). */
+  customerId: urlField.string("", 36),
+  opportunityId: urlField.string("", 36),
   overdue: urlField.enum(["", "true"], ""),
   soon: urlField.enum(["", "true"], ""),
   group: urlField.enum(["", "status"], ""),
@@ -25,6 +28,8 @@ export type TaskListState = UrlState<typeof taskListUrl>;
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** The API query for a URL state: empty filters are left out. */
 export function toApiQuery(state: TaskListState): Record<string, string | number | undefined> {
   return {
@@ -36,6 +41,8 @@ export function toApiQuery(state: TaskListState): Record<string, string | number
     status: state.status || undefined,
     priority: state.priority || undefined,
     assignedToMe: state.mine === "true" ? "true" : undefined,
+    customerId: UUID.test(state.customerId) ? state.customerId : undefined,
+    opportunityId: UUID.test(state.opportunityId) ? state.opportunityId : undefined,
     overdue: state.overdue === "true" ? "true" : undefined,
     dueSoon: state.soon === "true" ? "true" : undefined,
   };
@@ -44,7 +51,14 @@ export function toApiQuery(state: TaskListState): Record<string, string | number
 /** True when any search or filter narrows the list (drives "no results" versus "no tasks yet"). */
 export function hasActiveFilters(state: TaskListState): boolean {
   return Boolean(
-    state.q || state.status || state.priority || state.mine || state.overdue || state.soon,
+    state.q ||
+    state.status ||
+    state.priority ||
+    state.mine ||
+    state.overdue ||
+    state.soon ||
+    UUID.test(state.customerId) ||
+    UUID.test(state.opportunityId),
   );
 }
 

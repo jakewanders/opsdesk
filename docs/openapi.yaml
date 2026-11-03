@@ -2584,7 +2584,11 @@ components:
         quoteNumber: { type: string, pattern: "^Q-[0-9]{6,}$" }
         customerId: { type: string, format: uuid }
         customerName: { type: [string, "null"] }
+        customerArchived:
+          { type: boolean, description: "The customer is archived (it can still be opened)." }
         opportunityId: { type: [string, "null"], format: uuid }
+        opportunityTitle: { type: [string, "null"] }
+        opportunityArchived: { type: boolean }
         title: { type: string }
         currency: { type: string, enum: [USD] }
         status: { type: string, enum: [draft, sent, approved, rejected, expired] }
@@ -2688,6 +2692,8 @@ components:
         id: { type: string, format: uuid }
         customerId: { type: string, format: uuid }
         customerName: { type: [string, "null"] }
+        customerArchived:
+          { type: boolean, description: "The customer is archived (it can still be opened)." }
         title: { type: string, minLength: 2, maxLength: 150 }
         description: { type: [string, "null"], maxLength: 5000 }
         stage: { type: string, enum: [new, qualified, proposal, negotiation, won, lost] }
@@ -2740,8 +2746,10 @@ components:
         assignedTo: { type: [string, "null"], format: uuid }
         customerId: { type: [string, "null"], format: uuid }
         customerName: { type: [string, "null"] }
+        customerArchived: { type: boolean }
         opportunityId: { type: [string, "null"], format: uuid }
         opportunityTitle: { type: [string, "null"] }
+        opportunityArchived: { type: boolean }
         completedAt:
           {
             type: [string, "null"],

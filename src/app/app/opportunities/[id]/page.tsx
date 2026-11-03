@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { OpportunityDetail } from "@/features/opportunities/components/opportunity-detail";
+import { quotesTabEnabled } from "@/features/customers/quotes-tab";
 import { getForOrg } from "@/features/opportunities/service";
 import { NotFoundError } from "@/lib/api/errors";
+import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
@@ -29,6 +31,10 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
     throw error;
   }
   return (
-    <OpportunityDetail initial={deal} canWrite={can(ctx.role, ctx.kind, "records.write").allowed} />
+    <OpportunityDetail
+      initial={deal}
+      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+      quotesEnabled={quotesTabEnabled(getFeatureFlags())}
+    />
   );
 }
