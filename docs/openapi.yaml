@@ -1905,9 +1905,6 @@ paths:
           description: "The id is not a UUID"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: "A role that may not export (none today)"
-          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "404":
           description: "No such quote in this workspace (also another workspace's quote), or quotes are switched off"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
