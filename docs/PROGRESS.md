@@ -1188,6 +1188,13 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-08 — Playwright E2E scenarios 7 to 10 (done locally; the CI run is P-12; parent SIT-145)
+
+- `npm run test:e2e:scenarios-7-10` (desktop and phone projects): **21 passed** (2.6 min). Scenarios 7 (quotes: totals, send, revision, PDF; demo watermark) and 8 (CSV preview with exact errors, import summary, repeat adds nothing), and scenario 9 (375 px navigation in `mobile.spec.ts`; the keyboard-only stage move in `accessibility.spec.ts`) were written with their features. Their map is in `docs/TEST_MAP.md`.
+- **New: `e2e/scenario-10-demo-lifecycle.spec.ts`.** A guest adds a customer and resets: it is gone, sample data is back, and `expires_at` is unchanged. A second reset at once returns 429. Expiry is simulated with the documented hook (`postgres` moves `expires_at` into the past, see `docs/DEMO.md`): a write answers 403 `DEMO_EXPIRED` and creates nothing, and `/app` sends the guest to `/demo` ("Your demo has ended"). The real `npm run demo:cleanup` entry point then removes the workspace and its guest (first run), finds nothing more to do (second run: 0 workspaces, 0 guests, 0 errors), and a new visitor still gets a working demo.
+- The database was empty after the run (0 organizations, 0 users), so the specs do not leak data.
+- **Not met:** "green in CI" is P-12 (needs P-11 and SIT-274, a separate Supabase test project from Jake). Not claimed.
+
 ### P-07 — Playwright E2E scenarios 1 to 6 (done locally; the CI run is P-12; parent SIT-145)
 
 - **Consolidated.** `npm run test:e2e:scenarios` runs scenarios 1 to 6 together against the production build and the local Supabase stack: **11 tests passed** (50 s). Scenarios 1, 2 and 3 are the specs written with their features (`guest-customers`, `dashboard-propagation`, `dashboard`); `e2e/scenarios-1-6.spec.ts` names them in a map test that fails if one disappears, and holds the three that had no single named spec:

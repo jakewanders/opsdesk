@@ -163,6 +163,7 @@ A demo lasts 24 hours from creation. Expiry is computed from the database `expir
 
 - SQL: `select private.set_demo_expiry('<org uuid>', now() - interval '1 minute');` (or `update public.organizations set expires_at = now() - interval '1 minute' where id = '<org uuid>'` as `postgres`).
 - pgTAP: the same call inside the test transaction (see `supabase/tests/demo-expiry.test.sql`); boundary cases are one second before and exactly at `expires_at`.
+- Browser run: `e2e/scenario-10-demo-lifecycle.spec.ts` (P-08) uses the SQL update, then runs `npm run demo:cleanup` twice to prove it is idempotent.
 - Integration and browser runs: `psql`/`update` through the local container, as `src/test/demo-expiry.integration.test.ts` and `src/lib/demo/restart.integration.test.ts` do. Cleanup of expired data is SIT-207.
 
 ## Cleanup of expired demos: runbook (SIT-207)
