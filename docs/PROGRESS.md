@@ -889,7 +889,22 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-266, SIT-268, SIT-269, SIT-270, SIT-271, P-01, P-02, SIT-263, SIT-265, SIT-267 done).
+**Complete.** Every M4 leaf issue is Done in Linear (SIT-174, 196, 202, 222-224, 230-233, 238-240, 246-250, 263-271) plus the pending items P-01 and P-02, and the parents Quotes (SIT-140), Invitations & roles (SIT-141), Reports & CSV export (SIT-142), Customer CSV import (SIT-143) and Advanced filtering, pagination & cross-module navigation (SIT-144). Entries per issue follow. Milestone check set, run after the last M4 item (P-01 and P-02, under SIT-142) on commit 293fb2e (GitHub Actions run 41600298715: success):
+
+- `npm run check` (10 steps): environment naming guard, lint, format check, typecheck, unit tests **1993 passed / 136 files**, pgTAP **PASS (39 files, 3094 tests)**, production build, bundle secret scan, integration tests **715 passed / 54 files** (real production build against local Supabase), Playwright **88 passed** (desktop and mobile projects). "npm run check: all 10 steps passed."
+- **M4 exit criteria (PRD 12):**
+  - Quotes: create, edit a draft with live totals, send (locks), revise, PDF download, list and detail, calculation parity between database and TypeScript (SIT-238, 247, 246, 263, 267).
+  - Invitations and roles: invite, accept, change role, last-owner guard, role-aware UI and API (SIT-196, 202, 240, 249, 265).
+  - Customer CSV import: 2 MB / 1,000-row limits, preview with exact row errors, chunked idempotent commit, error report, wizard (SIT-223, 231, 239, 248, 266).
+  - Reports and export: date-range aggregates in organization time with event/current labels, 3 to 5 charts, safe CSV export on every list and on reports (SIT-264, 268, 269, P-01, P-02).
+  - Advanced filters, sorting and pagination on all four lists with 10,000-row performance (median 254 ms, slowest 642 ms for a 100-row page, budget 800 ms), cross-module links, breadcrumbs, shareable URLs and the shared stale-edit conflict dialog (SIT-250, 270, 271).
+- **Real measurements recorded in this milestone:** list performance (above); reports API at 10,000 rows per table, 140 ms (7 days) to 302 ms (366 days); export of 10,000 customers 1.7 s; Lighthouse on `/app/reports` (local production build, guest): desktop accessibility 100 / performance 99, mobile accessibility 100 / performance 85.
+- **Not done or not verifiable, stated plainly:**
+  - Hosted behaviour (Netlify, the production Supabase project, DNS, Turnstile on the real hostname) is unverified: everything here ran against the local stack. See Waiting on Jake.
+  - The VoiceOver pass (SIT-261) and the manual 200% zoom review are logged, not performed with a real screen reader.
+  - `customers.tags @>` and the trigram search do not use their indexes under row level security (74 and 83 ms at 10,000 rows; within budget, recorded in DECISIONS).
+  - Mobile Lighthouse performance on the reports page is 85 and was not tuned.
+- Carried into M5: the consolidated test, accessibility and performance gates (SIT-145 and its pending items P-04 to P-10), CI extension (P-11, P-12), deployment (SIT-272 to 274, P-13 to P-16, which need Jake), documentation (P-17 to P-21) and release acceptance (SIT-149).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
