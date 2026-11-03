@@ -2093,6 +2093,118 @@ paths:
           description: "The workspace is not one the caller belongs to"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /reports:
+    get:
+      summary: Date-range aggregates in the organization's time zone
+      description: >
+        Give a preset `range` (7, 30 or 90 days ending today, default 30) or a custom `from` and `to` (both, `YYYY-MM-DD`,
+        both included, at most 366 days); a preset together with dates, one date alone, or an end before the start is a 422.
+        Days are the organization's calendar days. Up to 31 days there is one bucket per day, longer ranges use 7-day buckets
+        starting on `from` (the last may be shorter); every bucket is present, zero-filled. Series are event-based
+        (`opportunitiesCreated` by `created_at`, `opportunitiesWon` and `opportunitiesLost` by `closed_at`, `tasksCompleted` by
+        `completed_at`, `customersBySource` by customer `created_at`); `opportunitiesByStage` is the current state and ignores
+        the range. Archived records are not counted. `metrics` describes each number and its `basis` (`event` or `current`).
+        Computed by the database with the caller's own session, so another workspace's rows can never contribute. Any member,
+        viewers included, can read it.
+      parameters:
+        - { name: range, in: query, schema: { type: integer, enum: [7, 30, 90] } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      responses:
+        "200":
+          description: The report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: object
+                    required:
+                      [
+                        generatedAt,
+                        timeZone,
+                        today,
+                        range,
+                        buckets,
+                        customersBySource,
+                        opportunitiesByStage,
+                        metrics,
+                      ]
+                    properties:
+                      generatedAt: { type: string, format: date-time }
+                      timeZone: { type: string }
+                      today: { type: string, format: date }
+                      range:
+                        type: object
+                        required: [from, to, days, bucket, preset]
+                        properties:
+                          from: { type: string, format: date }
+                          to: { type: string, format: date }
+                          days: { type: integer }
+                          bucket: { type: string, enum: [day, week] }
+                          preset: { type: integer, nullable: true, enum: [7, 30, 90, null] }
+                      buckets:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            [
+                              start,
+                              end,
+                              opportunitiesCreated,
+                              opportunitiesWon,
+                              opportunitiesLost,
+                              wonAmountCents,
+                              tasksCompleted,
+                            ]
+                          properties:
+                            start: { type: string, format: date }
+                            end: { type: string, format: date }
+                            opportunitiesCreated: { type: integer }
+                            opportunitiesWon: { type: integer }
+                            opportunitiesLost: { type: integer }
+                            wonAmountCents: { type: integer }
+                            tasksCompleted: { type: integer }
+                      customersBySource:
+                        type: object
+                        description: Every source is present, empty ones as zero
+                        additionalProperties: { type: integer }
+                      opportunitiesByStage:
+                        type: object
+                        description: Current state; every stage is present
+                        additionalProperties:
+                          type: object
+                          required: [count, amountCents]
+                          properties:
+                            count: { type: integer }
+                            amountCents: { type: integer }
+                      metrics:
+                        type: array
+                        items:
+                          type: object
+                          required: [key, label, basis, description]
+                          properties:
+                            key: { type: string }
+                            label: { type: string }
+                            basis: { type: string, enum: [event, current] }
+                            description: { type: string }
+                  meta: { type: object }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "The workspace is not one the caller belongs to"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "Invalid range"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /activity:
     get:
       summary: One page of the workspace's activity feed, newest first

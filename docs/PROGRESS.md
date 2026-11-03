@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-263, SIT-265, SIT-267 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-263, SIT-265, SIT-267 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -1033,6 +1033,19 @@ Most of the quote suite was written with the issues it proves (SIT-174, 222, 230
 - **EXPLAIN ANALYZE as the signed-in owner (RLS applied), selective filters:** customers created range **1.1 ms** (Index Scan `customers_org_created_idx`), opportunities amount range **1.0 ms** (`opportunities_org_amount_idx`), opportunities close range **1.1 ms** (`opportunities_org_close_date_idx`), tasks due range **0.8 ms** (`tasks_org_due_idx`), quotes issue range **0.9 ms** (`quotes_org_issue_date_idx`), quotes valid range **2.4 ms** (Bitmap Index Scan `quotes_org_valid_until_idx`). The test fails if any of these stops using its index.
 - **Finding, stated plainly:** `customers.tags @>` and the trigram search **cannot use their indexes under row level security** (Seq Scan, with `private.is_member(organization_id)` evaluated on each of the 10,000 rows, even with sequential scans switched off): the policy's check must run before any filter whose operator is not leakproof, and array containment and ILIKE are not. They cost **74 ms** (tags) and **83 ms** (search) at 10,000 customers, within the budget. A tags GIN index was therefore not added. A faster path needs a policy or operator change (see DECISIONS).
 - **Counts:** exact (`count: exact` on the same filtered query), which is fine at this scale: the counted queries above include it.
+
+### SIT-264 — GET /api/v1/reports with date-range aggregates in organization time (done)
+
+- **What it does:** `GET /api/v1/reports?range=7|30|90` (default 30, ending today in the workspace's zone) or `?from=&to=` (both, inclusive, at most 366 days). One database function, `report_summary(org, from, to)` (migration `20261101004300_report_summary.sql`, SECURITY INVOKER so row level security decides what is counted), returns: per-bucket `opportunitiesCreated` (`created_at`), `opportunitiesWon`/`opportunitiesLost` (`closed_at` by stage) with `wonAmountCents`, `tasksCompleted` (`completed_at`); `customersBySource` (customer `created_at`, all four sources present); and `opportunitiesByStage` (the current state, ignoring the range). Up to 31 days: daily buckets; longer: 7-day buckets starting on the first day (the last may be shorter). Every bucket is present, zero-filled. The response carries `metrics`: each number's label, plain-language description and `basis` (`event` or `current`). Invalid ranges are 422 with field errors (`range`, `from`, `to`). Any member, viewers and demo guests included.
+- **Bucketing is by local calendar date** (`(ts at time zone tz)::date`), which is DST-safe: the 23-hour spring-forward day is one bucket. Index-friendly bounds are the start of the first day and the start of the day after the last. New indexes: `opportunities_org_created_idx`, partial `opportunities_org_closed_idx`, partial `tasks_org_completed_idx` (the customers one already existed).
+- **Tests run:**
+  - `src/lib/domain/reports.test.ts` (10 unit): range resolution, bucket plan, reference bucketing at local-midnight edges and across a 23-hour day.
+  - `supabase/tests/report-summary.test.sql` (34 pgTAP): privileges, range edges across the 2026-03-08 New York change, 23-hour day, daily vs weekly, 31 vs 32 days, 366 days, zero-fill, archived excluded, Tokyo vs New York, cross-tenant, viewer/outsider/anon. `npm run test:db`: 39 files, 3094 tests, PASS.
+  - `src/features/reports/reports.integration.test.ts` (21, real HTTP against the production build): auth, 404, 10 invalid-range cases, injection text, exact numbers with another workspace and archived rows present, the next response following a stage move, and **PARITY: the SQL buckets equal the TypeScript reference in 8 zones (New York, London, Lord Howe, Kiritimati, Kolkata, St. Johns, Auckland, UTC)** over ~1,000 instants each including every local midnight and the second either side, in four ranges (36 days weekly, two clock-change weeks, one day).
+  - Mutation check of the parity test: changing the TS daily/weekly cutoff to 30 fails the unit tests, and shifting the TS event time by one hour fails the New York parity test (both reverted).
+  - Endpoint matrix: `GET /reports` classified as `read`; the 8-caller matrix passes.
+- **Performance, 10,000 customers/opportunities/tasks in one workspace, over real HTTP (median of 3):** 7 days **140 ms**, 30 days **155 ms**, 90 days (weekly) **177 ms**, 366 days (weekly) **302 ms**; the budget is 800 ms. Each total also equals a direct SQL count over the same bounds.
+- OpenAPI updated (`/reports`); `openapi.test.ts` passes. The reviewed public-function list in `demo-acceptance.test.sql` now includes `report_summary`.
 
 ### SIT-265 — Role and invitation tests: pgTAP, API matrix, viewer and invitation E2E (done)
 

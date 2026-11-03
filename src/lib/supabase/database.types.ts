@@ -894,6 +894,7 @@ export type Database = {
         Returns: Json;
       };
       redeem_invitation: { Args: { p_token: string }; Returns: Json };
+      report_summary: { Args: { p_from: string; p_org_id: string; p_to: string }; Returns: Json };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
       revise_quote: {
         Args: { p_id: string };
