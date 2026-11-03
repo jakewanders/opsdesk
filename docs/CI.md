@@ -4,17 +4,17 @@
 
 ## Jobs
 
-| Job (the name GitHub shows)               | What it runs                                                                                                                            | Needs                                   |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `Lint, types, unit tests, build`          | lint, format check, typecheck, environment-name guard, unit tests, production build, client-bundle secret scan                          | nothing                                 |
-| `Database, RLS and API integration tests` | `npm run db:start` (a throwaway local Supabase stack in Docker), `npm run test:db` (pgTAP), `npm run build`, `npm run test:integration` | Docker (present on `ubuntu-latest`)     |
-| `e2e` (not added yet)                     | Playwright against a preview or a local container with a **test** Supabase project (P-12)                                               | SIT-274 (test project, from Jake), P-11 |
+| Job (the name GitHub shows)               | What it runs                                                                                                                                                                                                                                           | Needs                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------- |
+| `Lint, types, unit tests, build`          | lint, format check, typecheck, environment-name guard, unit tests, production build, client-bundle secret scan                                                                                                                                         | nothing                                 |
+| `Database, RLS and API integration tests` | `npm run db:start` (a throwaway local Supabase stack in Docker), `npm run test:db` (pgTAP), `npm run build`, `npm run test:integration`                                                                                                                | Docker (present on `ubuntu-latest`)     |
+| `Browser end-to-end tests (Playwright)`   | `npm run test:e2e`: builds the production app and runs the whole Playwright suite (desktop and phone) against a throwaway local Supabase stack started in the job; scans the server log for leaks; keeps traces and the log of a failed run for 7 days | Docker; Chromium (installed by the job) |
 
 The database job starts its own stack, so the keys the tests use are the disposable keys the local CLI prints for that stack. There is no production credential anywhere in the workflow, and `localSupabase()` (used by every integration test) refuses any host but `127.0.0.1` or `localhost`.
 
 ## Required checks (branch protection)
 
-Branch protection is a repository setting only Jake can change. When it is set, require both jobs: **`Lint, types, unit tests, build`** and **`Database, RLS and API integration tests`**. Add the E2E job here when P-12 lands.
+Branch protection is a repository setting only Jake can change. When it is set, require both jobs: **`Lint, types, unit tests, build`** and **`Database, RLS and API integration tests`**. Add the third job, **Browser end-to-end tests (Playwright)**, once it has run green on `main`.
 
 ## What a broken policy does
 

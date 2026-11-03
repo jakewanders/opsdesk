@@ -92,7 +92,46 @@ jobs:
         if: always()
         run: npm run db:stop -- --no-backup
 
-  # Added by a later issue. Kept as a comment so the required-check list stays accurate.
-  #
-  # e2e:        Playwright against a deploy preview or a local container with a TEST Supabase
-  #             project. Never against production. (P-12)
+  # The browser suite (P-12). Playwright drives the PRODUCTION BUILD against a throwaway local Supabase stack started inside the
+  # job (its own mail catcher included, which the sign-up scenario needs to read the confirmation e-mail). Nothing here reads a
+  # secret or reaches a hosted project: `scripts/e2e.mjs` refuses any Supabase host but 127.0.0.1 / localhost, and the
+  # workflow guard test (src/lib/ci-workflow.test.ts) fails if a secret or a hosted address ever appears in this file.
+  # Traces of failed tests and the server log (which the run scans for leaks) are kept as artifacts for a week.
+  e2e:
+    name: Browser end-to-end tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (lockfile only)
+        run: npm ci
+
+      - name: Install the Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start the local Supabase stack
+        run: npm run db:start
+
+      - name: Playwright (builds the app first; scans the server log for leaks when it finishes)
+        run: npm run test:e2e
+
+      - name: Keep traces and the server log of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-artifacts
+          path: |
+            test-results/
+            .e2e-output.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Stop the stack
+        if: always()
+        run: npm run db:stop -- --no-backup
