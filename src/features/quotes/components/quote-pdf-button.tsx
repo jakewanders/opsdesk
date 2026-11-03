@@ -6,6 +6,7 @@ import { notify } from "@/components/shared/toast";
 import { Button } from "@/components/ui/button";
 import { apiDownload, isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApi } from "@/lib/api-client/provider";
+import { saveBlob } from "@/lib/api-client/save-file";
 
 /**
  * "Download PDF" (every role, any status). The file comes from `GET /quotes/:id/pdf` with the workspace header, so it works the same
@@ -19,14 +20,7 @@ export function QuotePdfButton({ quoteId, quoteNumber }: { quoteId: string; quot
     setBusy(true);
     try {
       const { blob, filename } = await apiDownload(`/quotes/${quoteId}/pdf`, { organizationId });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename ?? `${quoteNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      saveBlob(blob, filename ?? `${quoteNumber}.pdf`);
       notify.success("PDF downloaded", `${quoteNumber}.pdf`);
     } catch (e) {
       notify.error(

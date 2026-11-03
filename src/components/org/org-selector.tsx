@@ -42,7 +42,7 @@ export function OrgSelector({ workspaces, activeId, selectAction, canCreate }: P
           type="button"
           variant="ghost"
           size="sm"
-          className="max-w-64 gap-1 px-2 font-medium text-foreground"
+          className="min-w-0 max-w-64 shrink gap-1 px-2 font-medium text-foreground"
           aria-label={`Workspace: ${active?.name ?? "none selected"}. Change workspace`}
         >
           <span className="truncate">{active?.name ?? "Choose a workspace"}</span>

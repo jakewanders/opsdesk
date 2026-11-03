@@ -5,6 +5,7 @@ import { CustomersView } from "@/features/customers/components/customers-view";
 import { customerListUrl, toApiQuery } from "@/features/customers/list-state";
 import { customerListQuery } from "@/features/customers/schema";
 import { listForOrg } from "@/features/customers/service";
+import { getFeatureFlags } from "@/lib/env/public";
 import { can } from "@/lib/permissions";
 import { parseUrlState } from "@/lib/api-client/url-state";
 import { stringifyQuery } from "@/lib/api/stringify-query";
@@ -53,6 +54,7 @@ export default async function CustomersPage({
       initial={initial}
       initialState={state}
       canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+      canImport={getFeatureFlags().csvImport && can(ctx.role, ctx.kind, "records.write").allowed}
       currentUserId={ctx.user.id}
       timeZone={ctx.org.timezone}
     />

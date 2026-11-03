@@ -27,6 +27,7 @@ export const ROUTES: readonly RouteSpec[] = [
   { path: "/app", group: "app" },
   { path: "/app/customers", group: "app" },
   { path: "/app/customers/new", group: "app" },
+  { path: "/app/customers/import", group: "app" },
   { path: "/app/customers/[id]", group: "app", sample: `/app/customers/${ID}` },
   { path: "/app/opportunities", group: "app" },
   { path: "/app/opportunities/[id]", group: "app", sample: `/app/opportunities/${ID}` },

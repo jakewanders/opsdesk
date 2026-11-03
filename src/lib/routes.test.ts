@@ -38,6 +38,7 @@ describe("route map (PRD 3.3)", () => {
       "/app",
       "/app/customers",
       "/app/customers/new",
+      "/app/customers/import",
       "/app/customers/[id]",
       "/app/opportunities",
       "/app/opportunities/[id]",

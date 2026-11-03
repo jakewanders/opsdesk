@@ -85,7 +85,7 @@ export function AppShell({ items, children, orgSelector, user, banner, footer }:
 
           <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <Building2 aria-hidden="true" className="size-4 shrink-0" />
-            <span className="truncate">{orgSelector ?? "Workspace"}</span>
+            <span className="flex min-w-0 truncate">{orgSelector ?? "Workspace"}</span>
           </div>
 
           <div className="ml-auto flex items-center gap-1">

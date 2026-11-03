@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Upload,
   User,
   Users,
 } from "lucide-react";
@@ -62,6 +63,8 @@ type Props = {
   currentUserId: string;
   /** The organization's time zone, so server and browser format dates the same way. */
   timeZone: string;
+  /** Writers may import a CSV while the import feature is on. */
+  canImport?: boolean;
 };
 
 const SOURCE_LABELS = {
@@ -109,7 +112,14 @@ function SortHeader({
  * then TanStack Query keeps it current. Every state is covered (loading, empty, no results, error) and all controls are
  * native, keyboard-operable elements.
  */
-export function CustomersView({ initial, initialState, canWrite, currentUserId, timeZone }: Props) {
+export function CustomersView({
+  initial,
+  initialState,
+  canWrite,
+  currentUserId,
+  timeZone,
+  canImport = false,
+}: Props) {
   const [state, setState] = useUrlState(customerListUrl);
   const [search, onSearch] = useDebouncedUrlParam(state.q, (q) => setState({ q }));
   const [archiving, setArchiving] = useState<CustomerDto | null>(null);
@@ -285,12 +295,20 @@ export function CustomersView({ initial, initialState, canWrite, currentUserId, 
     <div className="flex flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-        {canWrite ? (
-          <Link href="/app/customers/new" className={buttonVariants()}>
-            <Plus aria-hidden="true" />
-            Add customer
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {canImport ? (
+            <Link href="/app/customers/import" className={buttonVariants({ variant: "outline" })}>
+              <Upload aria-hidden="true" />
+              Import CSV
+            </Link>
+          ) : null}
+          {canWrite ? (
+            <Link href="/app/customers/new" className={buttonVariants()}>
+              <Plus aria-hidden="true" />
+              Add customer
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       <form
