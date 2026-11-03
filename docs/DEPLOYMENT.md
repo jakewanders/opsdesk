@@ -32,7 +32,10 @@ Verified locally (see `docs/PROGRESS.md`): a build with `CONTEXT=deploy-preview`
 - **Verified 2026-11-03 with curl** (production context, placeholder Supabase values): `/` 200, `/privacy` 200, `/demo` 200; `/api/health` answers `{"web":"ok","database":"unavailable"}` (expected while the placeholder Supabase URL is set); the responses carry `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` and `X-Content-Type-Options: nosniff` (added by Netlify, not by this repository) and **no** `Content-Security-Policy`, frame-options or referrer-policy header (still to do in SIT-272); no `X-Robots-Tag` (this is the production context, so the page is indexable until SIT-273 redirects this hostname to the custom domain).
 - Not yet verified: a deploy preview for a pull request (and its `noindex`), the layouts at 375 px and desktop on the live site, `cleanup-demo` listed as scheduled, real Supabase values.
 - Latest verified preview URL: _none yet_
-- Custom domain, DNS provider, record, certificate: _not configured (SIT-272, P-13)_
+- **Custom domain (verified 2026-11-03 from this machine with public resolvers and curl):** `opsdesk.sitelaunch.dev`. DNS provider: Vercel DNS (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`). Record: one `CNAME opsdesk -> sitelaunch-opsdesk.netlify.app` (TTL 60), created by the owner's delegate; the authoritative server and 1.1.1.1 both return it. Netlify also required one TXT record, `subdomain-owner-verification` on `sitelaunch.dev` (value `b665e813b5a852aa414d24ae9ad5a4ef`, a domain-ownership proof, not a secret); it is present on the authoritative server and on 8.8.8.8. Nothing else in the zone was changed (apex, `www`, nameservers; there are no MX records).
+- **Certificate:** Let's Encrypt (issuer CN=YE2), subject `opsdesk.sitelaunch.dev`, valid 2026-11-03 to 2027-02-01, issued by Netlify's managed TLS; `openssl s_client` with SNI verifies it.
+- **Resolver caveat:** a resolver that cached the old wildcard answer may keep returning Vercel addresses for a while; 1.1.1.1 and 8.8.8.8 already return the CNAME.
+- Rollback for the custom domain: delete the `opsdesk` CNAME (and the TXT record) in Vercel DNS and remove the domain in Netlify, Domain management; nothing else is affected.
 
 ## Verification commands (after the first deploy)
 

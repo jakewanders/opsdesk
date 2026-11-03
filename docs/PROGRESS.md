@@ -28,6 +28,19 @@ No workable M0 to M5 issue remains: every one left is blocked on something only 
 
 The owner created the Netlify site `sitelaunch-opsdesk` from `jakewanders/opsdesk` (branch `main`). Checked with curl from this machine: the site is up (`/`, `/privacy`, `/demo` return 200, `/api/health` reports `web ok, database unavailable` because the Supabase values are still placeholders). Details and what is still unverified are in `docs/DEPLOYMENT.md`, "Records". SIT-177 stays open until a pull-request deploy preview is checked for `noindex` and the shell is looked at at 375 px and desktop. **Correction to the final summary above:** Netlify itself adds `Strict-Transport-Security` and `X-Content-Type-Options`; what is still missing is the CSP, frame options and referrer policy.
 
+## Production hostname checks, first run (P-13 done; P-15 partial) — 2026-11-03
+
+Run from this machine against `https://opsdesk.sitelaunch.dev` using the public resolver 1.1.1.1 (script not kept in the repo; commands are plain `curl`, `dig`, `openssl`).
+
+- **P-13 (domain, DNS, TLS): done.** Single `opsdesk` CNAME to `sitelaunch-opsdesk.netlify.app` plus one ownership TXT record; Let's Encrypt certificate valid to 2027-02-01. Details in `docs/DEPLOYMENT.md`.
+- **P-15 checks that could be run now:**
+  - `/`, `/demo`, `/login`, `/signup`, `/privacy`, `/terms`: 200. `/app` signed out: 307 to `/login?next=%2Fapp`, then 200 (one redirect, no loop). `/auth/callback` without a code: 303 to `/login?error=callback`. `/api/health`: `{"web":"ok","database":"ok"}`.
+  - No `Set-Cookie` on `/`, `/demo`, `/app`, `/login`, `/signup` for a signed-out visitor (so no `.sitelaunch.dev`-scoped cookie).
+  - Canonical and `og:url` are `https://opsdesk.sitelaunch.dev`. The landing HTML and the JS bundles contain no `netlify.app`, no `localhost` link (one `localhost` string is inside the URL-parsing library) and no `http://` URLs.
+  - Headers: `Strict-Transport-Security: max-age=31536000` and `X-Content-Type-Options: nosniff` (added by Netlify). **Missing:** CSP, frame options, referrer policy (SIT-272, to do); `robots.txt` and `sitemap.xml` return 404 (SIT-273, to do).
+  - Apex unchanged by this work: nameservers are still Vercel's; no apex, `www` or MX record was touched. **Observation, not caused by this work:** `https://sitelaunch.dev` and `https://www.sitelaunch.dev` both answer 404 `DEPLOYMENT_NOT_FOUND` from Vercel, i.e. no Vercel deployment is currently attached to those names. I have no earlier baseline to compare with, so the owner should confirm this is expected.
+- **P-15 checks not yet possible (so P-15 is not done):** a no-sign-up demo journey, guest isolation, sign-up, log-in and log-out, the confirmation and reset e-mails, and the Supabase Auth callback on this host. They need anonymous sign-ins and the Turnstile production keys (the production project currently answers `anonymous_provider_disabled`, and no Turnstile site key is in the deployed bundle; SIT-168/P-14) and the production redirect list (done by the owner).
+
 ## Waiting on Jake
 
 Items only Jake can unblock. Each is also an action item in the tracker.
