@@ -15,12 +15,14 @@ export type Actor = { id: string; email: string | null; cookie: string; isAnonym
 
 export class RealServer {
   /** Point the app at another Supabase URL (for example a closed port, to simulate an outage). Users cannot be created then. */
-  constructor(private readonly options: { supabaseUrl?: string } = {}) {}
+  constructor(private readonly options: { supabaseUrl?: string; captureLogs?: boolean } = {}) {}
 
   supabase!: LocalSupabase;
   base = "";
   private child?: ChildProcess;
   private created: string[] = [];
+  /** Every line the server wrote to stdout and stderr (only when `captureLogs` is set). */
+  logs: string[] = [];
 
   async start(): Promise<void> {
     this.supabase = localSupabase();
@@ -53,8 +55,18 @@ export class RealServer {
         NEXT_PUBLIC_APP_URL: this.base,
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
       },
-      stdio: "ignore",
+      stdio: this.options.captureLogs ? ["ignore", "pipe", "pipe"] : "ignore",
     });
+    if (this.options.captureLogs) {
+      let partial = "";
+      const take = (chunk: Buffer) => {
+        const parts = (partial + chunk.toString("utf8")).split("\n");
+        partial = parts.pop() ?? "";
+        this.logs.push(...parts);
+      };
+      this.child.stdout?.on("data", take);
+      this.child.stderr?.on("data", take);
+    }
     for (let i = 0; i < 60; i++) {
       try {
         if ((await fetch(`${this.base}/privacy`)).ok) return;

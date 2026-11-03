@@ -1,6 +1,7 @@
-import { execFileSync, spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { createWriteStream, readFileSync, rmSync } from "node:fs";
 import { withDockerPath } from "./lib/docker-path.mjs";
+import { scanLogLines } from "./lib/log-scan.mjs";
 
 /**
  * `npm run test:e2e` (SIT-251): builds the app WITH the local Supabase settings (the browser bundle bakes in the
@@ -30,4 +31,29 @@ const run = (cmd, args) => spawnSync(cmd, args, { stdio: "inherit", env }).statu
 // a clean build directory: a cached build once served stale CSS to the browser tests
 rmSync(".next-e2e", { recursive: true, force: true });
 if (run("node_modules/.bin/next", ["build"]) !== 0) process.exit(1);
-process.exit(run("node_modules/.bin/playwright", ["test", ...process.argv.slice(2)]));
+// The run's output (the app server's JSON log lines are part of it) is kept in .e2e-output.log, and scanned for secrets,
+// personal data, record contents, stack traces and database internals when the tests finish (SIT-275). A finding fails the run.
+
+const LOG = ".e2e-output.log";
+const sink = createWriteStream(LOG);
+const code = await new Promise((resolve) => {
+  const child = spawn("node_modules/.bin/playwright", ["test", ...process.argv.slice(2)], {
+    env,
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+  child.stdout.on("data", (d) => {
+    process.stdout.write(d);
+    sink.write(d);
+  });
+  child.stderr.on("data", (d) => {
+    process.stderr.write(d);
+    sink.write(d);
+  });
+  child.on("close", (c) => resolve(c ?? 1));
+});
+sink.end();
+await new Promise((r) => sink.on("finish", r));
+const { jsonLines, findings } = scanLogLines(readFileSync(LOG, "utf8").split("\n"));
+console.log(`\nLog scan: ${jsonLines} server log lines, ${findings.length} findings (${LOG}).`);
+for (const f of findings.slice(0, 30)) console.log(`  line ${f.line}: ${f.rule} (${f.where})`);
+process.exit(code !== 0 ? code : findings.length > 0 ? 1 : 0);

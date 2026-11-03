@@ -7,9 +7,11 @@ import { ENDPOINTS, expectedOutcome } from "./endpoints";
 
 /** SIT-249: a route nobody classified fails here, so a new endpoint cannot ship without a decision about who may call it. */
 const ROOT = "src/app/api/v1";
+// The catch-all `[...path]` answers every path that is not an endpoint with the standard 404 envelope (SIT-275); it is not an endpoint.
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((n) => {
     const p = join(dir, n);
+    if (n === "[...path]") return [];
     return statSync(p).isDirectory() ? walk(p) : [p];
   });
 

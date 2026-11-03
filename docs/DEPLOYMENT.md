@@ -71,3 +71,16 @@ Local email is delivered to the Supabase mail catcher (Mailpit; `http://127.0.0.
 When the database is not answering, `/demo` and `/app` show "The live backend is not answering" (retry, technical overview, home, repository) instead of a half-working page; nothing is created. The landing and legal pages are static and keep working.
 
 **Recovering from a paused Supabase project.** Free-tier projects pause after a period of inactivity. Restore the project from the Supabase dashboard (Project settings, then Restore), wait for it to report healthy, then check `/api/health` shows `database: "ok"`. Do not add a keep-alive job to avoid the pause policy.
+
+## Triage: finding a request ID in the logs (SIT-275)
+
+Every API error has a request ID. A person sees it in the error box (**Request ID: …**, with a **Copy** button) and it is also in the `error.requestId` field and the `X-Request-Id` response header of the failing call. The server writes one JSON line per request with the same ID.
+
+1. Ask for the request ID (or copy it from the error box or from the browser's network tab: the `X-Request-Id` response header).
+2. Search the server logs for that ID. Every line is JSON, so searching for the bare ID finds the `api.request` line: `{"requestId":"…","route":"/api/v1/customers/:id","method":"POST","status":422,"durationMs":9,"userId":"…","orgId":"…","event":"api.request",…}`. An unexpected failure also has an `api.unhandled_error` line with the same `requestId`, the error class and a redacted message (never a stack trace in the response).
+   - **Local or any shell:** `grep <id> server.log` (or the terminal running `next start`). `node scripts/scan-logs.mjs <file>` checks a saved log for secrets, personal data, record contents, stack traces and database internals.
+   - **Netlify (when the site exists, SIT-177/272):** the site's function logs hold the same lines (Netlify's log view for the site's functions, searched for the ID). _This step has not been tried: there is no Netlify site yet, so the exact menu names are not confirmed here._
+3. Read the line: `status`, `route` (ids appear as `:id`), `durationMs`, `userId`, `orgId`, `errorCode`. Records' contents are never in a log line; look the record up by the IDs.
+4. If the person has no ID (the whole page failed), `GET /api/health` tells the web server from the database: `{"web":"ok","database":"unavailable"}` means the database is not answering (see "Health check and pause recovery").
+
+What is never in a log: tokens, cookies, passwords, invitation tokens, notes or descriptions, e-mail addresses. The logger redacts by key and by pattern, and `scripts/lib/log-scan.mjs` is an independent check: `npm run test:e2e` writes its whole output to `.e2e-output.log` and fails when the scan finds anything.

@@ -1,5 +1,6 @@
 import { OctagonAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { CopyRequestId } from "@/components/shared/copy-request-id";
 import { Button } from "@/components/ui/button";
 import type { ApiErrorBody } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
@@ -45,8 +46,9 @@ export function ErrorAlert({
         <p className="font-semibold">{title}</p>
         {body ? <div>{body}</div> : null}
         {id ? (
-          <p className="text-muted-foreground">
+          <p className="flex flex-wrap items-center gap-x-1 text-muted-foreground">
             Request ID: <code className="font-mono text-foreground">{id}</code>
+            <CopyRequestId requestId={id} />
           </p>
         ) : null}
         {onRetry ? (

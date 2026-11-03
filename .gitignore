@@ -61,3 +61,6 @@ supabase/volumes
 /playwright/.auth/
 /playwright-report/
 /test-results/
+
+# the end-to-end run output kept for the log scan (SIT-275)
+/.e2e-output.log

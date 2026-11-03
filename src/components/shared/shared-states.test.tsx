@@ -118,6 +118,26 @@ describe("ErrorAlert", () => {
     expect(screen.getByRole("alert")).not.toHaveTextContent("Request ID");
   });
 
+  it("has no copy button when there is no request ID", () => {
+    render(<ErrorAlert message="Failed." />);
+    expect(screen.queryByRole("button", { name: /copy/i })).toBeNull();
+  });
+
+  it("copies the request ID to the clipboard and says so; says so too when the clipboard refuses", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    render(<ErrorAlert message="Failed." requestId="req_8f31a" />);
+    await user.click(screen.getByRole("button", { name: "Copy request ID req_8f31a" }));
+    expect(writeText).toHaveBeenCalledWith("req_8f31a");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Request ID copied"));
+    expect(screen.getByRole("button", { name: /Copy request ID/ })).toHaveTextContent("Copied");
+
+    writeText.mockRejectedValue(new Error("denied"));
+    await user.click(screen.getByRole("button", { name: /Copy request ID/ }));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Could not copy"));
+    await expectNoA11yViolations(document.body);
+  });
+
   it("offers a retry that calls back", async () => {
     const onRetry = vi.fn();
     render(<ErrorAlert message="Failed." onRetry={onRetry} />);

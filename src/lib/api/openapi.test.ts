@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 
 /** docs/openapi.yaml lists implemented routes only: a route without an entry (or an entry without a route) fails. */
 const ROOT = "src/app/api/v1";
+// The catch-all `[...path]` is the 404 envelope for paths that are not endpoints (SIT-275); it is not documented as one.
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((n) => {
     const p = join(dir, n);
+    if (n === "[...path]") return [];
     return statSync(p).isDirectory() ? walk(p) : [p];
   });
 

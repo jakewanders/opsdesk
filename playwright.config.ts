@@ -41,6 +41,9 @@ export default defineConfig({
     command: `node_modules/.bin/next start -p ${PORT}`,
     url: `http://localhost:${PORT}/privacy`,
     reuseExistingServer: false,
+    // Playwright forwards only the server's stderr by default; the info lines (every request) go to stdout and are what the log scan reads (SIT-275)
+    stdout: "pipe",
+    stderr: "pipe",
     timeout: 60_000,
     env: {
       NODE_ENV: "production",
