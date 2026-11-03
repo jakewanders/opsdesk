@@ -1188,6 +1188,30 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-10 — Performance verification against the PRD §11.6 targets (done; parent SIT-145)
+
+- **Method:** `PERF=1 node scripts/e2e.mjs e2e/performance.spec.ts --project=desktop` (off by default). One workspace with **10,000 customers, 10,000 opportunities and 10,000 tasks** (bulk-inserted with the user triggers off, then `analyze`), the local production build (`next start`) and the local Supabase database, on this Mac. **Warm:** 3 uncounted warm-up calls per series, then 40 timed calls over real HTTP as the workspace owner (cookie session, RLS applied); browser timings are after one uncounted load. Local numbers: cold starts, provider pauses and network distance are excluded and a hosted run will differ.
+- **API, 100-row pages (p50 / p95 / max, ms):**
+
+  | Call                                 | p50 | p95 | max |
+  | ------------------------------------ | --- | --- | --- |
+  | customers, 100-row page              | 224 | 236 | 244 |
+  | customers, search                    | 239 | 245 | 261 |
+  | customers, status filter + name sort | 96  | 103 | 109 |
+  | opportunities, 100-row page          | 465 | 473 | 487 |
+  | opportunities, stage + amount sort   | 113 | 123 | 127 |
+  | tasks, 100-row page                  | 139 | 145 | 159 |
+  | tasks, overdue                       | 69  | 78  | 80  |
+  | dashboard                            | 452 | 460 | 469 |
+  | reports, 90 days                     | 215 | 219 | 225 |
+
+  Every p95 is **under the 800 ms budget** (highest 473 ms); the spec asserts it.
+
+- **Browser, warm:** the dashboard from navigation until the figures are on screen: p50 **557 ms**, max **573 ms** over 6 loads (budget 3 s). A customer list at 100 rows, navigation until 100 rows are on screen: p50 369 ms, max 406 ms. Typing a search into the 100-row list until the new rows show: p50 74 ms, max 99 ms. The spec asserts the 3 s limit.
+- **EXPLAIN ANALYZE as the owner (RLS applied), 10,000 rows in the one workspace:** tasks by due date uses `tasks_org_due_idx` (1.1 ms). Customers and opportunities "newest first" run a **sequential scan plus a top-N sort in about 60 ms**; with sequential scans disabled the planner uses a bitmap scan of `customers_org_status_idx` / `opportunities_org_close_date_idx` (about 75 ms), i.e. an index is available but none of them can deliver rows already ordered by `updated_at`. Because this workspace holds the whole table, the sequential scan is the planner's right choice here. The plans for the filtered and sorted variants (selective filters, index scans of 1 ms) were recorded earlier under SIT-250, and the 5,000-organization demo-expiry plan under SIT-207.
+- **Observations carried forward (not regressions; within budget):** (1) the default customer and opportunity lists sort the workspace's whole active set each time (about 60 ms of database time at 10,000 rows, growing linearly); an index on `(organization_id, updated_at desc)` would let them stream the first 100 rows. (2) The opportunities and dashboard endpoints take about 450 to 470 ms against about 60 ms of database time for the main query; the rest is the second queries (counts, customer names, aggregates), so the next gain is there. The acceptance line says regressions become issues; I may not create Linear issues here (the permission was refused), so both are listed for you to file if you want them. Neither threatens a target at demo-sized data.
+- **Not measured:** a hosted run (needs the Netlify site and hosted Supabase project, SIT-177 and friends), cold starts, and the phone-preset Lighthouse timings, which are recorded under P-09.
+
 ### P-09 — Accessibility audit: axe, Lighthouse and the manual pass (done for everything that can be automated; parent SIT-145)
 
 - **axe (WCAG 2.2 AA, real browser, both themes):** `e2e/accessibility.spec.ts` now scans **29 pages and the task drawer** in light and in dark: the 7 public pages, and signed in as a guest the dashboard, customers (list, detail, new, edit, import), the pipeline (list, board, detail, new, edit), tasks, activity, quotes (list, new), reports, workspaces and four settings pages. **0 violations in both themes** (added this issue: new quote, import, opportunity edit, members, organization, billing, integrations, workspaces).
