@@ -112,6 +112,11 @@ const B: Record<string, (c: Ctx) => Req> = {
     json: { name: `Matrix Workspace ${++counter}` },
   }),
   "GET /organizations/{id}": (c) => ({ method: "GET", path: `/organizations/${c.org}` }),
+  "PATCH /organizations/{id}": (c) => ({
+    method: "PATCH",
+    path: `/organizations/${c.org}`,
+    json: { name: "Matrix Rename", expectedUpdatedAt: STALE },
+  }),
   "GET /quotes": () => ({ method: "GET", path: "/quotes" }),
   "POST /quotes": (c) => ({
     method: "POST",

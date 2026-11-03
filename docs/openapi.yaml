@@ -500,6 +500,65 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Change the workspace's name, industry and time zone (US-09)
+      description: >
+        Owner and admin only: a member or viewer gets 403, and so does a demo guest. The workspace is named by `X-Organization-Id` like every
+        workspace endpoint and the path must name the same one (otherwise 404). Send the `expectedUpdatedAt` you last saw: a stale one is 409
+        `STALE_EDIT` with the current version in `error.meta.current`. Every settings field is optional (a blank `industry` clears it). `kind`,
+        `expiresAt`, `currency`, `slug` and any other field are a 422. A patch that changes nothing is a 200 that writes nothing. The time zone
+        decides what "today" is, so a change moves which tasks are overdue immediately. The change is logged server-side with field names only.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [expectedUpdatedAt]
+              properties:
+                expectedUpdatedAt: { type: string, format: date-time }
+                name: { type: string, minLength: 2, maxLength: 80 }
+                industry: { type: [string, "null"], maxLength: 80 }
+                timezone:
+                  { type: string, description: "IANA name such as America/New_York, or UTC" }
+      responses:
+        "200":
+          description: The settings after the change
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string }
+                      industry: { type: [string, "null"] }
+                      timezone: { type: string }
+                      updatedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A member, a viewer or a demo guest"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not a member, or the path names another workspace than the header"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "STALE_EDIT"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "A field is invalid, or `kind`, `expiresAt`, `currency` or another unknown field was sent"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   /opportunities:
     get:
       summary: One page of the workspace's opportunities (archived hidden by default), with per-stage totals for the whole filtered set
@@ -2488,6 +2547,12 @@ components:
         kind: { type: string, enum: [real, demo] }
         role: { type: string, enum: [owner, admin, member, viewer] }
         createdAt: { type: string, format: date-time }
+        updatedAt:
+          {
+            type: string,
+            format: date-time,
+            description: "Send back as expectedUpdatedAt when changing the settings",
+          }
         expiresAt: { type: [string, "null"], format: date-time }
         secondsRemaining: { type: [integer, "null"] }
         expired: { type: boolean }

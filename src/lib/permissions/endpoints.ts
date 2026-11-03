@@ -57,6 +57,7 @@ export const ENDPOINTS: Record<string, EndpointRule> = {
   "GET /organizations": { who: "signed-in" },
   "POST /organizations": { who: "registered" },
   "GET /organizations/{id}": { who: "member-of-path" },
+  "PATCH /organizations/{id}": { who: "org", action: "org.settings.update" },
   "GET /quotes": read,
   "POST /quotes": quoteWrite,
   "GET /quotes/{id}": read,
