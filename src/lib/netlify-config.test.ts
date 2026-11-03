@@ -15,6 +15,11 @@ describe("netlify.toml", () => {
     expect(toml).toMatch(new RegExp(`NODE_VERSION\\s*=\\s*"${nvmrc}"`));
   });
 
+  it("holds no environment values at all: they live in the Netlify dashboard, per deploy context", () => {
+    expect(toml).not.toMatch(/\[context\./);
+    expect(toml).not.toMatch(/NEXT_PUBLIC_/);
+  });
+
   it("contains only placeholder public values, never secrets", () => {
     const assignments = [...toml.matchAll(/^\s*([A-Z0-9_]+)\s*=\s*"([^"]*)"/gm)].map((m) => [
       m[1],

@@ -6,13 +6,13 @@ Production origin (PRD 10.2): `https://opsdesk.sitelaunch.dev`, hosted on Netlif
 
 ## What the repository already provides
 
-| Piece                          | Where                                                                                          | What it does                                                                                                                                                                                              |
-| ------------------------------ | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build settings                 | `netlify.toml`                                                                                 | `npm run build`, Node 24 (same as `.nvmrc`). No publish directory: Netlify's automatic Next.js runtime handles it.                                                                                        |
-| Preview placeholders           | `netlify.toml` (`[context.deploy-preview.environment]`, `[context.branch-deploy.environment]`) | Placeholder public Supabase values so previews start before a test project exists. Not real credentials.                                                                                                  |
-| No indexing outside production | `src/proxy.ts`, `src/lib/robots.ts`, `next.config.ts`                                          | Every response from a deploy where Netlify's `CONTEXT` is not `production` carries `X-Robots-Tag: noindex, nofollow`. `CONTEXT` is a build-time variable, so `next.config.ts` inlines it into the bundle. |
-| Production origin guard        | `src/lib/env/schema.ts`                                                                        | With `CONTEXT=production` the server refuses to start unless `NEXT_PUBLIC_APP_URL` is exactly `https://opsdesk.sitelaunch.dev`.                                                                           |
-| Startup env check              | `src/instrumentation.ts`                                                                       | A missing or malformed required variable stops the server with a readable message.                                                                                                                        |
+| Piece                          | Where                                                 | What it does                                                                                                                                                                                              |
+| ------------------------------ | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build settings                 | `netlify.toml`                                        | `npm run build`, Node 24 (same as `.nvmrc`). No publish directory: Netlify's automatic Next.js runtime handles it.                                                                                        |
+| Environment values             | the Netlify dashboard (per deploy context)            | `netlify.toml` holds none. Production uses the production Supabase project; Deploy Previews and Branch deploys use the separate test project (SIT-274).                                                   |
+| No indexing outside production | `src/proxy.ts`, `src/lib/robots.ts`, `next.config.ts` | Every response from a deploy where Netlify's `CONTEXT` is not `production` carries `X-Robots-Tag: noindex, nofollow`. `CONTEXT` is a build-time variable, so `next.config.ts` inlines it into the bundle. |
+| Production origin guard        | `src/lib/env/schema.ts`                               | With `CONTEXT=production` the server refuses to start unless `NEXT_PUBLIC_APP_URL` is exactly `https://opsdesk.sitelaunch.dev`.                                                                           |
+| Startup env check              | `src/instrumentation.ts`                              | A missing or malformed required variable stops the server with a readable message.                                                                                                                        |
 
 Verified locally (see `docs/PROGRESS.md`): a build with `CONTEXT=deploy-preview` sends `noindex` on every route even when `CONTEXT` is absent at runtime; a build with `CONTEXT=production` sends none; `CONTEXT=production` with the default `NEXT_PUBLIC_APP_URL` fails to start.
 
@@ -22,7 +22,7 @@ Verified locally (see `docs/PROGRESS.md`): a build with `CONTEXT=deploy-preview`
 2. Enable Deploy Previews for pull requests (Site configuration, Build and deploy, Branches and deploy contexts).
 3. Environment variables (Site configuration, Environment variables). Names only here; values go in the dashboard, never in the repository:
    - Production context, set in SIT-272: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_APP_URL` (`https://opsdesk.sitelaunch.dev`), `NEXT_PUBLIC_GITHUB_REPO_URL`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `SUPABASE_SECRET_KEY`, `TURNSTILE_SECRET_KEY`.
-   - Previews need nothing extra for the M0 shell: `netlify.toml` supplies placeholder public values.
+   - Deploy Previews and Branch deploys: the same variable names with the **test** project's values (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = Cloudflare's always-pass test key); never the production values.
 4. Trigger a deploy and record the assigned hostname below.
 
 ## Records (fill in only after verifying)
