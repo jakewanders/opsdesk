@@ -88,6 +88,15 @@ for (const theme of ["light", "dark"] as const) {
       ["/app/settings", "h1"],
       ["/app/quotes", "h1"],
       ["/app/reports", "h1"],
+      ["/app/quotes/new", "form"],
+      ["/app/customers/import", "h1"],
+      ["/app/opportunities/new", "form"],
+      [`/app/opportunities/${oid}/edit`, "form"],
+      ["/app/settings/members", "h1"],
+      ["/app/settings/organization", "h1"],
+      ["/app/settings/billing", "h1"],
+      ["/app/settings/integrations", "h1"],
+      ["/app/workspaces", "h1"],
     ] as const)
       await scan(p, r);
     // the surfaces that open on top of a page

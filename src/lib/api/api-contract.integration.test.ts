@@ -275,7 +275,9 @@ function fillToCap(
   );
   const n = capOf(capKey) - have;
   if (n <= 0) return;
-  const customer = psql(`select id from public.customers where organization_id = '${org}' limit 1`);
+  const customer = psql(
+    `select id from public.customers where organization_id = '${org}' and archived_at is null order by created_at, id limit 1`,
+  );
   const sql: Record<string, string> = {
     customers: `insert into public.customers (organization_id, display_name) select '${org}', 'Cap fill ' || i from generate_series(1, ${n}) i`,
     opportunities: `insert into public.opportunities (organization_id, customer_id, title) select '${org}', '${customer}', 'Cap fill ' || i from generate_series(1, ${n}) i`,
@@ -654,7 +656,7 @@ const capProbe =
     const { g, org } = await bootedGuest();
     fillToCap(org, entity, capKey, g.id);
     const customer = psql(
-      `select id from public.customers where organization_id = '${org}' limit 1`,
+      `select id from public.customers where organization_id = '${org}' and archived_at is null order by created_at, id limit 1`,
     );
     return post(g, org, path, body(customer));
   };

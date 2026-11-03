@@ -1188,6 +1188,37 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-09 — Accessibility audit: axe, Lighthouse and the manual pass (done for everything that can be automated; parent SIT-145)
+
+- **axe (WCAG 2.2 AA, real browser, both themes):** `e2e/accessibility.spec.ts` now scans **29 pages and the task drawer** in light and in dark: the 7 public pages, and signed in as a guest the dashboard, customers (list, detail, new, edit, import), the pipeline (list, board, detail, new, edit), tasks, activity, quotes (list, new), reports, workspaces and four settings pages. **0 violations in both themes** (added this issue: new quote, import, opportunity edit, members, organization, billing, integrations, workspaces).
+- **Lighthouse 12.6.1** (`LIGHTHOUSE=1 node scripts/e2e.mjs e2e/lighthouse.spec.ts --project=desktop`; headless Chrome for Testing, the local production build, the guest session sent as a cookie; desktop preset and the default phone preset with simulated throttling; one run per page, 6.5 min). Real, local-machine numbers (accessibility / performance / best practices / SEO). The raw file is `test-results/lighthouse.json` (not committed).
+
+| Page                            | Desktop a11y / perf / BP / SEO | Desktop LCP, CLS | Phone a11y / perf / BP / SEO | Phone LCP, CLS |
+| ------------------------------- | ------------------------------ | ---------------- | ---------------------------- | -------------- |
+| `/`                             | 100 / 100 / 100 / 100          | 0.6 s, 0         | 100 / 97 / 100 / 100         | 2.7 s, 0       |
+| `/login`                        | 100 / 100 / 100 / 100          | 0.6 s, 0         | 100 / 96 / 100 / 100         | 2.7 s, 0.002   |
+| `/signup`                       | 100 / 100 / 100 / 100          | 0.6 s, 0         | 100 / 97 / 100 / 100         | 2.7 s, 0.002   |
+| `/privacy`                      | 100 / 100 / 100 / 100          | 0.6 s, 0         | 100 / 97 / 100 / 100         | 2.7 s, 0       |
+| `/terms`                        | 100 / 100 / 100 / 100          | 0.6 s, 0         | 100 / 97 / 100 / 100         | 2.7 s, 0       |
+| `/app`                          | 100 / 96 / 100 / 100           | 1.1 s, 0.092     | 100 / 77 / 100 / 100         | 4.7 s, 0       |
+| `/app/customers`                | 100 / 100 / 100 / 100          | 0.8 s, 0         | 100 / 85 / 100 / 100         | 4.1 s, 0       |
+| `/app/customers/:id`            | 100 / 99 / 100 / 100           | 0.9 s, 0         | 100 / 85 / 100 / 100         | 4.2 s, 0       |
+| `/app/opportunities?view=list`  | 100 / 99 / 100 / 100           | 0.8 s, 0.001     | 100 / 86 / 100 / 100         | 3.5 s, 0.003   |
+| `/app/opportunities?view=board` | 100 / 100 / 100 / 100          | 0.7 s, 0.001     | 100 / 86 / 100 / 100         | 3.8 s, 0       |
+| `/app/opportunities/:id`        | 100 / 100 / 100 / 100          | 0.8 s, 0         | 100 / 90 / 100 / 100         | 3.4 s, 0       |
+| `/app/tasks`                    | 100 / 99 / 100 / 100           | 0.8 s, 0         | 100 / 83 / 100 / 100         | 4.1 s, 0       |
+| `/app/quotes`                   | 100 / 99 / 100 / 100           | 0.9 s, 0.001     | 100 / 86 / 100 / 100         | 4.1 s, 0.004   |
+| `/app/quotes/:id`               | 100 / 100 / 100 / 100          | 0.8 s, 0         | 100 / 88 / 100 / 100         | 3.9 s, 0       |
+| `/app/reports`                  | 100 / 99 / 100 / 100           | 1.0 s, 0         | 100 / 77 / 100 / 100         | 4.9 s, 0       |
+| `/app/activity`                 | 100 / 99 / 100 / 100           | 0.7 s, 0.057     | 100 / 88 / 100 / 100         | 3.8 s, 0.038   |
+| `/app/settings/members`         | 100 / 100 / 100 / 100          | 0.7 s, 0         | 100 / 93 / 100 / 100         | 3.1 s, 0       |
+
+- **Accessibility is 100 on all 34 page and preset runs, with no failing accessibility audit.** The target (>= 90) is met everywhere; the spec asserts it. Best practices and SEO are 100 everywhere.
+- **Performance is recorded, not asserted** (local machine, simulated throttling, not a hosted measurement). Desktop 96 to 100. On the phone preset the public pages are 96 to 97 and the app pages 77 to 93; the lowest are the dashboard and reports (77), which draw charts, with LCP 4.7 s and 4.9 s under the phone throttling. These are not tuned here; the phone-preset LCP above 2.5 s on app pages is a known cost of client-rendered data screens under 4x CPU throttling and is carried to P-10 (performance verification), which measures the PRD targets.
+- **Manual pass:** the keyboard-only walkthroughs, focus order and visible focus rings in both themes, the skip link and dialog focus handling are automated in `e2e/accessibility.spec.ts` (SIT-261). **A VoiceOver run was not done** (it needs a person at a Mac); it stays an optional item for you, and nothing here claims it.
+- **Accepted exceptions:** none.
+- **A flake found and fixed on the way:** the API contract test for `POST /quotes` 429 picked "the first customer" of the demo with an unordered `limit 1`; when that was an archived seed customer the request answered 422 instead of 429 (it failed once in a full run, then passed on re-run). Both queries now take the oldest non-archived customer. Three consecutive runs of that file and one full `npm run check` (all 10 steps) passed afterwards.
+
 ### P-08 — Playwright E2E scenarios 7 to 10 (done locally; the CI run is P-12; parent SIT-145)
 
 - `npm run test:e2e:scenarios-7-10` (desktop and phone projects): **21 passed** (2.6 min). Scenarios 7 (quotes: totals, send, revision, PDF; demo watermark) and 8 (CSV preview with exact errors, import summary, repeat adds nothing), and scenario 9 (375 px navigation in `mobile.spec.ts`; the keyboard-only stage move in `accessibility.spec.ts`) were written with their features. Their map is in `docs/TEST_MAP.md`.
