@@ -59,7 +59,9 @@ test("sign-up link already used or expired: the sign-in page explains it instead
   // what the app does with the visit: no code means no sign-in, so it goes to /login
   const res = await page.goto("/auth/callback");
   expect(res?.url()).toMatch(/\/login\?error=callback$/);
-  await expect(page.getByRole("alert")).toContainText("That link is invalid or has expired");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "That link is invalid or has expired" }),
+  ).toBeVisible();
   // what Supabase's verify endpoint adds to the address when the one-time token was already consumed
   await page.goto(
     "/login?error=callback#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired",
@@ -94,8 +96,8 @@ test("reset password after a deploy: the stale Server Action is explained, nothi
   });
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.getByLabel("New password", { exact: true }).fill("a-long-enough-pass");
-  await page.getByLabel("Repeat new password").fill("a-long-enough-pass");
+  await page.locator("#new-password").fill("a-long-enough-pass");
+  await page.locator("#confirm-password").fill("a-long-enough-pass");
   await page.getByRole("button", { name: "Save new password" }).click();
   await expect(
     page.getByText(/OpsDesk was updated while this page was open/).first(),
@@ -106,8 +108,8 @@ test("reset password after a deploy: the stale Server Action is explained, nothi
   // a reload gives a page of the current build, and the real action then runs
   missing = false;
   await page.reload();
-  await page.getByLabel("New password", { exact: true }).fill("a-long-enough-pass");
-  await page.getByLabel("Repeat new password").fill("a-long-enough-pass");
+  await page.locator("#new-password").fill("a-long-enough-pass");
+  await page.locator("#confirm-password").fill("a-long-enough-pass");
   await page.getByRole("button", { name: "Save new password" }).click();
   await expect(page).not.toHaveURL(/\/reset-password$/, { timeout: 20_000 });
 });

@@ -155,6 +155,10 @@ test("a task edited in two sessions, and the workspace settings, use the same di
   await expect(dialog).toContainText("Changed by you: Title.");
   await expect(dialog).toHaveCSS("opacity", "1");
   await expect(dialog.getByRole("button", { name: "Reload latest" })).toBeEnabled();
+  // The mouse is still over the Save button that was just clicked: its hover colour fades in, and axe measured it mid-fade on a slow
+  // runner. Move the pointer away and let the transition finish before the contrast check.
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(500);
   expect(await axeViolations(page)).toEqual([]);
   await dialog.getByRole("button", { name: "Apply my changes on top" }).click();
   await expect(drawer.getByLabel(/^Priority/)).toHaveValue("urgent");
