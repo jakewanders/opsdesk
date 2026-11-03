@@ -54,9 +54,45 @@ jobs:
       - name: Client bundle secret scan
         run: npm run check:bundle
 
-  # Added by later issues. Kept as comments so the required-check list stays accurate.
+  # The database, RLS and API suites (P-11). A throwaway Supabase stack runs inside this job (Docker is on the runner):
+  # nothing here can reach a hosted project, and no secret is read. The keys the tests use are the ones the local CLI prints
+  # for its own disposable stack. A broken policy fails `test:db` (the pgTAP suites) or `test:integration` (real HTTP).
+  database:
+    name: Database, RLS and API integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (lockfile only)
+        run: npm ci
+
+      - name: Start the local Supabase stack
+        run: npm run db:start
+
+      - name: pgTAP tests (RLS, grants, definer functions)
+        run: npm run test:db
+
+      - name: Build (the integration tests start the production build)
+        run: npm run build
+
+      - name: API integration tests (real HTTP against the local stack)
+        run: npm run test:integration
+
+      - name: Local stack logs on failure
+        if: failure()
+        run: docker ps --format '{{.Names}}\t{{.Status}}'
+
+      - name: Stop the stack
+        if: always()
+        run: npm run db:stop -- --no-backup
+
+  # Added by a later issue. Kept as a comment so the required-check list stays accurate.
   #
-  # database:   ephemeral local Supabase (`supabase start`), `npm run test:db`, API integration
-  #             tests. Needs the pgTAP harness (SIT-197) and the CI extension issue (P-11).
   # e2e:        Playwright against a deploy preview or a local container with a TEST Supabase
   #             project. Never against production. (P-12)

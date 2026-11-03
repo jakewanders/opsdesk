@@ -1189,6 +1189,13 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-11 — Extend CI: database, RLS and integration tests (done; the push result is below; parent SIT-146)
+
+- `.github/workflows/ci.yml` gained the job **"Database, RLS and API integration tests"**: `npm run db:start` (a throwaway local Supabase stack in Docker on the runner), `npm run test:db` (pgTAP), `npm run build`, `npm run test:integration`, then `db:stop --no-backup` (always). The existing job keeps lint, format, types, the environment-name guard, unit tests, the build and the client-bundle secret scan.
+- **No secrets, no production credentials:** the workflow reads the repository only, has no `secrets.` reference and names no hosted address. `src/lib/ci-workflow.test.ts` (5 tests) checks that from the file; a mutation run (adding `secrets.X` and a write scope) failed 2 of its tests and the restored file passes 5 of 5.
+- `docs/CI.md` documents the jobs, the required checks (to be set by you in branch protection) and the secret rule.
+- **Not verified here:** "a PR with a broken policy fails CI". The same suites fail on a broken policy locally (the mutation runs under P-04: 16 of 16 caught), but I did not open a pull request with a deliberately broken policy, so I do not claim the red CI run. The actual first run of the new job is recorded in the commit's CI result below.
+
 ### P-10 — Performance verification against the PRD §11.6 targets (done; parent SIT-145)
 
 - **Method:** `PERF=1 node scripts/e2e.mjs e2e/performance.spec.ts --project=desktop` (off by default). One workspace with **10,000 customers, 10,000 opportunities and 10,000 tasks** (bulk-inserted with the user triggers off, then `analyze`), the local production build (`next start`) and the local Supabase database, on this Mac. **Warm:** 3 uncounted warm-up calls per series, then 40 timed calls over real HTTP as the workspace owner (cookie session, RLS applied); browser timings are after one uncounted load. Local numbers: cold starts, provider pauses and network distance are excluded and a hosted run will differ.
