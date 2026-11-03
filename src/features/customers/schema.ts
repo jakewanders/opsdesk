@@ -2,10 +2,12 @@ import { z } from "zod";
 import { expectedUpdatedAtField } from "@/lib/api/concurrency";
 import {
   choice,
+  isoDate,
   listQuery,
   optionalMultiLine,
   optionalSingleLine,
   singleLine,
+  tagFilter,
   tags,
   url,
   uuid,
@@ -103,7 +105,18 @@ export const customerListQuery = listQuery({
   sortable: CUSTOMER_SORTS,
   defaultSort: "updated_at",
   defaultOrder: "desc",
+  ranges: [
+    ["createdFrom", "createdTo"],
+    ["updatedFrom", "updatedTo"],
+  ],
   filters: {
+    /** Has ALL of these tags: one to five, separated by commas, exact text as stored. */
+    tags: tagFilter().optional(),
+    /** Created / last changed between these days, both included, in the workspace's time zone. */
+    createdFrom: isoDate().optional(),
+    createdTo: isoDate().optional(),
+    updatedFrom: isoDate().optional(),
+    updatedTo: isoDate().optional(),
     /** Search text over name, company and e-mail (partial, case-insensitive). */
     q: singleLine(100).optional(),
     status: choice(CUSTOMER_STATUSES).optional(),

@@ -10,7 +10,7 @@ select is((select relrowsecurity from pg_class where oid = 'public.customers'::r
 select is((select count(*) from pg_constraint where conrelid = 'public.customers'::regclass and conname = 'customers_org_id_key' and contype = 'u'), 1::bigint, 'unique (organization_id, id) exists for composite foreign keys');
 select is((select count(*) from pg_constraint where conrelid = 'public.customers'::regclass and contype = 'u' and pg_get_constraintdef(oid) ilike '%email%'), 0::bigint, 'email is not unique (a duplicate is only a warning)');
 select is((select array_agg(indexname::text order by indexname) from pg_indexes where schemaname = 'public' and tablename = 'customers'),
-  array['customers_org_archived_updated_idx', 'customers_org_assigned_idx', 'customers_org_id_key', 'customers_org_status_idx', 'customers_pkey', 'customers_search_trgm_idx'], 'the list, status, assignee and trigram search indexes exist');
+  array['customers_org_archived_updated_idx', 'customers_org_assigned_idx', 'customers_org_created_idx', 'customers_org_id_key', 'customers_org_status_idx', 'customers_pkey', 'customers_search_trgm_idx'], 'the list, status, assignee, created and trigram search indexes exist');
 select is((select indexdef like '%(organization_id, archived_at, updated_at DESC)' from pg_indexes where indexname = 'customers_org_archived_updated_idx'), true, 'the list index is newest first per organization');
 select is((select indexdef like '%gin_trgm_ops%' from pg_indexes where indexname = 'customers_search_trgm_idx'), true, 'the search index is a trigram index');
 

@@ -15,7 +15,7 @@ insert into public.opportunities (id, organization_id, customer_id, title) value
 select has_table('public', 'tasks', 'the table exists');
 select is((select relrowsecurity from pg_class where oid = 'public.tasks'::regclass), true, 'row level security is on');
 select is((select count(*) from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_org_id_key' and contype = 'u'), 1::bigint, 'unique (organization_id, id) exists');
-select is((select count(*) from pg_indexes where schemaname = 'public' and tablename = 'tasks' and indexname in ('tasks_org_status_due_idx', 'tasks_org_assigned_idx')), 2::bigint, 'the (org, status, due date) and (org, assignee) indexes exist');
+select is((select count(*) from pg_indexes where schemaname = 'public' and tablename = 'tasks' and indexname in ('tasks_org_status_due_idx', 'tasks_org_assigned_idx', 'tasks_org_due_idx')), 3::bigint, 'the (org, status, due date) and (org, assignee) indexes exist');
 select is((select string_agg(privilege_type, ',' order by privilege_type) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'tasks' and grantee = 'authenticated'), 'INSERT,SELECT,UPDATE', 'authenticated may select, insert and update, never delete');
 select is((select count(*) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'tasks' and grantee in ('anon', 'PUBLIC')), 0::bigint, 'anon holds nothing');
 

@@ -101,7 +101,14 @@ export const quoteListQuery = listQuery({
   sortable: QUOTE_SORTS,
   defaultSort: "updated_at",
   defaultOrder: "desc",
+  ranges: [
+    ["issueFrom", "issueTo"],
+    ["validFrom", "validTo"],
+  ],
   filters: {
+    /** Valid-until date range, both ends included. Quotes with no end date never match. */
+    validFrom: isoDate().optional(),
+    validTo: isoDate().optional(),
     /** Search text over the quote number and title (partial, case-insensitive). */
     q: singleLine(100).optional(),
     status: choice(QUOTE_STATUSES).optional(),

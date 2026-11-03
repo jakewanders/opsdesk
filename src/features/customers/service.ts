@@ -30,7 +30,7 @@ export type ApiWarning = { code: string; field?: string; message: string; custom
 /** Everyone who can read the workspace can list its customers (the permission module still decides). */
 export async function listForOrg(supabase: Client, ctx: OrgContext, query: CustomerListQuery) {
   assertCan(ctx.role, ctx.kind, "records.read");
-  return listCustomers(supabase, ctx.org.id, query);
+  return listCustomers(supabase, ctx.org.id, query, ctx.org.timezone);
 }
 
 /**

@@ -158,6 +158,36 @@ paths:
             in: query,
             schema: { type: string, enum: ["false", "true", all], default: "false" },
           }
+        - {
+            name: tags,
+            in: query,
+            schema: { type: string, maxLength: 200 },
+            description: "Has ALL of these tags: one to five, comma separated, exact text. More than five, an invalid tag, or HTML is 422.",
+          }
+        - {
+            name: createdFrom,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Created on or after this day, in the workspace's time zone.",
+          }
+        - {
+            name: createdTo,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Created on or before this day (the whole day is included). Before createdFrom is 422.",
+          }
+        - {
+            name: updatedFrom,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Last changed on or after this day, in the workspace's time zone.",
+          }
+        - {
+            name: updatedTo,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Last changed on or before this day. Before updatedFrom is 422.",
+          }
       responses:
         "200":
           description: Customers with `meta.page`, `limit`, `total`, `totalPages` (a page past the end is empty with the real total)
@@ -617,6 +647,18 @@ paths:
             in: query,
             schema: { type: string, enum: ["false", "true", all], default: "false" },
           }
+        - {
+            name: amountMin,
+            in: query,
+            schema: { type: integer, minimum: 0, maximum: 99999999999 },
+            description: "Amount in whole cents, at least this much (included).",
+          }
+        - {
+            name: amountMax,
+            in: query,
+            schema: { type: integer, minimum: 0, maximum: 99999999999 },
+            description: "Amount in whole cents, at most this much (included). Below amountMin is 422.",
+          }
       responses:
         "200":
           description: Opportunities. `meta` has `page`, `limit`, `total`, `totalPages` and, for the whole filtered set, `stageTotals` (count and cents for every stage), `openPipelineCents`, `weightedPipelineCents` and `aggregatesComplete`.
@@ -946,6 +988,18 @@ paths:
             name: archived,
             in: query,
             schema: { type: string, enum: ["false", "true", all], default: "false" },
+          }
+        - {
+            name: dueFrom,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Due on or after this day (calendar date). Tasks with no due date never match.",
+          }
+        - {
+            name: dueTo,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Due on or before this day. Before dueFrom is 422.",
           }
       responses:
         "200":
@@ -1685,6 +1739,18 @@ paths:
         - { name: issueFrom, in: query, schema: { type: string, format: date } }
         - { name: issueTo, in: query, schema: { type: string, format: date } }
         - { name: archived, in: query, schema: { type: string, enum: ["false", "true", all] } }
+        - {
+            name: validFrom,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Valid until on or after this day. Quotes with no end date never match.",
+          }
+        - {
+            name: validTo,
+            in: query,
+            schema: { type: string, format: date },
+            description: "Valid until on or before this day. Before validFrom is 422.",
+          }
       responses:
         "200":
           description: A page of quotes with `meta.page`, `limit`, `total`, `totalPages`

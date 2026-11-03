@@ -71,6 +71,8 @@ function applyFilters<T extends Filterable>(
   if (query.customerId) r = r.eq("customer_id", query.customerId) as T;
   if (query.closeFrom) r = r.gte("expected_close_date", query.closeFrom) as T;
   if (query.closeTo) r = r.lte("expected_close_date", query.closeTo) as T;
+  if (query.amountMin !== undefined) r = r.gte("amount_cents", query.amountMin) as T;
+  if (query.amountMax !== undefined) r = r.lte("amount_cents", query.amountMax) as T;
   if (query.q) {
     const pattern = orValue(`%${escapeLike(query.q.toLowerCase())}%`);
     const parts = [`title.ilike.${pattern}`];

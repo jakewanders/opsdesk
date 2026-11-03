@@ -236,3 +236,14 @@ describe("service permissions", () => {
     return parseQuery(customerListQuery, "");
   }
 });
+
+describe("pgTextArray (tag filter literal)", () => {
+  it("quotes and escapes every element so tag text is data, not array syntax", async () => {
+    const { pgTextArray } = await import("./repository");
+    expect(pgTextArray(["vip"])).toBe('{"vip"}');
+    expect(pgTextArray(["a", "b"])).toBe('{"a","b"}');
+    expect(pgTextArray(['a"b'])).toBe('{"a\\"b"}');
+    expect(pgTextArray(["a\\b"])).toBe('{"a\\\\b"}');
+    expect(pgTextArray(["x,y", "{z}"])).toBe('{"x,y","{z}"}');
+  });
+});

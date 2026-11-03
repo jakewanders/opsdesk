@@ -13,7 +13,7 @@ select has_table('public', 'opportunities', 'the table exists');
 select is((select relrowsecurity from pg_class where oid = 'public.opportunities'::regclass), true, 'row level security is on');
 select is((select count(*) from pg_constraint where conrelid = 'public.opportunities'::regclass and conname = 'opportunities_org_id_key' and contype = 'u'), 1::bigint, 'unique (organization_id, id) exists');
 select is((select array_agg(indexname::text order by indexname) from pg_indexes where schemaname = 'public' and tablename = 'opportunities'),
-  array['opportunities_org_archived_updated_idx', 'opportunities_org_close_date_idx', 'opportunities_org_customer_idx', 'opportunities_org_id_key', 'opportunities_org_stage_archived_idx', 'opportunities_pkey'], 'the stage, customer, close-date and list indexes exist');
+  array['opportunities_org_amount_idx', 'opportunities_org_archived_updated_idx', 'opportunities_org_close_date_idx', 'opportunities_org_customer_idx', 'opportunities_org_id_key', 'opportunities_org_stage_archived_idx', 'opportunities_pkey'], 'the stage, customer, close-date and list indexes exist');
 select is((select string_agg(privilege_type, ',' order by privilege_type) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'opportunities' and grantee = 'authenticated'), 'INSERT,SELECT,UPDATE', 'authenticated may select, insert and update, never delete');
 select is((select count(*) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'opportunities' and grantee in ('anon', 'PUBLIC')), 0::bigint, 'anon holds nothing');
 

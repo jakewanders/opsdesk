@@ -29,26 +29,48 @@ const SORT_COLUMN = {
 /** A value inside a PostgREST `or=(...)` filter: double-quoted, with `\` and `"` escaped, so commas and parentheses are text. */
 const orValue = (text: string) => `"${text.replace(/[\\"]/g, (c) => `\\${c}`)}"`;
 
+type Filterable = {
+  eq(column: string, value: unknown): unknown;
+  is(column: string, value: null): unknown;
+  not(column: string, operator: string, value: unknown): unknown;
+  gte(column: string, value: unknown): unknown;
+  lte(column: string, value: unknown): unknown;
+  or(filters: string): unknown;
+};
+
+/** Every filter of the list query, applied the same way to the page and to the count. Parameterized only. */
+function applyListFilters<T extends Filterable>(
+  request: T,
+  orgId: string,
+  query: QuoteListQuery,
+): T {
+  let r = request.eq("organization_id", orgId) as T;
+  if (query.archived === "false") r = r.is("archived_at", null) as T;
+  else if (query.archived === "true") r = r.not("archived_at", "is", null) as T;
+  if (query.status) r = r.eq("status", query.status) as T;
+  if (query.customerId) r = r.eq("customer_id", query.customerId) as T;
+  if (query.opportunityId) r = r.eq("opportunity_id", query.opportunityId) as T;
+  if (query.issueFrom) r = r.gte("issue_date", query.issueFrom) as T;
+  if (query.issueTo) r = r.lte("issue_date", query.issueTo) as T;
+  if (query.validFrom) r = r.gte("valid_until", query.validFrom) as T;
+  if (query.validTo) r = r.lte("valid_until", query.validTo) as T;
+  if (query.q) {
+    const pattern = orValue(`%${escapeLike(query.q.toLowerCase())}%`);
+    r = r.or(`quote_number.ilike.${pattern},title.ilike.${pattern}`) as T;
+  }
+  return r;
+}
+
 export async function listQuotes(
   supabase: Client,
   orgId: string,
   query: QuoteListQuery,
 ): Promise<{ items: QuoteDto[]; meta: ReturnType<typeof paginate>["meta"] }> {
-  let request = supabase
-    .from("quotes")
-    .select(QUOTE_COLUMNS, { count: "exact" })
-    .eq("organization_id", orgId);
-  if (query.archived === "false") request = request.is("archived_at", null);
-  else if (query.archived === "true") request = request.not("archived_at", "is", null);
-  if (query.status) request = request.eq("status", query.status);
-  if (query.customerId) request = request.eq("customer_id", query.customerId);
-  if (query.opportunityId) request = request.eq("opportunity_id", query.opportunityId);
-  if (query.issueFrom) request = request.gte("issue_date", query.issueFrom);
-  if (query.issueTo) request = request.lte("issue_date", query.issueTo);
-  if (query.q) {
-    const pattern = orValue(`%${escapeLike(query.q.toLowerCase())}%`);
-    request = request.or(`quote_number.ilike.${pattern},title.ilike.${pattern}`);
-  }
+  const request = applyListFilters(
+    supabase.from("quotes").select(QUOTE_COLUMNS, { count: "exact" }),
+    orgId,
+    query,
+  );
   const { from, to } = paginate(query, 0);
   const { data, error, count } = await request
     .order(SORT_COLUMN[query.sort], { ascending: query.order === "asc", nullsFirst: false })
@@ -56,7 +78,16 @@ export async function listQuotes(
     .range(from, to);
   if (error) {
     // A page past the end is an empty page, not an error.
-    if (error.code === "PGRST103") return { items: [], meta: paginate(query, 0).meta };
+    if (error.code === "PGRST103") {
+      // a page past the end is empty, and the total is still the real one
+      const { count: total, error: countError } = await applyListFilters(
+        supabase.from("quotes").select("id", { count: "exact", head: true }),
+        orgId,
+        query,
+      );
+      if (countError) throw countError;
+      return { items: [], meta: paginate(query, total ?? 0).meta };
+    }
     throw error;
   }
   return {

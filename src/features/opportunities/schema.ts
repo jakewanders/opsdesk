@@ -10,6 +10,7 @@ import {
   optionalMultiLine,
   singleLine,
   uuid,
+  centsParam,
 } from "@/lib/validation";
 
 /** Blank or missing becomes null; otherwise the inner schema decides. */
@@ -104,7 +105,14 @@ export const opportunityListQuery = listQuery({
   sortable: OPPORTUNITY_SORTS,
   defaultSort: "updated_at",
   defaultOrder: "desc",
+  ranges: [
+    ["closeFrom", "closeTo"],
+    ["amountMin", "amountMax"],
+  ],
   filters: {
+    /** Amount between these two values in whole cents, both included. */
+    amountMin: centsParam("amountMin").optional(),
+    amountMax: centsParam("amountMax").optional(),
     /** Search text over the deal title and its customer's name (partial, case-insensitive). */
     q: singleLine(100).optional(),
     stage: choice(STAGES).optional(),

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { updateIfCurrent } from "@/lib/api/concurrency";
+import { dayRangeBounds } from "@/lib/domain/day-range";
 import { paginate } from "@/lib/validation";
 import type { Database } from "@/lib/supabase/database.types";
 import {
@@ -28,26 +29,64 @@ export function escapeLike(text: string): string {
 }
 
 /**
+ * A Postgres text-array literal with every element quoted and escaped (`{"vip","a\"b"}`), so tag text with commas, quotes, braces or
+ * backslashes is data and not array syntax. (The client library's own `contains` joins the elements unquoted.)
+ */
+export function pgTextArray(values: readonly string[]): string {
+  return `{${values.map((v) => `"${v.replace(/[\\"]/g, (c) => `\\${c}`)}"`).join(",")}}`;
+}
+
+type Filterable = {
+  eq(column: string, value: unknown): unknown;
+  is(column: string, value: null): unknown;
+  not(column: string, operator: string, value: unknown): unknown;
+  gte(column: string, value: unknown): unknown;
+  lt(column: string, value: unknown): unknown;
+  filter(column: string, operator: string, value: unknown): unknown;
+  ilike(column: string, pattern: string): unknown;
+};
+
+/** Every filter of the list query, applied the same way to the page and to the count. Parameterized only. */
+function applyFilters<T extends Filterable>(
+  request: T,
+  orgId: string,
+  query: CustomerListQuery,
+  timeZone: string,
+): T {
+  let r = request.eq("organization_id", orgId) as T;
+  if (query.archived === "false") r = r.is("archived_at", null) as T;
+  else if (query.archived === "true") r = r.not("archived_at", "is", null) as T;
+  if (query.status) r = r.eq("status", query.status) as T;
+  if (query.source) r = r.eq("source", query.source) as T;
+  if (query.assignedTo) r = r.eq("assigned_to", query.assignedTo) as T;
+  if (query.tags) r = r.filter("tags", "cs", pgTextArray(query.tags)) as T;
+  const created = dayRangeBounds({ from: query.createdFrom, to: query.createdTo }, timeZone);
+  if (created.gte) r = r.gte("created_at", created.gte) as T;
+  if (created.lt) r = r.lt("created_at", created.lt) as T;
+  const updated = dayRangeBounds({ from: query.updatedFrom, to: query.updatedTo }, timeZone);
+  if (updated.gte) r = r.gte("updated_at", updated.gte) as T;
+  if (updated.lt) r = r.lt("updated_at", updated.lt) as T;
+  if (query.q) r = r.ilike("search_text", `%${escapeLike(query.q.toLowerCase())}%`) as T;
+  return r;
+}
+
+/**
  * One page of customers of `orgId`, read with the caller's own session so RLS applies (the explicit organization
- * filter is a second line of defence and keeps the planner on the organization's index). Parameterized only.
+ * filter is a second line of defence and keeps the planner on the organization's index). Parameterized only. `timeZone`
+ * is the workspace's, for the created / updated day ranges.
  */
 export async function listCustomers(
   supabase: Client,
   orgId: string,
   query: CustomerListQuery,
+  timeZone = "UTC",
 ): Promise<{ items: CustomerDto[]; meta: ReturnType<typeof paginate>["meta"] }> {
-  let request = supabase
-    .from("customers")
-    .select(CUSTOMER_COLUMNS, { count: "exact" })
-    .eq("organization_id", orgId);
-
-  if (query.archived === "false") request = request.is("archived_at", null);
-  else if (query.archived === "true") request = request.not("archived_at", "is", null);
-  if (query.status) request = request.eq("status", query.status);
-  if (query.source) request = request.eq("source", query.source);
-  if (query.assignedTo) request = request.eq("assigned_to", query.assignedTo);
-  if (query.q) request = request.ilike("search_text", `%${escapeLike(query.q.toLowerCase())}%`);
-
+  const request = applyFilters(
+    supabase.from("customers").select(CUSTOMER_COLUMNS, { count: "exact" }),
+    orgId,
+    query,
+    timeZone,
+  );
   const { from, to } = paginate(query, 0);
   const { data, error, count } = await request
     .order(SORT_COLUMN[query.sort], { ascending: query.order === "asc" })
@@ -57,7 +96,7 @@ export async function listCustomers(
   if (error) {
     // A page past the end is an empty page, not an error.
     if (error.code === "PGRST103") {
-      const total = await countCustomers(supabase, orgId, query);
+      const total = await countCustomers(supabase, orgId, query, timeZone);
       return { items: [], meta: paginate(query, total).meta };
     }
     throw error;
@@ -72,18 +111,14 @@ async function countCustomers(
   supabase: Client,
   orgId: string,
   query: CustomerListQuery,
+  timeZone: string,
 ): Promise<number> {
-  let request = supabase
-    .from("customers")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", orgId);
-  if (query.archived === "false") request = request.is("archived_at", null);
-  else if (query.archived === "true") request = request.not("archived_at", "is", null);
-  if (query.status) request = request.eq("status", query.status);
-  if (query.source) request = request.eq("source", query.source);
-  if (query.assignedTo) request = request.eq("assigned_to", query.assignedTo);
-  if (query.q) request = request.ilike("search_text", `%${escapeLike(query.q.toLowerCase())}%`);
-  const { count, error } = await request;
+  const { count, error } = await applyFilters(
+    supabase.from("customers").select("id", { count: "exact", head: true }),
+    orgId,
+    query,
+    timeZone,
+  );
   if (error) throw error;
   return count ?? 0;
 }

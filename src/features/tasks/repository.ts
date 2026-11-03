@@ -61,6 +61,8 @@ function applyFilters<T extends Filterable>(request: T, scope: TaskScope, query:
     r = r.gte("due_date", scope.today) as T;
     r = r.lte("due_date", addDays(scope.today, DUE_SOON_DAYS)) as T;
   }
+  if (query.dueFrom) r = r.gte("due_date", query.dueFrom) as T;
+  if (query.dueTo) r = r.lte("due_date", query.dueTo) as T;
   if (query.q) r = r.ilike("title", `%${escapeLike(query.q)}%`) as T;
   return r;
 }

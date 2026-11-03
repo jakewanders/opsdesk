@@ -75,7 +75,11 @@ export const taskListQuery = listQuery({
   sortable: TASK_SORTS,
   defaultSort: "due_date",
   defaultOrder: "asc",
+  ranges: [["dueFrom", "dueTo"]],
   filters: {
+    /** Due between these days (calendar dates), both included. Tasks with no due date never match. */
+    dueFrom: isoDate().optional(),
+    dueTo: isoDate().optional(),
     /** Partial, case-insensitive match on the title. */
     q: singleLine(100).optional(),
     status: choice(TASK_STATUSES).optional(),

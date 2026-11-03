@@ -25,8 +25,15 @@ const positiveInt = (name: string, max: number) =>
 export function listQuery<
   const S extends readonly [string, ...string[]],
   F extends z.ZodRawShape = Record<string, never>,
->(config: { sortable: S; defaultSort: S[number]; defaultOrder?: "asc" | "desc"; filters?: F }) {
-  return z.strictObject({
+>(config: {
+  sortable: S;
+  defaultSort: S[number];
+  defaultOrder?: "asc" | "desc";
+  filters?: F;
+  /** Pairs of filters that bound a range, for example `["closeFrom", "closeTo"]`: when both are given the second must not be before the first (422 on the second). */
+  ranges?: ReadonlyArray<readonly [from: keyof F & string, to: keyof F & string]>;
+}) {
+  const object = z.strictObject({
     page: positiveInt("page", 1_000_000).default(1),
     limit: positiveInt("limit", MAX_LIMIT).default(DEFAULT_LIMIT),
     sort: z
@@ -36,6 +43,20 @@ export function listQuery<
       .enum(["asc", "desc"], { error: "Order must be asc or desc." })
       .default(config.defaultOrder ?? "desc"),
     ...((config.filters ?? {}) as F),
+  });
+  return object.superRefine((value, ctx) => {
+    const v = value as Record<string, unknown>;
+    for (const [from, to] of config.ranges ?? []) {
+      const a = v[from];
+      const b = v[to];
+      if (a !== undefined && b !== undefined && (a as number | string) > (b as number | string)) {
+        ctx.addIssue({
+          code: "custom",
+          path: [to],
+          message: `This must not be before ${from}.`,
+        });
+      }
+    }
   });
 }
 
