@@ -714,3 +714,193 @@ describe("errors never leak SQL", () => {
       );
   });
 });
+
+describe("a forced failure leaves nothing half-done [SIT-267]", () => {
+  const countAll = (table: string, org: string) =>
+    Number(psql(`select count(*) from public.${table} where organization_id = '${org}'`));
+  const nextNumber = (org: string) =>
+    Number(
+      psql(
+        `select coalesce((select next_number from public.quote_sequences where organization_id = '${org}'), 1)`,
+      ),
+    );
+  const install = () => {
+    psql(
+      `create or replace function public.zz_quote_boom() returns trigger language plpgsql as $$ begin if new.description = 'FORCE FAIL' then raise exception 'forced failure'; end if; return new; end $$`,
+    );
+    psql(
+      `create trigger zz_quote_boom before insert on public.quote_items for each row execute function public.zz_quote_boom()`,
+    );
+  };
+  const remove = () => {
+    psql(`drop trigger if exists zz_quote_boom on public.quote_items`);
+    psql(`drop function if exists public.zz_quote_boom()`);
+  };
+
+  it("a create that fails on its second line leaves no quote, no line, no event, and the number is not consumed", async () => {
+    const before = {
+      quotes: countAll("quotes", orgA),
+      items: countAll("quote_items", orgA),
+      events: Number(
+        psql(
+          `select count(*) from public.activity_events where organization_id = '${orgA}' and entity_type = 'quote'`,
+        ),
+      ),
+      next: nextNumber(orgA),
+    };
+    install();
+    try {
+      const res = await call(
+        owner,
+        "POST",
+        "/quotes",
+        draft({
+          title: "Forced failure create",
+          discountCents: 0,
+          items: [
+            { description: "Fine line", quantity: 1, unitPriceCents: 100 },
+            { description: "FORCE FAIL", quantity: 1, unitPriceCents: 100 },
+          ],
+        }),
+      );
+      expect(res.status).toBe(500);
+      expect(JSON.stringify(await body(res))).not.toMatch(
+        /quote_items|zz_quote_boom|forced failure/i,
+      );
+    } finally {
+      remove();
+    }
+    expect(countAll("quotes", orgA)).toBe(before.quotes);
+    expect(countAll("quote_items", orgA)).toBe(before.items);
+    expect(
+      Number(
+        psql(
+          `select count(*) from public.activity_events where organization_id = '${orgA}' and entity_type = 'quote'`,
+        ),
+      ),
+    ).toBe(before.events);
+    expect(
+      Number(
+        psql(
+          `select count(*) from public.quotes where organization_id = '${orgA}' and title = 'Forced failure create'`,
+        ),
+      ),
+    ).toBe(0);
+    expect(nextNumber(orgA)).toBe(before.next); // no gap, no corruption
+    const next = (
+      await body(await call(owner, "POST", "/quotes", draft({ title: "After the failure" })))
+    ).data;
+    expect(next.quoteNumber).toBe(`Q-${String(before.next).padStart(6, "0")}`);
+  });
+
+  it("an edit that fails halfway leaves the draft exactly as it was (lines, totals, version)", async () => {
+    const q = await makeQuote();
+    const snapshot = async () =>
+      JSON.stringify((await body(await call(owner, "GET", `/quotes/${q.id}`))).data);
+    const before = await snapshot();
+    install();
+    try {
+      const res = await call(owner, "PATCH", `/quotes/${q.id}`, {
+        expectedVersion: q.version,
+        title: "Should not stick",
+        items: [
+          { description: "Replacement one", quantity: 5, unitPriceCents: 999 },
+          { description: "FORCE FAIL", quantity: 1, unitPriceCents: 1 },
+        ],
+      });
+      expect(res.status).toBe(500);
+    } finally {
+      remove();
+    }
+    expect(await snapshot()).toBe(before);
+    // and it can still be edited at the same version afterwards
+    const ok = await call(owner, "PATCH", `/quotes/${q.id}`, {
+      expectedVersion: q.version,
+      title: "Edited after",
+    });
+    expect(ok.status).toBe(200);
+  });
+
+  it("a revision that fails halfway creates no draft and consumes no number", async () => {
+    const sent = await makeQuote();
+    await send(sent);
+    const before = {
+      quotes: countAll("quotes", orgA),
+      next: nextNumber(orgA),
+      items: countAll("quote_items", orgA),
+    };
+    // the copied lines go through the same trigger: a line named FORCE FAIL on the original makes the copy fail
+    psql(`alter table public.quote_items disable trigger user`);
+    psql(
+      `update public.quote_items set description = 'FORCE FAIL' where quote_id = '${sent.id}' and position = 1`,
+    );
+    psql(`alter table public.quote_items enable trigger user`);
+    install();
+    try {
+      const res = await call(owner, "POST", `/quotes/${sent.id}/revise`);
+      expect(res.status).toBe(500);
+    } finally {
+      remove();
+    }
+    expect(countAll("quotes", orgA)).toBe(before.quotes);
+    expect(countAll("quote_items", orgA)).toBe(before.items);
+    expect(nextNumber(orgA)).toBe(before.next);
+    expect(
+      Number(psql(`select count(*) from public.quotes where revises_quote_id = '${sent.id}'`)),
+    ).toBe(0);
+  });
+});
+
+describe("demo Send only changes the status [SIT-267]", () => {
+  it("nothing but the quote's status, version and update time changes, and exactly one history event is added", async () => {
+    const q = (
+      await body(
+        await call(
+          guest,
+          "POST",
+          "/quotes",
+          { customerId: demoCustomer, title: "Demo send snapshot", items: LINES },
+          demoOrg,
+        ),
+      )
+    ).data;
+    const tables = [
+      "customers",
+      "opportunities",
+      "tasks",
+      "quotes",
+      "quote_items",
+      "import_jobs",
+      "invitations",
+      "memberships",
+    ];
+    const counts = () =>
+      tables
+        .map(
+          (t) =>
+            `${t}=${psql(`select count(*) from public.${t} where organization_id = '${demoOrg}'`)}`,
+        )
+        .join(",");
+    const events = () =>
+      Number(
+        psql(`select count(*) from public.activity_events where organization_id = '${demoOrg}'`),
+      );
+    const content = () =>
+      psql(
+        `select (to_jsonb(q) - 'status' - 'version' - 'updated_at')::text from public.quotes q where id = '${q.id}'`,
+      );
+    const itemsNow = () =>
+      psql(
+        `select coalesce(string_agg(description || quantity || unit_price_cents, ',' order by position), '') from public.quote_items where quote_id = '${q.id}'`,
+      );
+    const [c0, e0, k0, i0] = [counts(), events(), content(), itemsNow()];
+    const res = await call(guest, "POST", `/quotes/${q.id}/transition`, { to: "sent" }, demoOrg);
+    expect(res.status).toBe(200);
+    expect((await body(res)).data).toMatchObject({ status: "sent", version: q.version + 1 });
+    expect(counts()).toBe(c0); // no other record in the workspace appeared or went away
+    expect(events()).toBe(e0 + 1); // the one status event
+    expect(content()).toBe(k0); // every other column of the quote is as it was
+    expect(itemsNow()).toBe(i0);
+    expect(psql(`select count(*) from pg_extension where extname in ('pg_net', 'http')`)).toBe("0"); // no way for the database to call out
+  });
+});

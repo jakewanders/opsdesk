@@ -161,6 +161,74 @@ const mutations = [
   },
 ];
 
+/**
+ * The other half of the parity contract (SIT-267): the SAME kind of change made to the TypeScript module alone must fail the
+ * parity test (the database against the module over the shared and 400 generated vectors) AND the module's own unit tests. The
+ * file is restored in a `finally`, and again at the end, whatever happens.
+ */
+const TS_FILE = "src/lib/domain/quotes.ts";
+const tsOriginal = readFileSync(TS_FILE, "utf8");
+const tsMutations = [
+  { name: "TS half-up rounding (+5000 becomes +4999)", from: "BigInt(5000)", to: "BigInt(4999)" },
+  {
+    name: "TS has no rounding bias (truncates instead of rounding half up)",
+    from: "BigInt(5000)",
+    to: "BigInt(0)",
+  },
+  {
+    name: "TS taxes the subtotal instead of the taxable amount",
+    from: "(taxable * big(input.taxRateBps)",
+    to: "(subtotal * big(input.taxRateBps)",
+  },
+  {
+    name: "TS ignores the discount",
+    from: "const taxable = subtotal - discount > ZERO ? subtotal - discount : ZERO;",
+    to: "const taxable = subtotal;",
+  },
+];
+function runVitest(args) {
+  const r = spawnSync("npx", ["vitest", "run", ...args], {
+    env,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return { failed: r.status !== 0, text: `${r.stdout}\n${r.stderr}` };
+}
+const tsResults = [];
+const tsOnly = process.env.MUTATION_FILTER ? new RegExp(process.env.MUTATION_FILTER) : null;
+for (const m of tsMutations.filter((t) => !tsOnly || tsOnly.test(t.name))) {
+  if (!tsOriginal.includes(m.from)) {
+    tsResults.push({ name: m.name, status: "NOT APPLIED" });
+    continue;
+  }
+  try {
+    writeFileSync(TS_FILE, tsOriginal.replace(m.from, m.to));
+    const unit = runVitest(["src/lib/domain/quotes.test.ts"]);
+    const parity = runVitest([
+      "--config",
+      "vitest.integration.config.mts",
+      "src/lib/domain/quote-functions.integration.test.ts",
+      "-t",
+      "totals: the database equals the TypeScript module",
+    ]);
+    tsResults.push({
+      name: m.name,
+      status:
+        unit.failed && parity.failed
+          ? "caught (unit + parity)"
+          : parity.failed
+            ? "caught (parity only)"
+            : unit.failed
+              ? "caught (unit only)"
+              : "SURVIVED",
+    });
+  } finally {
+    writeFileSync(TS_FILE, tsOriginal);
+  }
+  console.log(`${tsResults.at(-1).status.padEnd(26)} ${m.name}`);
+}
+writeFileSync(TS_FILE, tsOriginal);
+
 const only = process.env.MUTATION_FILTER ? new RegExp(process.env.MUTATION_FILTER) : null;
 /**
  * Mutants that cannot change behaviour because another, independent guard answers the same way (here: update_draft_quote's own QUOTE_LOCKED check, which the table's state guard repeats with the same code and message, so the outward result is identical).
@@ -212,12 +280,16 @@ const back = suite();
 const equivalent = results.filter(
   (r) => r.status === "SURVIVED" && EQUIVALENT.some((re) => re.test(r.name)),
 );
+const tsSurvived = tsResults.filter((r) => r.status === "SURVIVED" || r.status === "NOT APPLIED");
 const survived = results.filter(
   (r) =>
     (r.status === "SURVIVED" && !EQUIVALENT.some((re) => re.test(r.name))) ||
     r.status === "NOT APPLIED",
 );
 console.log(
+  `\nTypeScript side: ${tsResults.length} mutations, ${tsResults.length - tsSurvived.length} caught by the parity test, ${tsSurvived.length} survived or not applied`,
+);
+console.log(
   `\n${results.length} mutations, ${results.length - survived.length - equivalent.length} caught, ${equivalent.length} equivalent (another guard answers identically), ${survived.length} survived or not applied; restored suite: ${back.passed ? "PASS" : "FAIL"}`,
 );
-process.exit(survived.length === 0 && back.passed ? 0 : 1);
+process.exit(survived.length === 0 && tsSurvived.length === 0 && back.passed ? 0 : 1);
