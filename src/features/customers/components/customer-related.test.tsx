@@ -277,8 +277,8 @@ describe("customer detail: related records [SIT-243]", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Opportunities could not be loaded");
   });
 
-  it("the Quotes tab appears only when a quotes tab is supplied, and the gate needs the flag AND the API", () => {
-    expect(quotesTabEnabled({ quotes: true })).toBe(false); // the quotes API does not exist yet
+  it("the Quotes tab appears only when a quotes tab is supplied, and the gate follows the feature flag", () => {
+    expect(quotesTabEnabled({ quotes: true })).toBe(true); // the flag is on and the quotes API exists
     expect(quotesTabEnabled({ quotes: false })).toBe(false);
     view({ quotesTab: { count: 4, content: <p>Quote list</p> } });
     expect(screen.getByRole("tab", { name: "Quotes (4)" })).toBeInTheDocument();

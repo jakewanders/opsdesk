@@ -192,7 +192,11 @@ export function CustomerDetail({
       </header>
 
       <Tabs defaultValue="overview">
-        <TabsList variant="line" aria-label="Customer sections">
+        <TabsList
+          variant="line"
+          aria-label="Customer sections"
+          className="w-full max-w-full justify-start overflow-x-auto"
+        >
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="opportunities">
             Opportunities ({customer.related.opportunities})

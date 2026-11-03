@@ -151,7 +151,7 @@ export async function findCustomer(
   return (data as unknown as CustomerRow | null) ?? null;
 }
 
-/** What hangs off a customer. Quotes are counted by their own issue's table once it exists (zero until then). */
+/** What hangs off a customer: its opportunities, tasks and (active) quotes. */
 export async function countRelated(supabase: Client, orgId: string, id: string) {
   const count = (table: "opportunities" | "tasks") =>
     supabase
@@ -173,11 +173,18 @@ export async function countRelated(supabase: Client, orgId: string, id: string) 
       .neq("status", "done")
       .is("archived_at", null),
   ]);
-  for (const r of [opportunities, tasks, openOpportunities, openTasks]) if (r.error) throw r.error;
+  const quotes = await supabase
+    .from("quotes")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .eq("customer_id", id)
+    .is("archived_at", null);
+  for (const r of [opportunities, tasks, openOpportunities, openTasks, quotes])
+    if (r.error) throw r.error;
   return {
     opportunities: opportunities.count ?? 0,
     tasks: tasks.count ?? 0,
-    quotes: 0,
+    quotes: quotes.count ?? 0,
     openOpportunities: openOpportunities.count ?? 0,
     openTasks: openTasks.count ?? 0,
   };

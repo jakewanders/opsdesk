@@ -3,7 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { activityFor } from "@/features/activity/service";
 import { CustomerDetail } from "@/features/customers/components/customer-detail";
+import { quotesTabEnabled } from "@/features/customers/quotes-tab";
 import { getForOrg } from "@/features/customers/service";
+import { CustomerQuotes } from "@/features/quotes/components/customer-quotes";
+import { getFeatureFlags } from "@/lib/env/public";
 import { NotFoundError } from "@/lib/api/errors";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
@@ -42,6 +45,19 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
       currentUserId={ctx.user.id}
       timeZone={ctx.org.timezone}
+      quotesTab={
+        quotesTabEnabled(getFeatureFlags())
+          ? {
+              count: customer.related.quotes,
+              content: (
+                <CustomerQuotes
+                  customerId={customer.id}
+                  canWrite={can(ctx.role, ctx.kind, "quotes.write").allowed}
+                />
+              ),
+            }
+          : undefined
+      }
     />
   );
 }

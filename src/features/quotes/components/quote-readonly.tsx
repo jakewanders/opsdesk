@@ -88,19 +88,6 @@ export function QuoteReadOnly({ quote, canWrite }: { quote: QuoteDetailDto; canW
             <dt className="text-muted-foreground">Valid until</dt>
             <dd>{quote.validUntil ? day(quote.validUntil) : "No end date"}</dd>
           </div>
-          {quote.revises ? (
-            <div>
-              <dt className="text-muted-foreground">Revises</dt>
-              <dd>
-                <Link
-                  className="underline underline-offset-4"
-                  href={`/app/quotes/${quote.revises.id}`}
-                >
-                  {quote.revises.quoteNumber}
-                </Link>
-              </dd>
-            </div>
-          ) : null}
           {quote.notes ? (
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">Notes</dt>
