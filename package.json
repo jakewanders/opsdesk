@@ -27,7 +27,7 @@
     "mutation:quotes": "node scripts/mutation-quotes.mjs",
     "db:types": "node scripts/supabase.mjs gen types typescript --local > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "demo:seed": "node scripts/demo-seed.mjs",
-    "demo:cleanup": "node scripts/not-implemented.mjs demo:cleanup SIT-213 \"Expired-demo cleanup.\"",
+    "demo:cleanup": "tsx scripts/demo-cleanup.mts",
     "smoke:routes": "node scripts/smoke-routes.mjs"
   },
   "dependencies": {
@@ -75,6 +75,7 @@
     "prettier": "^3.9.10",
     "supabase": "^2.122.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
   },

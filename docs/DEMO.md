@@ -167,7 +167,7 @@ A demo lasts 24 hours from creation. Expiry is computed from the database `expir
 
 ## Cleanup of expired demos: runbook (SIT-207)
 
-Migration `20261101001300_demo_cleanup.sql` and `src/lib/cleanup/` (`cleanup.ts` the core, `run.ts` the entry point that builds the admin client). The Netlify scheduled function and `npm run demo:cleanup` that call it are SIT-213.
+Migration `20261101001300_demo_cleanup.sql` and `src/lib/cleanup/` (`cleanup.ts` the core, `run.ts` the entry point that builds the admin client). The Netlify scheduled function (`netlify/functions/cleanup-demo.mts`) and `npm run demo:cleanup` (`scripts/demo-cleanup.mts`) that call it are SIT-213 (see the next section).
 
 **What it does, in two phases**
 
@@ -182,6 +182,14 @@ Migration `20261101001300_demo_cleanup.sql` and `src/lib/cleanup/` (`cleanup.ts`
 **Operating it.** Run a pass from a trusted shell (local only until SIT-213 wires the command): call `runDemoCleanup()` from `src/lib/cleanup/run.ts`. Safe to run repeatedly and concurrently with live demos. To see the queue: `select user_id, attempts, last_error from private.demo_cleanup_users;` as `postgres`. A user stuck with a growing `attempts` is an orphan candidate to investigate (an Auth outage shows up as the same error code on many rows).
 
 **Entity issues** must register a clear function (`register_demo_seeder(..., clear_fn)`) so cleanup and reset delete their rows; tables that cascade from `organizations` are removed by the delete itself.
+
+## Running the cleanup: the command and the scheduled function (SIT-213)
+
+Both entry points run the same core (`src/lib/cleanup/cleanup.ts`) behind the same guard (`src/lib/cleanup/guard.ts`). They log and print **counts and error codes only**.
+
+- **Manual:** `npm run demo:cleanup`. It reads `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SECRET_KEY` from the environment (server-only; never committed; `.env.example` has the names). A local project (`localhost`, `127.0.0.1`, `::1`) runs as is. **Any other project is refused (exit 2) until the command repeats its exact hostname:** `npm run demo:cleanup -- --confirm-remote <hostname>`. A missing URL or secret is refused (exit 2) before any network call. Exit 0 = finished without errors (stopping at the time budget is not an error: run it again); exit 1 = a step failed; exit 2 = refused.
+- **Scheduled:** `netlify/functions/cleanup-demo.mts` is a Netlify Scheduled Function with `schedule: "@hourly"`. It has no HTTP route of its own and no command line, so there is no confirmation flag; it needs the same two variables in the site's environment and refuses (500, a code) without them. It answers with counts and returns 500 when any step failed, so a failed run shows as a failed invocation in the Netlify UI.
+- **Not yet verified:** that the function is registered on a Netlify site and runs there, and where the last run and its failures appear in the Netlify UI. That needs the Netlify site (SIT-177) and the production secret key; it is checked in the deployment issues (P-16). Nothing in the repository claims it has run on Netlify.
 
 ## Entry flow: `/demo` and `POST /api/v1/demo/bootstrap` (SIT-204)
 

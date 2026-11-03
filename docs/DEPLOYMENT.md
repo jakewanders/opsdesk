@@ -44,6 +44,10 @@ npm run smoke:routes -- "$PREVIEW"                          # all PRD routes beh
 
 Then open the preview at 375px and at desktop width and confirm the landing page and the `/app` shell render.
 
+## Scheduled cleanup (SIT-213)
+
+`netlify/functions/cleanup-demo.mts` runs hourly on the site once it exists. Set `SUPABASE_SECRET_KEY` (server-only) and `NEXT_PUBLIC_SUPABASE_URL` for the production context in the Netlify environment variables. After the first deploy, open the site's Functions page, find `cleanup-demo` and confirm it is listed as scheduled; its invocation log shows each run's counts, and a failed run appears as a failed invocation. **Not verified yet** (no Netlify site): the registration, the first run and the log location. Record the result here and under P-16 when it has been seen. The manual equivalent is `npm run demo:cleanup` (see `docs/DEMO.md`).
+
 ## Rollback
 
 Until a custom domain is attached there is nothing to roll back beyond removing the Netlify site. Rollback for the custom domain (only the `opsdesk` record and the Netlify domain association) is documented with SIT-272 and P-20.
