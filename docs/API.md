@@ -171,7 +171,7 @@ Full machine-readable contract: `docs/openapi.yaml` (a test fails when a route a
 | `POST /api/v1/organizations`    | Create a real workspace through `create_real_organization`; body `{ name, industry?, timezone? }`, unknown fields rejected                                                                                      | 201     | 401, 403 `ACCOUNT_REQUIRED` (guest) or `ORIGIN_FORBIDDEN`, 422 with `fieldErrors`, 429 `ORG_LIMIT` |
 | `GET /api/v1/organizations/:id` | One workspace the caller belongs to, with their role; an expired demo is still readable (`expired: true`)                                                                                                       | 200     | 400 (id not a UUID), 401, 404 (not a member and unknown ids look the same)                         |
 
-`PATCH /api/v1/organizations/:id` arrives with the organization settings issue (M4).
+`PATCH /api/v1/organizations/:id` updates the workspace's name, industry and time zone (owner or admin; body carries the `version` for the stale-edit check). It is in `docs/openapi.yaml`.
 
 ## Stale edits and retries (SIT-183)
 

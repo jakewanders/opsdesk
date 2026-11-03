@@ -1,6 +1,17 @@
 # Architecture
 
-Sections are added as the system is built.
+How OpsDesk is built, as it exists now. Sections below are by topic and carry the issue that introduced them.
+
+## System overview
+
+- **Runtime:** Next.js 16 (App Router, Cache Components) with React 19, TypeScript strict, Tailwind v4 and shadcn/ui. Server components render the shell per request; client components use TanStack Query through `useApiQuery` / `useApiMutation`. Netlify hosts it (not deployed yet, see `docs/DEPLOYMENT.md`).
+- **Data:** Supabase. Postgres holds every tenant table with row level security; Supabase Auth holds users (including anonymous guests for the public demo). The browser never talks to Postgres: pages and `/api/v1` route handlers act as the signed-in user with a cookie session, so RLS decides what a request can see and change. The secret key exists only in `src/lib/supabase/admin.ts` and is used by the demo cleanup and a few guarded operations.
+- **Request path:** `proxy.ts` refreshes the session and guards `/app`; route handlers are wrapped by `withApi` / `withOrgApi` (`src/lib/api/handler.ts`), which resolve the user, check the Origin on mutations, resolve the workspace from `X-Organization-Id`, authorize the action against the permission matrix, validate the body with Zod, and return the `{ data, meta }` / `{ error }` envelope with a request id. One `api.request` JSON log line is written per call.
+- **Tenancy:** every tenant table has `organization_id` and the same policies from `private.attach_tenant_rls`; roles (owner, admin, member, viewer) live in `memberships`; a demo workspace is an organization of kind `demo` with an `expires_at`. Cross-tenant foreign keys are blocked by composite keys and triggers.
+- **Rules in the database:** totals and activity events are written by triggers and definer functions, not by the client; edits use a version column (`STALE_EDIT` 409); quote math is integer cents and identical in the browser and in the database.
+- **Demo:** an anonymous Supabase session per visitor (Turnstile-protected), one fictional workspace each, 24-hour expiry, caps, reset, and a two-phase cleanup run by a Netlify scheduled function or `npm run demo:cleanup`.
+- **Quality gates:** unit, pgTAP, API integration (real HTTP) and Playwright suites, axe in both themes, Lighthouse and performance audits, and a log scan over the end-to-end run; see `docs/TEST_MAP.md`, `docs/CI.md` and `docs/PROGRESS.md` for what each covers and the measured results.
+- **Not built:** the P2 integrations (attachments, billing, e-mail, AI, external connector); their routes return 404 while their flags are off.
 
 ## Design tokens (SIT-159)
 
@@ -30,9 +41,9 @@ Defined as CSS variables in `src/app/globals.css` (`:root` for light, `.dark` fo
 
 - **Caching:** `/`, `/privacy`, `/terms` are static (`s-maxage=31536000`). Auth pages and everything under `/app` render per request (`connection()` inside `Suspense`) and send `private, no-cache, no-store`.
 - **P2 flags:** `/app/settings/integrations` and `/app/settings/billing` return a real 404 while `NEXT_PUBLIC_ENABLE_INTEGRATIONS` / `NEXT_PUBLIC_ENABLE_BILLING` are off. `src/proxy.ts` rewrites them to a non-existent path, because a page-level `notFound()` would run after the shell has started streaming a 200. The settings sub-nav links them only when the flag is on.
-- **Holding pages:** routes whose feature ships later render `PlannedPage` (title, what it will do, milestone, a link back); no fake data. Each owning issue replaces its page.
+- **Holding pages:** only the two P2 settings pages (integrations, billing) render `PlannedPage` (a title, what it will do, a link back; no fake data), and only when their flag is on. Every other route is a real page.
 - **Boundaries:** `not-found.tsx` and `error.tsx` exist at the root and inside `/app` (the latter keeps the shell), built on `StatePanel` / `ErrorPanel` in `src/components/shared`.
-- **Auth guard:** `/app` layout carries a visible development notice and a TODO until SIT-180 adds the guard.
+- **Auth guard:** `/app` is protected by `src/proxy.ts` and the layout (SIT-180); a signed-out visitor is redirected to `/login`, and a guest whose demo expired to `/demo` (see `docs/SECURITY.md`, "Route protection").
 
 ## Shared state components (SIT-163)
 
