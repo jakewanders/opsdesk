@@ -1189,6 +1189,12 @@ How each requirement in the issue is covered (all of it runs in `npm run check`)
 
 In progress. Work that needs no Netlify, DNS or hosted-Supabase access is being done first; items that need Jake stay under "Waiting on Jake". Entries per item follow (P-keys are the Pending Issues document's; they cannot be created in Linear).
 
+### P-03 — Optional minimal analytics behind a flag (closed: won't do for v1; parent SIT-146)
+
+- **Decision:** closed as won't do for v1, as the issue itself allows ("may be closed as won't do with a note in `docs/DECISIONS.md`; never blocks launch"). The reasoning and the way to reopen it are in `docs/DECISIONS.md`.
+- **What is true now:** no analytics code, table or flag exists; nothing is collected. `/privacy` already says so ("No analytics are collected today. If analytics are added later they will be optional, off…"), so the page and the product agree. SIT-185 (the redacting logger) is done, so the redaction groundwork a future version would need exists.
+- **Not done by design:** no events, no flag, no test. Nothing here is claimed beyond that.
+
 ### P-19 — OpenAPI and a working curl collection (done; parent SIT-148)
 
 - `docs/openapi.yaml` already documented every implemented route (a test fails when a route and the file disagree, and unimplemented routes are not advertised); it now also notes the unknown-path 404 and points at the collection. The org-context convention (`X-Organization-Id`) and the error envelope are written up in `docs/API.md` under "Runnable curl collection".
