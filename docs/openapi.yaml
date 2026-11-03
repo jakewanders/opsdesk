@@ -1426,6 +1426,69 @@ paths:
           description: "RATE_LIMITED"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /imports/customers/preview:
+    post:
+      summary: Validate a customers CSV before anything is imported (US-10)
+      description: >
+        Parses and validates every row with the same rules as `POST /customers` and writes no customer. Stores the preview as an
+        import job (counts and error row numbers / field names / codes only, never cell contents) that expires after one hour.
+        The file travels as base64 in a JSON body (all mutations are JSON). Limits: 2 MB of file (413 `PAYLOAD_TOO_LARGE`),
+        1,000 data rows (422 `IMPORT_TOO_MANY_ROWS`), strict UTF-8 (422 `IMPORT_NOT_UTF8`); a byte-order mark, CRLF, quoted commas
+        and embedded newlines are handled. Other whole-file refusals are 422 `IMPORT_EMPTY_FILE`, `IMPORT_NO_DATA_ROWS`,
+        `IMPORT_MISSING_COLUMN` (a `display_name` or `name` column is required), `IMPORT_DUPLICATE_COLUMN`, `IMPORT_NOT_CSV`,
+        `IMPORT_TOO_MANY_COLUMNS` and `IMPORT_CELL_TOO_LONG`. Row numbers are spreadsheet rows (the header is row 1). Unknown columns
+        are listed in `columns.unknown`. A duplicate e-mail (in the file, or already in the workspace) is a warning, never an error.
+        Uploading the same file (same SHA-256) in the same workspace within the hour returns the same job with 200 instead of 201.
+        Cells that start with `=`, `+`, `-` or `@` are stored as plain text (the export neutralizes them). Owner, admin and member only
+        (a viewer gets 403); disabled with `NEXT_PUBLIC_ENABLE_CSV_IMPORT=false` (404). In a demo workspace `demo` reports how many more
+        customers fit under the demo cap and whether this file would exceed it.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [content]
+              properties:
+                content:
+                  {
+                    type: string,
+                    description: "The CSV file's bytes, base64 encoded (at most 2 MB of file).",
+                  }
+      responses:
+        "200":
+          description: The same file was already previewed (or imported) here within the hour; this is that job
+          content:
+            { application/json: { schema: { $ref: "#/components/schemas/ImportPreviewResponse" } } }
+        "201":
+          description: A new preview job
+          content:
+            { application/json: { schema: { $ref: "#/components/schemas/ImportPreviewResponse" } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A viewer, or an expired demo"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "Not a member of that workspace, or the feature is off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "413":
+          description: "PAYLOAD_TOO_LARGE: over 2 MB"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "A file that cannot be previewed (see the codes above) or a malformed body"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "DEMO_CAP: a demo workspace already holds the most import jobs"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /quotes:
     get:
       summary: "One page of the workspace's quotes (404 when NEXT_PUBLIC_ENABLE_QUOTES is false)"
@@ -1989,6 +2052,71 @@ components:
             minItems: 1,
             maxItems: 100,
             items: { $ref: "#/components/schemas/QuoteItemInput" },
+          }
+    ImportPreviewResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            importJobId: { type: string, format: uuid }
+            status: { type: string, enum: [previewed, committed, failed, expired] }
+            fileSha256: { type: string }
+            expiresAt: { type: string, format: date-time }
+            counts:
+              type: object
+              properties:
+                total: { type: integer }
+                valid: { type: integer }
+                invalid: { type: integer }
+            columns:
+              type: object
+              properties:
+                mapped:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      header: { type: string }
+                      field: { type: string }
+                unknown: { type: array, items: { type: string } }
+            rows:
+              type: array
+              description: The first 20 data rows
+              items:
+                type: object
+                properties:
+                  row: { type: integer }
+                  valid: { type: boolean }
+                  values: { type: object, additionalProperties: { type: string } }
+                  errors: { type: array, items: { $ref: "#/components/schemas/ImportRowIssue" } }
+                  warnings: { type: array, items: { $ref: "#/components/schemas/ImportRowIssue" } }
+            errors: { type: array, items: { $ref: "#/components/schemas/ImportRowIssue" } }
+            errorsTruncated:
+              {
+                type: boolean,
+                description: "True when more than 500 errors exist; the counts are always complete",
+              }
+            warnings: { type: array, items: { $ref: "#/components/schemas/ImportRowIssue" } }
+            warningsTruncated: { type: boolean }
+            demo:
+              nullable: true
+              type: object
+              properties:
+                remaining: { type: integer }
+                wouldExceed: { type: boolean }
+    ImportRowIssue:
+      type: object
+      properties:
+        row: { type: integer, description: "Spreadsheet row; the header is row 1" }
+        field: { type: string, nullable: true }
+        code: { type: string }
+        message: { type: string }
+        firstRow:
+          {
+            type: integer,
+            description: "For DUPLICATE_IN_FILE: the earlier row with the same e-mail",
           }
     Quote:
       type: object

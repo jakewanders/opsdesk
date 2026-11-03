@@ -882,6 +882,16 @@ export type Database = {
         };
       };
       preview_invitation: { Args: { p_token: string }; Returns: Json };
+      record_import_preview: {
+        Args: {
+          p_error_summary: Json;
+          p_file_sha256: string;
+          p_org_id: string;
+          p_rejected_rows: number;
+          p_total_rows: number;
+        };
+        Returns: Json;
+      };
       redeem_invitation: { Args: { p_token: string }; Returns: Json };
       reset_demo_workspace: { Args: { org_id: string }; Returns: Json };
       revise_quote: {

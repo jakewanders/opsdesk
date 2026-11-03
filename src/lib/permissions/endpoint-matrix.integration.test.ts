@@ -46,6 +46,11 @@ const B: Record<string, (c: Ctx) => Req> = {
   "GET /dashboard": () => ({ method: "GET", path: "/dashboard" }),
   "POST /demo/bootstrap": () => ({ method: "POST", path: "/demo/bootstrap" }),
   "POST /demo/reset": () => ({ method: "POST", path: "/demo/reset" }),
+  "POST /imports/customers/preview": () => ({
+    method: "POST",
+    path: "/imports/customers/preview",
+    json: { content: Buffer.from(`display_name\nMatrix Import ${++counter}\n`).toString("base64") },
+  }),
   "GET /invitations": () => ({ method: "GET", path: "/invitations" }),
   "POST /invitations": () => ({
     method: "POST",

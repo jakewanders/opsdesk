@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-263, SIT-265 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-263, SIT-265 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -949,6 +949,15 @@ In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SI
 - **Cleanup:** `public.cleanup_expire_import_previews(retain default '1 day')` (service_role only) marks previews past `expires_at` as expired and removes expired jobs past the retention; committed and failed jobs are kept.
 - **Tests:** new `supabase/tests/import-jobs.test.sql`, 61 assertions (shape, grants and policy, every value rule, the 20 KB cap, state and immutability, member / viewer / outsider / signed-out reads, cross-tenant read returns nothing, direct writes denied, commit rule for four callers, index use, demo cap, cleanup). `rls-tenancy` and `demo-caps` expectations extended. **`npm run test:db`: 35 files, 2,956 assertions, all pass.** Types regenerated.
 - **Not wired yet:** the cleanup job (`src/lib/cleanup`) does not call `cleanup_expire_import_previews`; SIT-239 (which owns the commit and the job lifecycle) or the next cleanup change adds that call.
+
+### SIT-231 — POST /api/v1/imports/customers/preview (done)
+
+- **Request:** `{ content }`, the file's bytes as base64 (all mutations must be JSON, SIT-181). The server decodes the bytes itself, so the 2 MB limit, the strict UTF-8 check and the SHA-256 all apply to the real file. Owner, admin and member (viewer 403, non-member 404, signed out 401); behind `NEXT_PUBLIC_ENABLE_CSV_IMPORT`.
+- **Parser:** `src/lib/csv/parse.ts`, bounded and never evaluating: byte-order mark, quoted commas, doubled quotes, embedded line breaks, CRLF / LF / CR, blank lines skipped; stops at 1,000 data rows, 50 columns, 10,000 characters per cell, and refuses a quote that never closes. 15 unit tests.
+- **Analysis:** `src/features/customers/import/analyze.ts` (pure). Header names are matched ignoring case and punctuation (`display_name`, `Display Name`, `name`, `Company`, `E-mail Address` and so on); unknown columns are listed, never silently dropped; a `display_name` / `name` column is required. Every row is validated with the same `createCustomerSchema` as `POST /customers`. Errors carry spreadsheet row (header = 1), field and a stable code (`REQUIRED`, `WRONG_LENGTH`, `INVALID_EMAIL`, `INVALID_CHOICE`, `NO_HTML`, `INVALID_VALUE`, `TOO_MANY_CELLS`, ...). Duplicate e-mails are warnings (`DUPLICATE_IN_FILE` with the first row, `DUPLICATE_EXISTING`), never errors. 23 unit tests.
+- **Job:** migration `20261101004000_record_import_preview.sql`, `public.record_import_preview(...)` (SECURITY DEFINER, authenticated only): checks sign-in, membership, writer role and demo expiry; an advisory lock plus a one-hour lookup returns the SAME job for the same file in the same workspace (201 for a new job, 200 for a repeat; a file that was just imported returns that committed job). It also reports the demo customer capacity so the preview can warn. Stored: counts and an error summary of at most 200 entries of row, field and code (no cell contents, no messages). 30 pgTAP assertions in `import-preview.test.sql`.
+- **Integration (real HTTP, production build, local Supabase):** 23 tests in `import-preview-api.integration.test.ts`: a valid preview writes no customer and one job; BOM / CRLF / quoted commas and newlines; formula text accepted as plain text; exact row errors and a job summary with no cell contents; duplicate warnings; same file returns the same job (and three concurrent identical uploads make one); expiry replaces the job; **a file of exactly 2,097,152 bytes with 1,000 rows is accepted and one byte more is 413**; **1,000 rows accepted, 1,001 is 422 `IMPORT_TOO_MANY_ROWS`**; a 5 MB body is cut off with 413; non-UTF-8, empty, no name column, no rows, unterminated quote, bad base64 and extra body fields are 422 and write no job; roles, tenants and the guest / demo cap warning.
+- **Also:** endpoint classified in `src/lib/permissions/endpoints.ts` (the 8-caller matrix covers it), `docs/openapi.yaml` updated (and checked by `openapi.test.ts`), types regenerated, `demo-acceptance` callable-function list extended.
 
 ### SIT-265 — Role and invitation tests: pgTAP, API matrix, viewer and invitation E2E (done)
 
