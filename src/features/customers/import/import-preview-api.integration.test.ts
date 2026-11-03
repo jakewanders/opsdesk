@@ -123,6 +123,28 @@ describe("exact row errors", () => {
     expect(data.rows.map((r: any) => r.valid)).toEqual([true, false, false, false, true]);
   });
 
+  it("reports each length rule and a line break in a single-line field by field and code [SIT-266]", async () => {
+    const long = (n: number) => "x".repeat(n);
+    const file = [
+      "display_name,company_name,phone,notes",
+      `Ada Lovelace,${long(120)},${long(40)},${long(5000)}`, // 2 ok: every field at its limit
+      `Bo Peep,${long(121)},,`, // 3 company too long
+      `Cy Young,,${long(41)},`, // 4 phone too long
+      `Di Prince,,,${long(5001)}`, // 5 notes too long
+      'Ed Wynn,"Acme\nInc",,"two\nlines are fine here"', // 6 line break in a single-line field
+      `A,,,`, // 7 name too short
+    ].join("\n");
+    const { data } = await body(await send(file));
+    expect(data.counts).toEqual({ total: 6, valid: 1, invalid: 5 });
+    expect(data.errors.map((e: any) => `${e.row}:${e.field}:${e.code}`)).toEqual([
+      "3:companyName:WRONG_LENGTH",
+      "4:phone:WRONG_LENGTH",
+      "5:notes:WRONG_LENGTH",
+      "6:companyName:SINGLE_LINE_ONLY",
+      "7:displayName:WRONG_LENGTH",
+    ]);
+  });
+
   it("stores the counts and only row numbers, fields and codes on the job (no cell contents)", async () => {
     const { data } = await body(await send(text));
     const stored = psql(

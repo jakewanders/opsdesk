@@ -111,9 +111,10 @@ function issueCode(code: string, message: string, blank: boolean): string {
   if (blank || message === "Enter a value.") return "REQUIRED";
   if (message === "Enter a valid email address.") return "INVALID_EMAIL";
   if (code === "custom") {
+    // "Use a single line." also starts with "Use ", so it must be recognised before the length rule
+    if (message === "Use a single line.") return "SINGLE_LINE_ONLY";
     if (message.startsWith("Use ")) return "WRONG_LENGTH";
     if (message === "Remove unsupported characters.") return "INVALID_CHARACTERS";
-    if (message === "Use a single line.") return "SINGLE_LINE_ONLY";
     if (message.startsWith("Remove HTML")) return "NO_HTML";
     return "INVALID_VALUE";
   }

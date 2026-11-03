@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-269, SIT-263, SIT-265, SIT-267 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-231, SIT-232, SIT-239, SIT-246, SIT-247, SIT-248, SIT-250, SIT-264, SIT-266, SIT-269, SIT-263, SIT-265, SIT-267 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -1033,6 +1033,16 @@ Most of the quote suite was written with the issues it proves (SIT-174, 222, 230
 - **EXPLAIN ANALYZE as the signed-in owner (RLS applied), selective filters:** customers created range **1.1 ms** (Index Scan `customers_org_created_idx`), opportunities amount range **1.0 ms** (`opportunities_org_amount_idx`), opportunities close range **1.1 ms** (`opportunities_org_close_date_idx`), tasks due range **0.8 ms** (`tasks_org_due_idx`), quotes issue range **0.9 ms** (`quotes_org_issue_date_idx`), quotes valid range **2.4 ms** (Bitmap Index Scan `quotes_org_valid_until_idx`). The test fails if any of these stops using its index.
 - **Finding, stated plainly:** `customers.tags @>` and the trigram search **cannot use their indexes under row level security** (Seq Scan, with `private.is_member(organization_id)` evaluated on each of the 10,000 rows, even with sequential scans switched off): the policy's check must run before any filter whose operator is not leakproof, and array containment and ILIKE are not. They cost **74 ms** (tags) and **83 ms** (search) at 10,000 customers, within the budget. A tags GIN index was therefore not added. A faster path needs a policy or operator change (see DECISIONS).
 - **Counts:** exact (`count: exact` on the same filtered query), which is fine at this scale: the counted queries above include it.
+
+### SIT-266 — CSV import tests: parser units, API integration, idempotency, wizard E2E (done)
+
+- **Audit first:** the suites written with SIT-231/239/248 already covered most of the issue's list. Mapped against it: parser units (BOM, CRLF/CR, quoted commas and newlines, formula text, limits) in `parse.test.ts`; header mapping, duplicates, formula text in `analyze.test.ts`; size (exactly 2 MB, 413 one byte over; 1,000 rows, 422 for 1,001), preview then commit, Idempotency-Key replay, five simultaneous submits, chunk failure (chunk 3 rolls back, 1, 2 and 4 kept), viewer 403, cross-tenant job 404, demo cap partial success (429 with the partial result) in the two integration files; scenario 8 in Playwright. The gaps were filled in this issue:
+  - `upload.test.ts` (new, 10 unit): strict UTF-8 (accents, CJK, emoji intact; Latin-1, a lone 0xFF, a truncated multi-byte sequence, an overlong encoding and a UTF-16 file all refused as `IMPORT_NOT_UTF8`, never replaced), BOM dropped from the text but hashed with the exact bytes, empty file, exactly 2 MB accepted and one byte more refused, line endings preserved.
+  - `analyze.test.ts` (+8 unit): per-field length rules at exactly the limit and one over for company name (120), phone (40), notes (5,000), name 2 to 120, over-long email and website, tag count and length, a line break inside a single-line field vs notes.
+  - Integration (+2): every length rule and the single-line rule reported by row, field and code over real HTTP; the downloadable error report words each of them.
+  - Playwright scenario 8 (+ assertions): the downloaded error report is read and holds exactly the header, row 3 `REQUIRED` and row 5 `INVALID_EMAIL`.
+- **Defect found and fixed by the new tests:** a line break in a single-line import field (for example a company name) was reported as `WRONG_LENGTH` ("too short or too long"), never as `SINGLE_LINE_ONLY`, because the message "Use a single line." starts with "Use " and the length rule matched first (`issueCode` in `analyze.ts`). The order is fixed; the row is still rejected either way, but the user now sees "Must be on a single line."
+- **Acceptance check:** importing the same file twice creates no duplicates (integration "re-uploading the same file after it was imported returns that finished job and imports nothing more" and Playwright "repeating the same upload adds nothing"; the customer count stays 3).
 
 ### SIT-269 — GET /api/v1/exports/:entity CSV export (done)
 

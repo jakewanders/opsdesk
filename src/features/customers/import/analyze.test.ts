@@ -205,3 +205,55 @@ describe("storedErrorSummary", () => {
     expect(JSON.stringify(s).length).toBeLessThan(20000);
   });
 });
+
+describe("analyzeCustomerCsv: per-field length rules [SIT-266]", () => {
+  const one = (header: string, value: string) =>
+    analyzeCustomerCsv(`display_name,${header}\nAda Lovelace,"${value}"\n`, none);
+  const codeOf = (a: ReturnType<typeof one>) => a.errors.map((e) => `${e.field}:${e.code}`);
+
+  it.each([
+    ["company_name", 120],
+    ["phone", 40],
+    ["notes", 5000],
+  ])("%s: exactly %i characters is accepted, one more is refused", (header, max) => {
+    expect(one(header, "x".repeat(max)).validRows).toBe(1);
+    const over = one(header, "x".repeat(max + 1));
+    expect(over.validRows).toBe(0);
+    expect(codeOf(over)).toHaveLength(1);
+    expect(over.errors[0].row).toBe(2);
+  });
+
+  it("display_name: 2 to 120 characters", () => {
+    const name = (v: string) => analyzeCustomerCsv(`display_name\n"${v}"\n`, none);
+    expect(name("Ab").validRows).toBe(1);
+    expect(name("x".repeat(120)).validRows).toBe(1);
+    expect(name("x".repeat(121)).errors.map((e) => e.code)).toEqual(["WRONG_LENGTH"]);
+    expect(name("A").errors.map((e) => e.code)).toEqual(["WRONG_LENGTH"]);
+  });
+
+  it("email and website: over their limits are refused with the field named", () => {
+    const longEmail = `${"a".repeat(250)}@x.co`;
+    expect(one("email", longEmail).errors.map((e) => e.field)).toEqual(["email"]);
+    const longSite = `https://x.co/${"p".repeat(260)}`;
+    expect(one("website", longSite).errors.map((e) => e.field)).toEqual(["website"]);
+  });
+
+  it("a single-line field with a line break inside is refused; notes may have them", () => {
+    const multi = analyzeCustomerCsv(
+      'display_name,company_name,notes\nAda Lovelace,"Acme\nInc","two\nlines"\n',
+      none,
+    );
+    expect(multi.errors.map((e) => `${e.field}:${e.code}`)).toEqual([
+      "companyName:SINGLE_LINE_ONLY",
+    ]);
+    expect(
+      analyzeCustomerCsv('display_name,notes\nAda Lovelace,"two\nlines"\n', none).validRows,
+    ).toBe(1);
+  });
+
+  it("tags: more than the allowed count or a too-long tag is refused", () => {
+    const many = Array.from({ length: 21 }, (_, i) => `t${i}`).join(";");
+    expect(one("tags", many).validRows).toBe(0);
+    expect(one("tags", "x".repeat(60)).validRows).toBe(0);
+  });
+});

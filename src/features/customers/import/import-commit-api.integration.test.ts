@@ -384,6 +384,28 @@ describe("the error report", () => {
     expect(csv).not.toMatch(/SECRET|secret-person|this is not mail|Report Bad/);
   });
 
+  it("explains every kind of problem in words, including a line break in a single-line field [SIT-266]", async () => {
+    const file = [
+      "display_name,company_name,email",
+      "Report Fine Two,,rf2@report.test",
+      'Report Line Break,"Acme\nInc",',
+      "Report Long Phone Name,,this is not mail",
+      "R,,",
+    ].join("\n");
+    const job = await preview(file);
+    await commit(job.importJobId, file);
+    const res = await server.request(`/api/v1/imports/customers/${job.importJobId}/errors`, owner, {
+      headers: { "X-Organization-Id": orgA },
+    });
+    expect((await res.text()).split("\r\n")).toEqual([
+      "row,field,code,explanation",
+      "3,companyName,SINGLE_LINE_ONLY,Must be on a single line.",
+      "4,email,INVALID_EMAIL,Not a valid email address.",
+      "5,displayName,WRONG_LENGTH,The value is too short or too long.",
+      "",
+    ]);
+  });
+
   it("any member can read it (a viewer too), another workspace cannot, a bad id is 400", async () => {
     const job = await preview(text + "\n");
     const get = (id: string, actor: Actor, org = orgA) =>

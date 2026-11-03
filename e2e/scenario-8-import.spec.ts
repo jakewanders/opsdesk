@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { axeViolations } from "./support/axe";
 import {
@@ -77,6 +78,13 @@ test("scenario 8: preview shows exact errors, import adds only the valid rows, a
     page.getByRole("button", { name: "Download error report" }).click(),
   ]);
   expect(report.suggestedFilename()).toMatch(/^import-errors-[0-9a-f]{8}\.csv$/);
+  // [SIT-266] and what it holds: the exact rows and fixed explanations, nothing typed into the file
+  const reportText = readFileSync((await report.path()) as string, "utf8");
+  expect(reportText.split("\r\n").filter(Boolean)).toEqual([
+    "row,field,code,explanation",
+    expect.stringMatching(/^3,displayName,REQUIRED,/),
+    expect.stringMatching(/^5,email,INVALID_EMAIL,/),
+  ]);
 
   // step 3
   await page.getByRole("button", { name: "Import 3 customers" }).click();
