@@ -7,6 +7,7 @@ import type { QuoteDto, QuoteStatus as Status } from "../schema";
 import { CustomerQuotes } from "./customer-quotes";
 import { QuoteActions, targetsFor } from "./quote-actions";
 import { QuoteHeader } from "./quote-header";
+import { QuotePdfButton } from "./quote-pdf-button";
 import { QuoteStatus } from "./quote-status";
 import { RevisionChain } from "./revision-chain";
 
@@ -263,5 +264,65 @@ describe("CustomerQuotes", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Quotes could not be loaded");
     expect(alert).toHaveTextContent("req-9");
+  });
+});
+
+describe("QuotePdfButton", () => {
+  it("fetches the PDF with the workspace header and saves it under the server's filename", async () => {
+    const created: string[] = [];
+    URL.createObjectURL = vi.fn((b: Blob | MediaSource) => {
+      created.push(String((b as Blob).type));
+      return "blob:fake";
+    });
+    URL.revokeObjectURL = vi.fn();
+    const clicked: Array<{ download: string; href: string }> = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      clicked.push({ download: this.download, href: this.href });
+    });
+    mockApi(
+      () =>
+        new Response("%PDF-1.4 fake", {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": 'attachment; filename="Q-000007.pdf"',
+          },
+        }),
+    );
+    const user = userEvent.setup();
+    render(
+      <ApiClientProvider organizationId="org-1">
+        <QuotePdfButton quoteId="q1" quoteNumber="Q-000007" />
+      </ApiClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Download PDF" }));
+    await waitFor(() => expect(clicked).toHaveLength(1));
+    expect(calls[0].url).toBe("/api/v1/quotes/q1/pdf");
+    expect((calls[0].init.headers as Record<string, string>)["X-Organization-Id"]).toBe("org-1");
+    expect(clicked[0]).toEqual({ download: "Q-000007.pdf", href: "blob:fake" });
+    expect(created).toEqual(["application/pdf"]);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled());
+  });
+
+  it("says in words when the download fails", async () => {
+    const clicked = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    mockApi(() =>
+      respond(404, {
+        error: { code: "QUOTE_NOT_FOUND", message: "That quote was not found.", requestId: "r-1" },
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <ApiClientProvider organizationId="org-1">
+        <QuotePdfButton quoteId="q1" quoteNumber="Q-000007" />
+      </ApiClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Download PDF" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Download PDF" })).toBeEnabled());
+    expect(clicked).not.toHaveBeenCalled();
   });
 });

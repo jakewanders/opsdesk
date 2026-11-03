@@ -5,6 +5,7 @@ import { mapPostgresError } from "@/lib/api/postgres-errors";
 import type { OrgContext } from "@/lib/api/org-context";
 import { assertCan } from "@/lib/permissions";
 import type { Database } from "@/lib/supabase/database.types";
+import { renderQuotePdf } from "./pdf";
 import {
   findItems,
   findQuote,
@@ -155,4 +156,22 @@ export async function reviseForOrg(
   assertCan(ctx.role, ctx.kind, "quotes.write");
   const row = await rpcRevise(supabase, id);
   return getForOrg(supabase, ctx, row.id);
+}
+
+/**
+ * The quote as a PDF (every role may export: `export.run`). Built from the stored quote, so the totals are the server's; in a demo
+ * workspace each page is marked "Sample / fictional data". Another workspace's quote is a 404, like everywhere else.
+ */
+export async function pdfForOrg(
+  supabase: Client,
+  ctx: OrgContext,
+  id: string,
+): Promise<{ bytes: Uint8Array; filename: string }> {
+  assertCan(ctx.role, ctx.kind, "export.run");
+  const quote = await getForOrg(supabase, ctx, id);
+  const bytes = renderQuotePdf(quote, {
+    demo: ctx.kind === "demo",
+    organizationName: ctx.org.name,
+  });
+  return { bytes, filename: `${quote.quoteNumber}.pdf` };
 }

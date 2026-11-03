@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { extractPdfText } from "../src/lib/pdf/document";
 import { axeViolations } from "./support/axe";
 import {
   addMember,
@@ -118,6 +120,34 @@ test("a draft is sent from its page: the status, the locked fields and the histo
     .poll(() => page.getByRole("list", { name: "Quote history" }).getByRole("listitem").count())
     .toBeGreaterThan(afterSend);
   await expect(page.getByText("Approved").first()).toBeVisible();
+});
+
+test("a quote downloads as a PDF named after it, with its totals (draft and sent)", async ({
+  page,
+  context,
+}) => {
+  await signIn(context, owner);
+  for (const [id, title] of [
+    [ids.draft, "Draft job"],
+    [ids.sent, "Sent job"],
+  ]) {
+    await page.goto(`/app/quotes/${id}`);
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Download PDF" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^Q-\d{6}\.pdf$/);
+    const path = await download.path();
+    const bytes = readFileSync(path);
+    expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    const text = extractPdfText(new Uint8Array(bytes)).join("\n");
+    expect(text).toContain(download.suggestedFilename().replace(".pdf", ""));
+    expect(text).toContain(title);
+    expect(text).toContain("$270.63"); // 250.00 + 8.25% tax
+    expect(text).not.toContain("Sample / fictional data"); // a real workspace
+  }
 });
 
 test("the revision chain links both ways", async ({ page, context }) => {

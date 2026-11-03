@@ -10,12 +10,6 @@ import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
 import type { QuoteStatus } from "../schema";
 
-/**
- * Flip to true by the PDF issue (SIT-247), when `GET /api/v1/quotes/:id/pdf` exists. Until then no PDF button is rendered: there is
- * never a link to an endpoint that is not there.
- */
-export const QUOTE_PDF_AVAILABLE = false;
-
 type Target = "sent" | "approved" | "rejected" | "expired";
 type Props = {
   quote: { id: string; quoteNumber: string; status: QuoteStatus; version: number };

@@ -7,6 +7,7 @@ import { listMembers } from "@/features/members/service";
 import { QuoteActions } from "@/features/quotes/components/quote-actions";
 import { QuoteEditor } from "@/features/quotes/components/quote-editor";
 import { QuoteHeader } from "@/features/quotes/components/quote-header";
+import { QuotePdfButton } from "@/features/quotes/components/quote-pdf-button";
 import { RevisionChain } from "@/features/quotes/components/revision-chain";
 import { QuoteReadOnly } from "@/features/quotes/components/quote-readonly";
 import { getForOrg } from "@/features/quotes/service";
@@ -50,16 +51,19 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-5">
       <QuoteHeader quote={quote} />
-      <QuoteActions
-        quote={{
-          id: quote.id,
-          quoteNumber: quote.quoteNumber,
-          status: quote.status,
-          version: quote.version,
-        }}
-        canWrite={canWrite}
-        isDemo={ctx.kind === "demo"}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <QuoteActions
+          quote={{
+            id: quote.id,
+            quoteNumber: quote.quoteNumber,
+            status: quote.status,
+            version: quote.version,
+          }}
+          canWrite={canWrite}
+          isDemo={ctx.kind === "demo"}
+        />
+        <QuotePdfButton quoteId={quote.id} quoteNumber={quote.quoteNumber} />
+      </div>
       <RevisionChain quote={quote} />
       {quote.status === "draft" && canWrite ? (
         <QuoteEditor quote={quote} />

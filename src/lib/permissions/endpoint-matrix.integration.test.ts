@@ -128,6 +128,7 @@ const B: Record<string, (c: Ctx) => Req> = {
     },
   }),
   "GET /quotes/{id}": (c) => ({ method: "GET", path: `/quotes/${c.ids.quote}` }),
+  "GET /quotes/{id}/pdf": (c) => ({ method: "GET", path: `/quotes/${c.ids.quote}/pdf` }),
   "PATCH /quotes/{id}": (c) => ({
     method: "PATCH",
     path: `/quotes/${c.ids.quote}`,

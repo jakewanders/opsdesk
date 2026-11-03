@@ -1812,6 +1812,40 @@ paths:
           description: "Validation failed or a rule (see POST)"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /quotes/{id}/pdf:
+    get:
+      summary: The quote as a PDF download (US-08)
+      description: >
+        `application/pdf` with `Content-Disposition: attachment; filename="Q-000123.pdf"`. Built from the stored quote (the totals are the
+        server's saved cents) with an OpsDesk header, the number, status, issue and valid-until dates, customer, line items, subtotal,
+        discount, tax with its rate, total, notes and a footer with page numbers. In a demo workspace every page is marked
+        "Sample / fictional data". Fonts are the built-in Helvetica faces; characters they cannot draw are written as plain letters or "?".
+        The output is deterministic (no dates or ids of its own). Every role may export (`export.run`); another workspace's quote is a 404.
+        Nothing is emailed. Behind `NEXT_PUBLIC_ENABLE_QUOTES` (404 when off).
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The PDF
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+        "400":
+          description: "The id is not a UUID"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A role that may not export (none today)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "No such quote in this workspace (also another workspace's quote), or quotes are switched off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /quotes/{id}/transition:
     post:
       summary: Move a quote along draft -> sent -> approved | rejected | expired

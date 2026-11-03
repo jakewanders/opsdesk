@@ -85,6 +85,66 @@ function isErrorBody(value: unknown): value is { error: ApiErrorBody } {
   );
 }
 
+/** The `ClientApiError` for a non-2xx response whose body has been read (the server's error envelope when it sent one). */
+function failureFrom(response: Response, body: unknown, requestId: string | undefined) {
+  if (isErrorBody(body)) {
+    const e = body.error;
+    const retry = Number(response.headers.get("Retry-After"));
+    return new ClientApiError(
+      response.status,
+      e.code,
+      e.message,
+      e.requestId ?? requestId,
+      e.fieldErrors,
+      e.meta,
+      Number.isFinite(retry) && retry > 0 ? retry : undefined,
+    );
+  }
+  return new ClientApiError(
+    response.status,
+    "INVALID_RESPONSE",
+    "Something went wrong. Try again.",
+    requestId,
+  );
+}
+
+/**
+ * Fetches a file from `/api/v1` (a PDF, a CSV) with the same headers, credentials and error handling as `apiFetch`. Returns the bytes
+ * as a Blob and the filename the server chose in `Content-Disposition`.
+ */
+export async function apiDownload(
+  path: string,
+  options: Pick<ApiFetchOptions, "organizationId" | "query" | "signal"> = {},
+): Promise<{ blob: Blob; filename: string | null }> {
+  const { organizationId, query, signal } = options;
+  const headers: Record<string, string> = { Accept: "*/*" };
+  if (organizationId) headers["X-Organization-Id"] = organizationId;
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path, query), {
+      headers,
+      credentials: "same-origin",
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    if ((error as { name?: string } | null)?.name === "AbortError") throw error;
+    throw new ClientApiError(
+      0,
+      "NETWORK_ERROR",
+      "We could not reach the server. Check your connection and try again.",
+    );
+  }
+  const requestId = response.headers.get("X-Request-Id") ?? undefined;
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => undefined);
+    throw failureFrom(response, body, requestId);
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await response.blob(), filename };
+}
+
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {},
@@ -129,27 +189,7 @@ export async function apiFetch<T>(
     );
   }
 
-  if (!response.ok) {
-    if (isErrorBody(body)) {
-      const e = body.error;
-      const retry = Number(response.headers.get("Retry-After"));
-      throw new ClientApiError(
-        response.status,
-        e.code,
-        e.message,
-        e.requestId ?? requestId,
-        e.fieldErrors,
-        e.meta,
-        Number.isFinite(retry) && retry > 0 ? retry : undefined,
-      );
-    }
-    throw new ClientApiError(
-      response.status,
-      "INVALID_RESPONSE",
-      "Something went wrong. Try again.",
-      requestId,
-    );
-  }
+  if (!response.ok) throw failureFrom(response, body, requestId);
 
   if (typeof body !== "object" || body === null || !("data" in body)) {
     throw new ClientApiError(
