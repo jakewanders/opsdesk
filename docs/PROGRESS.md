@@ -889,7 +889,7 @@ Entries per issue:
 
 ## M4 — Advanced Business Features (P1)
 
-In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-263, SIT-265 done).
+In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SIT-224, SIT-230, SIT-233, SIT-238, SIT-240, SIT-249, SIT-223, SIT-263, SIT-265 done).
 
 ### SIT-196 — Invitations table with hashed tokens, role constraints and RLS (done)
 
@@ -939,6 +939,16 @@ In progress. Entries are added per issue (SIT-174, SIT-196, SIT-202, SIT-222, SI
 - **Reorder:** each row has Move up / Move down buttons (the accessible path, announced in a polite status region) and a drag grip (dnd-kit core, mouse plus a keyboard coordinate getter). Positions are written 1..n on save.
 - **Tests:** `form-values.test.ts` 18, `quote-editor.test.tsx` 28 (component), `e2e/quotes-editor.spec.ts` 6 in a real browser: half-cent rounding in preview and on the server, build a quote with the exact totals (subtotal $9,426.75, tax 76,946 cents, total $10,096.21), keyboard reorder persisting across reload, mouse drag, the unsaved-changes guard, a sent quote locked with a revision, and a viewer seeing it read-only. Test note: Next keeps the previous route mounted but hidden, so the E2E counts only visible description inputs.
 - **Not in this issue:** the quote list and status actions (send / approve / reject) belong to SIT-246.
+
+### SIT-223 — import_jobs table with RLS and repeat-protection key (done)
+
+- Migration `20261101003900_import_jobs.sql`. **Columns:** the PRD set (`id`, `organization_id`, `created_by`, `file_sha256`, `status` previewed / committed / failed / expired, `total_rows`, `imported_rows`, `rejected_rows`, `error_summary jsonb`, `created_at`, `completed_at`) plus `expires_at` (default one hour after creation). **Checks:** a 64-character lower-case hex hash; counts 0 to 10,000; imported plus rejected at most the total; a preview imports nothing and has no completion time, a finished job has one; `error_summary` is an array or object and at most 20,000 bytes (a list of row numbers and codes, never row contents).
+- **No client writes:** `authenticated` holds SELECT only and the one policy is member select (`import_jobs_select_member`), so a client cannot set a count or a status; the preview and commit functions (SIT-231, SIT-239) write the table. Triggers: a finished job never changes (`OD409 IMPORT_JOB_FINISHED`); the id, organization, creator, file hash, total and expiry are protected; a demo cap of 10 jobs (`demo_cap_import_jobs`).
+- **Repeat protection:** index `import_jobs_org_file_created_idx (organization_id, file_sha256, created_at desc)`. EXPLAIN (2,000 rows, recorded): `Limit -> Index Scan using import_jobs_org_file_created_idx on import_jobs; Index Cond: organization_id = ... AND file_sha256 = ... AND created_at > now() - '00:10:00'`. The window rule stays in the application and the commit function.
+- **Who may commit:** `private.can_commit_import_job(job_id)` (creator who can still write, or an owner or admin); service_role only, to be called by the commit function (the callable-surface guard allows no other private function for clients).
+- **Cleanup:** `public.cleanup_expire_import_previews(retain default '1 day')` (service_role only) marks previews past `expires_at` as expired and removes expired jobs past the retention; committed and failed jobs are kept.
+- **Tests:** new `supabase/tests/import-jobs.test.sql`, 61 assertions (shape, grants and policy, every value rule, the 20 KB cap, state and immutability, member / viewer / outsider / signed-out reads, cross-tenant read returns nothing, direct writes denied, commit rule for four callers, index use, demo cap, cleanup). `rls-tenancy` and `demo-caps` expectations extended. **`npm run test:db`: 35 files, 2,956 assertions, all pass.** Types regenerated.
+- **Not wired yet:** the cleanup job (`src/lib/cleanup`) does not call `cleanup_expire_import_previews`; SIT-239 (which owns the commit and the job lifecycle) or the next cleanup change adds that call.
 
 ### SIT-265 — Role and invitation tests: pgTAP, API matrix, viewer and invitation E2E (done)
 

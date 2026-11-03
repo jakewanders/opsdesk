@@ -189,6 +189,60 @@ export type Database = {
           },
         ];
       };
+      import_jobs: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          error_summary: NonNullable<Json>;
+          expires_at: string;
+          file_sha256: string;
+          id: string;
+          imported_rows: number;
+          organization_id: string;
+          rejected_rows: number;
+          status: string;
+          total_rows: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          error_summary?: NonNullable<Json>;
+          expires_at?: string;
+          file_sha256: string;
+          id?: string;
+          imported_rows?: number;
+          organization_id: string;
+          rejected_rows?: number;
+          status?: string;
+          total_rows?: number;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          error_summary?: NonNullable<Json>;
+          expires_at?: string;
+          file_sha256?: string;
+          id?: string;
+          imported_rows?: number;
+          organization_id?: string;
+          rejected_rows?: number;
+          status?: string;
+          total_rows?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "import_jobs_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       invitations: {
         Row: {
           accepted_at: string | null;
@@ -688,6 +742,13 @@ export type Database = {
         Returns: Json;
       };
       cleanup_enqueue_orphans: { Args: { min_age_hours?: number }; Returns: number };
+      cleanup_expire_import_previews: {
+        Args: { retain?: string };
+        Returns: {
+          expired: number;
+          removed: number;
+        }[];
+      };
       cleanup_next_users: {
         Args: { attempted_before: string; max_rows: number };
         Returns: string[];

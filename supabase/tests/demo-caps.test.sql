@@ -13,7 +13,7 @@ insert into private.app_limits (key, value, note) values ('demo_cap_zz', 3, 'pro
 
 -- ---- the defaults the PRD asks for
 select is((select string_agg(key || '=' || value, ', ' order by key) from private.app_limits where key like 'demo_cap_%' and key <> 'demo_cap_zz'),
-  'demo_cap_activity_events=300, demo_cap_customers=50, demo_cap_opportunities=30, demo_cap_quotes=20, demo_cap_tasks=75', 'default caps: 50 customers, 30 opportunities, 75 tasks, 20 quotes, 300 activity events');
+  'demo_cap_activity_events=300, demo_cap_customers=50, demo_cap_import_jobs=10, demo_cap_opportunities=30, demo_cap_quotes=20, demo_cap_tasks=75', 'default caps: 50 customers, 30 opportunities, 75 tasks, 20 quotes, 10 import jobs, 300 activity events');
 
 -- ---- one-line attach, with guards
 select lives_ok($$select private.attach_demo_cap('public.zz_things', 'demo_cap_zz')$$, 'a cap attaches in one line');
