@@ -61,6 +61,7 @@ test.describe("phone, 375 x 812", () => {
       ["/app/opportunities/new", "form"],
       ["/app/tasks", "table"],
       ["/app/activity", "ol"],
+      ["/app/reports", "[aria-labelledby='rep-trend-title']"],
       ["/app/settings", "h1"],
     ];
     for (const [path, ready] of screens) {
@@ -162,6 +163,7 @@ test.describe("200% zoom (640 x 450 CSS px)", () => {
       ["/app/opportunities?view=board", "[aria-label='Pipeline board']"],
       ["/app/tasks", "table"],
       ["/app/activity", "ol"],
+      ["/app/reports", "[aria-labelledby='rep-trend-title']"],
       ["/app/settings", "h1"],
     ];
     for (const [path, ready] of screens) {
