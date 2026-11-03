@@ -37,6 +37,8 @@ export const ENDPOINTS: Record<string, EndpointRule> = {
   "GET /dashboard": read,
   "POST /demo/bootstrap": { who: "guest-only" },
   "POST /demo/reset": { who: "guest-only" },
+  "POST /imports/customers/commit": write,
+  "GET /imports/customers/{jobId}/errors": read,
   "POST /imports/customers/preview": write,
   "GET /invitations": manage,
   "POST /invitations": manage,

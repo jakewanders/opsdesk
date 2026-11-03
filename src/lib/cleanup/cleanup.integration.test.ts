@@ -369,6 +369,8 @@ describe("cleanupExpiredDemos with mixed fixtures", () => {
         "errors",
         "event",
         "expiredKeysPurged",
+        "importJobsRemoved",
+        "importPreviewsExpired",
         "orgsDeleted",
         "orphansQueued",
         "retryCandidates",

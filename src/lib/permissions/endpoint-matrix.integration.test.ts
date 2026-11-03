@@ -46,6 +46,15 @@ const B: Record<string, (c: Ctx) => Req> = {
   "GET /dashboard": () => ({ method: "GET", path: "/dashboard" }),
   "POST /demo/bootstrap": () => ({ method: "POST", path: "/demo/bootstrap" }),
   "POST /demo/reset": () => ({ method: "POST", path: "/demo/reset" }),
+  "POST /imports/customers/commit": () => ({
+    method: "POST",
+    path: "/imports/customers/commit",
+    json: { importJobId: UNKNOWN, content: Buffer.from("display_name\nX Y\n").toString("base64") },
+  }),
+  "GET /imports/customers/{jobId}/errors": () => ({
+    method: "GET",
+    path: `/imports/customers/${UNKNOWN}/errors`,
+  }),
   "POST /imports/customers/preview": () => ({
     method: "POST",
     path: "/imports/customers/preview",

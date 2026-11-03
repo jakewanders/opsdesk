@@ -1426,6 +1426,104 @@ paths:
           description: "RATE_LIMITED"
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
+  /imports/customers/commit:
+    post:
+      summary: Import the valid rows of a previewed customers CSV, once (US-10)
+      description: >
+        Body `{ importJobId, content }`: the job from the preview and the SAME file again (base64). The server re-reads and re-validates
+        every row (nothing from the preview is trusted) and refuses a file whose SHA-256 is not the job's (422 `IMPORT_FILE_MISMATCH`).
+        Invalid rows are skipped. A row whose e-mail is already in the workspace, or repeated earlier in the file, is skipped and counted in
+        `skippedDuplicates`. Rows are written in chunks of 100; each chunk is atomic on its own: a chunk that fails is rolled back and listed in
+        `failedChunks` (with `failedRows`), earlier and later chunks stay. The job moves previewed -> committed (or failed when nothing could
+        be imported) in the same transaction. The job is locked while it commits, so a double submit, a retry or a second tab imports the rows
+        once and the repeat returns the stored result with `replayed: true`; an `Idempotency-Key` additionally replays the exact response.
+        A demo workspace stops at its customer cap with 429 `DEMO_CAP` and the partial result in `error.meta.result`. History: one `imported`
+        event for the job plus the normal `created` event per customer. Owner, admin and member; only the person who started the import, or an
+        owner or admin, may finish it. 409 `IMPORT_JOB_EXPIRED` when the preview ran out (one hour).
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            name: Idempotency-Key,
+            in: header,
+            required: false,
+            schema: { type: string, minLength: 8, maxLength: 128 },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [importJobId, content]
+              properties:
+                importJobId: { type: string, format: uuid }
+                content:
+                  {
+                    type: string,
+                    description: "The CSV file's bytes, base64 encoded (at most 2 MB of file).",
+                  }
+      responses:
+        "200":
+          description: "The import result (a repeat returns the original with `replayed: true`)"
+          content:
+            { application/json: { schema: { $ref: "#/components/schemas/ImportCommitResponse" } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "A viewer, someone who may not finish this import, or an expired demo"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "404":
+          description: "IMPORT_JOB_NOT_FOUND (also for another workspace's job), or the feature is off"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "409":
+          description: "IMPORT_JOB_EXPIRED"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "413":
+          description: "PAYLOAD_TOO_LARGE"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "422":
+          description: "IMPORT_FILE_MISMATCH, IMPORT_ROWS_MISMATCH or a malformed body"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "429":
+          description: "DEMO_CAP: the demo workspace reached its customer cap; `error.meta.result` has the partial result"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
+  /imports/customers/{jobId}/errors:
+    get:
+      summary: The import's error report as a CSV download
+      description: >
+        Columns `row,field,code,explanation`, one line per problem (invalid rows from the preview, skipped duplicates and failed chunks from
+        the commit). Built from row numbers, field names and codes only, with a fixed explanation per code, so it never repeats anything typed
+        into the file. At most 200 preview errors and 100 commit problems are kept on the job; when there are more, the last line is
+        `REPORT_TRUNCATED` and the header `X-Report-Truncated` is `true`. Any member of the workspace can download it.
+      parameters:
+        - {
+            name: X-Organization-Id,
+            in: header,
+            required: false,
+            schema: { type: string, format: uuid },
+          }
+        - { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The report
+          headers:
+            X-Report-Truncated: { schema: { type: string, enum: ["true", "false"] } }
+          content:
+            text/csv: { schema: { type: string } }
+        "400":
+          description: "The id is not a UUID"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "IMPORT_JOB_NOT_FOUND (also for another workspace's job)"
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+
   /imports/customers/preview:
     post:
       summary: Validate a customers CSV before anything is imported (US-10)
@@ -2106,6 +2204,29 @@ components:
               properties:
                 remaining: { type: integer }
                 wouldExceed: { type: boolean }
+    ImportCommitResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            importJobId: { type: string, format: uuid }
+            status: { type: string, enum: [committed, failed] }
+            replayed: { type: boolean }
+            total: { type: integer, description: "Data rows in the file" }
+            imported: { type: integer }
+            rejected: { type: integer, description: "Rows that failed validation (skipped)" }
+            skippedDuplicates: { type: integer }
+            failedChunks:
+              {
+                type: array,
+                items: { type: integer },
+                description: "1-based chunk numbers (100 rows each) that were rolled back",
+              }
+            failedRows: { type: integer }
+            demoCapReached: { type: boolean }
+            notImportedDemoCap: { type: integer }
     ImportRowIssue:
       type: object
       properties:

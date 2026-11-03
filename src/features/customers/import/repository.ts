@@ -55,3 +55,75 @@ export async function recordPreview(
   if (error) throw error;
   return data as unknown as RecordedPreview;
 }
+
+export type ImportJobRow = {
+  id: string;
+  file_sha256: string;
+  status: "previewed" | "committed" | "failed" | "expired";
+  total_rows: number;
+  imported_rows: number;
+  rejected_rows: number;
+  error_summary: Json;
+  created_at: string;
+};
+
+/** A job of the workspace (RLS: members read), or null: a missing job and another workspace's look the same. */
+export async function findImportJob(
+  supabase: Client,
+  orgId: string,
+  jobId: string,
+): Promise<ImportJobRow | null> {
+  const { data, error } = await supabase
+    .from("import_jobs")
+    .select(
+      "id, file_sha256, status, total_rows, imported_rows, rejected_rows, error_summary, created_at",
+    )
+    .eq("organization_id", orgId)
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as ImportJobRow | null) ?? null;
+}
+
+/** One valid row as `commit_customer_import` reads it (snake_case, with its spreadsheet row number). */
+export type CommitRow = {
+  src_row: number;
+  type: string;
+  display_name: string;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  website: string | null;
+  status: string;
+  source: string;
+  tags: string[];
+  notes: string | null;
+};
+
+export type CommitResult = {
+  importJobId: string;
+  status: "committed" | "failed";
+  replayed: boolean;
+  total: number;
+  imported: number;
+  rejected: number;
+  skippedDuplicates: number;
+  failedChunks: number[];
+  failedRows: number;
+  demoCapReached: boolean;
+  notImportedDemoCap: number;
+};
+
+/** Writes the rows in chunks inside one database call and finishes the job (see `commit_customer_import`). */
+export async function commitRows(
+  supabase: Client,
+  jobId: string,
+  rows: CommitRow[],
+): Promise<CommitResult> {
+  const { data, error } = await supabase.rpc("commit_customer_import", {
+    p_job_id: jobId,
+    p_rows: rows as unknown as Json,
+  });
+  if (error) throw error;
+  return data as unknown as CommitResult;
+}

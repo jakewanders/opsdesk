@@ -178,6 +178,7 @@ describe("[SIT-212] A cannot escalate", () => {
       ["cleanup_next_users", { max_rows: 5, attempted_before: new Date().toISOString() }],
       ["cleanup_user_eligible", { uid: B.id }],
       ["cleanup_purge_expired_keys", {}],
+      ["cleanup_expire_import_previews", {}],
       ["seed_demo_workspace", { org_id: orgB }],
       ["register_demo_workspace", { org_id: orgA, user_id: A.id }],
     ] as const) {

@@ -761,6 +761,7 @@ export type Database = {
         Returns: undefined;
       };
       cleanup_user_eligible: { Args: { uid: string }; Returns: boolean };
+      commit_customer_import: { Args: { p_job_id: string; p_rows: Json }; Returns: Json };
       create_invitation: {
         Args: { p_email: string; p_org_id: string; p_role: string };
         Returns: Json;

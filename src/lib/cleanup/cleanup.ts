@@ -43,6 +43,9 @@ export type CleanupResult = {
   /** Users still queued after this run (failures awaiting retry, or work not reached before the budget ended). */
   retryCandidates: number;
   expiredKeysPurged: number;
+  /** Customer import previews that ran out of time, and finished-with-nothing jobs removed after the retention (SIT-239). */
+  importPreviewsExpired: number;
+  importJobsRemoved: number;
   batches: number;
   errors: number;
   errorCodes: string[];
@@ -83,6 +86,8 @@ export async function cleanupExpiredDemos(
     orphansQueued: 0,
     retryCandidates: 0,
     expiredKeysPurged: 0,
+    importPreviewsExpired: 0,
+    importJobsRemoved: 0,
     batches: 0,
     errors: 0,
     errorCodes: [],
@@ -214,6 +219,17 @@ export async function cleanupExpiredDemos(
     const keys = await admin.rpc("cleanup_purge_expired_keys");
     if (keys.error) fail(keys.error);
     else result.expiredKeysPurged = Number(keys.data ?? 0);
+  } catch {
+    fail(null);
+  }
+  try {
+    const previews = await admin.rpc("cleanup_expire_import_previews");
+    if (previews.error) fail(previews.error);
+    else {
+      const row = (previews.data as Array<{ expired: number; removed: number }> | null)?.[0];
+      result.importPreviewsExpired = Number(row?.expired ?? 0);
+      result.importJobsRemoved = Number(row?.removed ?? 0);
+    }
   } catch {
     fail(null);
   }

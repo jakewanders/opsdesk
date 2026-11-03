@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { uuid } from "@/lib/validation";
 import { IMPORT_MAX_BYTES } from "./analyze";
 
 /** Base64 of the largest accepted file, plus a little room: a file one byte over the cap must reach the size check and get its message. */
@@ -18,3 +19,13 @@ export const previewImportSchema = z.strictObject({
     .regex(/^[A-Za-z0-9+/]*={0,2}$/, "The file must be base64 text."),
 });
 export type PreviewImportInput = z.output<typeof previewImportSchema>;
+
+/**
+ * Body of POST /api/v1/imports/customers/commit: the job the preview made and the SAME file again. The server re-reads and re-validates
+ * every row (the preview's rows are never trusted) and refuses a file whose SHA-256 is not the job's.
+ */
+export const commitImportSchema = z.strictObject({
+  importJobId: uuid(),
+  content: previewImportSchema.shape.content,
+});
+export type CommitImportInput = z.output<typeof commitImportSchema>;

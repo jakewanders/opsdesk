@@ -177,7 +177,7 @@ Migration `20261101001300_demo_cleanup.sql` and `src/lib/cleanup/` (`cleanup.ts`
 
 **Limits.** `timeBudgetMs` (default 20 000 ms) stops new work, `batchSize` bounds each call, and a batch where every user fails stops the run instead of spinning; the result says `truncated: true` and `retryCandidates` tells how many users are still queued.
 
-**Result and logs.** `{ orgsDeleted, usersDeleted, usersSkipped, orphansQueued, retryCandidates, expiredKeysPurged, batches, errors, errorCodes, truncated, durationMs }`, logged as one JSON line. Counts and error codes only: never ids, emails or messages.
+**Result and logs.** `{ orgsDeleted, usersDeleted, usersSkipped, orphansQueued, retryCandidates, expiredKeysPurged, importPreviewsExpired, importJobsRemoved, batches, errors, errorCodes, truncated, durationMs }`, logged as one JSON line. Counts and error codes only: never ids, emails or messages.
 
 **Operating it.** Run a pass from a trusted shell (local only until SIT-213 wires the command): call `runDemoCleanup()` from `src/lib/cleanup/run.ts`. Safe to run repeatedly and concurrently with live demos. To see the queue: `select user_id, attempts, last_error from private.demo_cleanup_users;` as `postgres`. A user stuck with a growing `attempts` is an orphan candidate to investigate (an Auth outage shows up as the same error code on many rows).
 
