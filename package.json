@@ -16,6 +16,7 @@
     "test:db": "node scripts/test-db.mjs",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "test:e2e": "node scripts/e2e.mjs",
+    "test:e2e:scenarios": "node scripts/e2e.mjs e2e/guest-customers.spec.ts e2e/dashboard-propagation.spec.ts e2e/dashboard.spec.ts e2e/scenarios-1-6.spec.ts --project=desktop",
     "test": "node scripts/run-steps.mjs test",
     "check": "node scripts/run-steps.mjs check",
     "check:env": "node scripts/check-env-names.mjs",
