@@ -180,12 +180,30 @@ test("[SIT-256] the stage chart draws the API's numbers, follows a stage move, a
     .getByLabel(/^Move .* to another stage$/)
     .first()
     .waitFor();
-  const options = await page.getByLabel(/^Move .* to another stage$/).all();
-  for (const candidate of options) {
-    if ((await candidate.inputValue()) === "proposal") {
-      await candidate.selectOption("negotiation");
-      break;
+  // The select is server-rendered and gets its handler on hydration: on a slow runner a change made before that is lost.
+  // Wait for the move request itself, and choose again if none was sent (a lost event, not a failed move).
+  const stageMove = () =>
+    page
+      .waitForResponse(
+        (r) =>
+          /\/api\/v1\/opportunities\/[^/]+\/stage/.test(r.url()) && r.request().method() === "POST",
+        { timeout: 6_000 },
+      )
+      .catch(() => null);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const options = await page.getByLabel(/^Move .* to another stage$/).all();
+    let target;
+    for (const candidate of options) {
+      if ((await candidate.inputValue()) === "proposal") {
+        target = candidate;
+        break;
+      }
     }
+    if (!target) break; // already moved
+    const sent = stageMove();
+    await target.selectOption("negotiation");
+    if (await sent) break;
+    await page.waitForTimeout(500);
   }
   await expect
     .poll(async () => (await apiDashboard(page)).opportunitiesByStage.negotiation.count, {
