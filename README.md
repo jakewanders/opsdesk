@@ -38,7 +38,13 @@ flowchart LR
 
 ## Screenshots
 
-None yet. Real screenshots or a screen recording of the running app are added by the owner once it is deployed or recorded locally; none are invented here.
+Taken on 2026-11-03 from the live demo at https://opsdesk.sitelaunch.dev, which holds only fictional data.
+
+| Dashboard                                                                                        | Customers                                                                                |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| ![Dashboard with pipeline numbers and tasks that need attention](docs/screenshots/dashboard.jpg) | ![Customer list with status, owner and search](docs/screenshots/customers.jpg)           |
+| **Pipeline board**                                                                               | **Quote detail**                                                                         |
+| ![Pipeline board with six stages](docs/screenshots/pipeline.jpg)                                 | ![A sent quote with line items and server-calculated totals](docs/screenshots/quote.jpg) |
 
 ## Quick start
 
