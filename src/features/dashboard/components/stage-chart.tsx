@@ -4,8 +4,9 @@ import { BarChart3, Table2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSyncExternalStore, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
 import { formatUsd } from "@/lib/money/format";
 import type { DashboardDto } from "../service";
 import { stageRows, type StageRow } from "./stage-data";
@@ -20,18 +21,6 @@ const Impl = dynamic(() => import("./stage-chart-impl"), {
     </div>
   ),
 });
-
-function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(
-    (notify) => {
-      const q = window.matchMedia("(prefers-reduced-motion: reduce)");
-      q.addEventListener("change", notify);
-      return () => q.removeEventListener("change", notify);
-    },
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    () => true,
-  );
-}
 
 /** Where a stage leads: the opportunities list filtered to that stage. */
 export const stageHref = (stage: string) => `/app/opportunities?view=list&stage=${stage}`;

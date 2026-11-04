@@ -109,6 +109,13 @@
   --sidebar-accent-foreground: #0b4f49;
   --sidebar-border: #e2e0dc;
   --sidebar-ring: #0f6b63;
+  /* Motion (docs/ARCHITECTURE.md, Motion). Nothing runs longer than --motion-slow. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-settle: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 .dark {

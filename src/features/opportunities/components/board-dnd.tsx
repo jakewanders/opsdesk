@@ -16,8 +16,9 @@ import {
   type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import { GripVertical } from "lucide-react";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { STAGES, STAGE_LABELS, isStage, type Stage } from "@/lib/domain/pipeline";
+import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
 import { formatUsd } from "@/lib/money/format";
 import type { OpportunityDto } from "../schema";
 
@@ -86,19 +87,6 @@ export const announcements: Announcements = {
   },
 };
 
-const REDUCED = "(prefers-reduced-motion: reduce)";
-function useReducedMotion() {
-  return useSyncExternalStore(
-    (notify) => {
-      const query = window.matchMedia(REDUCED);
-      query.addEventListener("change", notify);
-      return () => query.removeEventListener("change", notify);
-    },
-    () => window.matchMedia(REDUCED).matches,
-    () => false,
-  );
-}
-
 type ProviderProps = {
   children: ReactNode;
   /** Whether cards can be picked up (writers, and not while a move is running). */
@@ -108,7 +96,7 @@ type ProviderProps = {
 
 export function BoardDnd({ children, enabled, onDrop }: ProviderProps) {
   const [active, setActive] = useState<OpportunityDto | null>(null);
-  const reduced = useReducedMotion();
+  const reduced = usePrefersReducedMotion();
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { usePrefersReducedMotion } from "../use-reduced-motion";
+import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
 import type { ChartKind, ChartRow, ChartSeries } from "./series-chart-impl";
 
 // Recharts is fetched only when a chart is about to be drawn.
