@@ -118,7 +118,10 @@ test("moving a deal and closing it changes pipeline and weighted pipeline by the
     start.opportunitiesByStage.proposal.count - 1,
   );
   await page.goto("/app");
-  expect(await cardValue(page, "Open opportunities")).toBe(String(start.openOpportunities - 1));
+  // the card counts to its new figure over a fraction of a second, so wait for it instead of reading once
+  await expect
+    .poll(() => cardValue(page, "Open opportunities"))
+    .toBe(String(start.openOpportunities - 1));
   await expect(card(page, "Pipeline")).toContainText(formatUsd(won.pipelineCents, { whole: true }));
   await expect(card(page, "Weighted pipeline")).toContainText(
     formatUsd(won.weightedPipelineCents, { whole: true }),
@@ -163,7 +166,10 @@ test("completing an overdue task, archiving and restoring a customer each move o
     .poll(async () => (await dashboard(page)).activeCustomers, { timeout: 15_000 })
     .toBe(start.activeCustomers - 1);
   await page.goto("/app");
-  expect(await cardValue(page, "Active customers")).toBe(String(start.activeCustomers - 1));
+  // the card counts to its new figure over a fraction of a second, so wait for it instead of reading once
+  await expect
+    .poll(() => cardValue(page, "Active customers"))
+    .toBe(String(start.activeCustomers - 1));
 
   // restore: back to the starting number
   await page.goto(`/app/customers/${customer.id}`);
@@ -187,7 +193,8 @@ test("completing an overdue task, archiving and restoring a customer each move o
     await api<{ data: Array<{ title: string }> }>(page, "/tasks?overdue=true&limit=100")
   ).data;
   expect(overdueList.map((t) => t.title)).not.toContain(title);
-  expect(await cardValue(page, "Overdue tasks")).toBe(String(start.overdueTasks - 1));
+  // the card counts to its new figure over a fraction of a second, so wait for it instead of reading once
+  await expect.poll(() => cardValue(page, "Overdue tasks")).toBe(String(start.overdueTasks - 1));
 
   // Recent activity: the newest events are at the top, in the order they happened
   await page.reload();

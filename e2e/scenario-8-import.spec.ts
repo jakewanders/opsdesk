@@ -48,6 +48,8 @@ test("scenario 8: preview shows exact errors, import adds only the valid rows, a
   await page.waitForLoadState("domcontentloaded");
   await page.getByRole("link", { name: "Import CSV" }).click();
   await expect(page.getByRole("heading", { name: "Choose a CSV file" })).toBeFocused();
+  // the page change is a view transition: let it finish (the title is updated with it) before checking the page
+  await expect(page).toHaveTitle(/Import customers/);
   expect(await axeViolations(page)).toEqual([]);
 
   // step 1 to 2
