@@ -22,6 +22,7 @@ import { formatUsd } from "@/lib/money/format";
 import type { MemberDto } from "@/features/members/service";
 import type { OpportunityDto } from "../schema";
 import { LostReasonDialog } from "./lost-reason-dialog";
+import { Morph } from "@/components/shared/morph";
 
 type Props = {
   initial: OpportunityDto;
@@ -124,7 +125,9 @@ export function OpportunityDetail({ initial, canWrite, quotesEnabled = false }: 
       />
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
+          <Morph entity="opportunity" id={deal.id}>
+            <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
+          </Morph>
           <StageBadge stage={deal.stage} />
           {deal.archivedAt ? (
             <span className="text-sm text-muted-foreground">(archived)</span>

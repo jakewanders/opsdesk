@@ -26,6 +26,7 @@ import { BOARD_KEY, useMoveStage, type Move } from "../use-move-stage";
 import { BoardDnd, DragHandle, useStageDrop } from "./board-dnd";
 import { LostReasonDialog } from "./lost-reason-dialog";
 import { ViewToggle } from "./view-toggle";
+import { Morph } from "@/components/shared/morph";
 
 const PAGE = 10;
 const SELECT =
@@ -405,7 +406,9 @@ function Card({
           transitionTypes={["nav-forward"]}
           className="outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:underline hover:underline"
         >
-          {deal.title}
+          <Morph entity="opportunity" id={deal.id}>
+            {deal.title}
+          </Morph>
         </Link>
       </h3>
       <p className="font-semibold tabular-nums">

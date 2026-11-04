@@ -358,6 +358,10 @@
     translate: 0;
   }
 }
+::view-transition-group(.morph) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--ease-out);
+}
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*),
   ::view-transition-new(*),

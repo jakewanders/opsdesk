@@ -53,6 +53,7 @@ import {
 import { CUSTOMER_SOURCES, CUSTOMER_STATUSES, type CustomerDto } from "../schema";
 import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus, STATUS_LABELS } from "./customer-status";
+import { Morph } from "@/components/shared/morph";
 
 type SortKey = CustomerListState["sort"];
 type Initial = { items: CustomerDto[]; meta: ApiMeta } | null;
@@ -190,12 +191,14 @@ export function CustomersView({
             ) : (
               <User aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             )}
-            <span>
-              {row.original.displayName}
-              <span className="sr-only">
-                {row.original.type === "company" ? " (company)" : " (person)"}
+            <Morph entity="customer" id={row.original.id}>
+              <span>
+                {row.original.displayName}
+                <span className="sr-only">
+                  {row.original.type === "company" ? " (company)" : " (person)"}
+                </span>
               </span>
-            </span>
+            </Morph>
             {row.original.archivedAt ? (
               <span className="text-xs font-normal text-muted-foreground">(archived)</span>
             ) : null}

@@ -19,6 +19,7 @@ import { ActivityTimeline } from "@/features/activity/components/activity-timeli
 import { ArchiveCustomerDialog } from "./archive-customer-dialog";
 import { CustomerStatus } from "./customer-status";
 import { RelatedOpportunities, RelatedTasks } from "./customer-related";
+import { Morph } from "@/components/shared/morph";
 
 type Props = {
   customer: CustomerDetailDto;
@@ -114,10 +115,15 @@ export function CustomerDetail({
           ) : (
             <User aria-hidden="true" className="size-6 text-muted-foreground" />
           )}
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {customer.displayName}
-            <span className="sr-only"> ({customer.type === "company" ? "company" : "person"})</span>
-          </h1>
+          <Morph entity="customer" id={customer.id}>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {customer.displayName}
+              <span className="sr-only">
+                {" "}
+                ({customer.type === "company" ? "company" : "person"})
+              </span>
+            </h1>
+          </Morph>
           <CustomerStatus status={customer.status} />
           {archived ? (
             <span className="rounded-md border border-border px-2 py-0.5 text-sm font-medium">
