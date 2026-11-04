@@ -15,6 +15,7 @@ import { useApiQuery } from "@/lib/api-client/provider";
 import { useDebouncedUrlParam, useUrlState } from "@/lib/api-client/use-url-state";
 import type { ApiMeta } from "@/lib/api/types";
 import { OPEN_STAGES, STAGES, STAGE_LABELS, type Stage } from "@/lib/domain/pipeline";
+import { useIsFresh } from "@/lib/motion/fresh";
 import { formatUsd } from "@/lib/money/format";
 import { cn } from "@/lib/utils";
 import type { MemberDto } from "@/features/members/service";
@@ -298,7 +299,7 @@ function Column({
       {...dropProps}
       aria-labelledby={headingId}
       className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-lg bg-muted/40 p-2 transition-shadow",
+        "flex min-w-0 flex-col gap-2 rounded-lg bg-muted/40 p-2 transition-[background-color,box-shadow] duration-(--motion-fast)",
         dragging && "outline-1 outline-dashed outline-border",
         isOver && "bg-muted ring-2 ring-ring",
       )}
@@ -386,8 +387,14 @@ function Card({
   onMove: ColumnProps["onMove"];
 }) {
   const selectId = `move-${deal.id}`;
+  const fresh = useIsFresh(deal.id);
   return (
-    <article className="relative flex flex-col gap-1.5 rounded-lg border border-border bg-background p-3 text-sm shadow-xs focus-within:ring-3 focus-within:ring-ring">
+    <article
+      className={cn(
+        "relative flex flex-col gap-1.5 rounded-lg border border-border bg-background p-3 text-sm shadow-xs focus-within:ring-3 focus-within:ring-ring",
+        fresh && "animate-settle",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-muted-foreground">{deal.customerName ?? "Customer"}</p>
         {canWrite ? <DragHandle deal={deal} disabled={busy} /> : null}

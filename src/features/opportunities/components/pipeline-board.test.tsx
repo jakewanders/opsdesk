@@ -9,6 +9,7 @@ import {
   weightedPipeline,
   type Stage,
 } from "@/lib/domain/pipeline";
+import { clearFreshForTests } from "@/lib/motion/fresh";
 import { expectNoA11yViolations } from "@/test/axe";
 import type { OpportunityDto } from "../schema";
 import { PipelineBoard } from "./pipeline-board";
@@ -264,6 +265,35 @@ describe("PipelineBoard: moving a deal", () => {
     );
     expect(totalsBar()).toHaveTextContent(
       `$${(pipelineTotal(rows) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+    );
+  });
+  it("a successfully moved card settles into its column; a refused move leaves no settle behind", async () => {
+    clearFreshForTests();
+    renderBoard();
+    await waitLoaded();
+    await userEvent.selectOptions(
+      screen.getByLabelText("Move Beta boiler to another stage"),
+      "proposal",
+    );
+    await waitFor(() =>
+      expect(within(column("Proposal")).getByText("Beta boiler").closest("article")).toHaveClass(
+        "animate-settle",
+      ),
+    );
+    clearFreshForTests();
+    failNext = {
+      status: 409,
+      error: { code: "STALE_EDIT", message: "changed", meta: { current: { updatedAt: "x" } } },
+    };
+    await userEvent.selectOptions(
+      screen.getByLabelText("Move Alpha retrofit to another stage"),
+      "qualified",
+    );
+    await waitFor(() => expect(notify.error).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(within(column("New")).getByText("Alpha retrofit").closest("article")).not.toHaveClass(
+        "animate-settle",
+      ),
     );
   });
   it.each([

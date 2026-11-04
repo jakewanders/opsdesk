@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { notify } from "@/components/shared/toast";
+import { markFresh } from "@/lib/motion/fresh";
 import { isClientApiError, type ApiResponse } from "@/lib/api-client/api-fetch";
 import { useApi, useScopedKey } from "@/lib/api-client/provider";
 import type { Stage } from "@/lib/domain/pipeline";
@@ -62,6 +63,7 @@ export function useMoveStage() {
       }
       return { snapshot };
     },
+    onSuccess: (_result, { deal }) => markFresh(deal.id),
     onError: (error, _move, context) => {
       for (const [key, data] of context?.snapshot ?? []) queryClient.setQueryData(key, data);
       if (!isClientApiError(error)) {

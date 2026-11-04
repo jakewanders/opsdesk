@@ -266,3 +266,16 @@
     transform: translateX(100%);
   }
 }
+
+/* A card that was just moved settles into its new column. Played once; the fresh-id store removes the class. */
+.animate-settle {
+  animation: settle var(--motion-slow) var(--ease-settle) both;
+}
+@keyframes settle {
+  from {
+    transform: translateY(-6px) scale(1.02);
+  }
+  to {
+    transform: none;
+  }
+}
