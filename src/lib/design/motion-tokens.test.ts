@@ -19,3 +19,13 @@ describe("motion tokens", () => {
     expect(css).toMatch(re);
   });
 });
+
+const UI = ["input", "dialog", "sheet", "drawer", "dropdown-menu", "select", "alert-dialog"];
+
+describe("ui primitives use the motion tokens", () => {
+  it.each(UI)("%s.tsx", (name) => {
+    const src = readFileSync(join(process.cwd(), `src/components/ui/${name}.tsx`), "utf8");
+    expect(src).toContain("--motion-");
+    expect(src).not.toMatch(/duration-(100|150|200|300)\b/);
+  });
+});
