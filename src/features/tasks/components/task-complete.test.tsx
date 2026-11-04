@@ -150,7 +150,9 @@ describe("one-click complete: optimistic update and exact rollback [SIT-242]", (
     // immediately, before the server has answered anything about the list
     expect(screen.queryByText("Task 1")).toBeNull();
     expect(screen.getByText("Showing 1 to 1 of 1")).toBeInTheDocument();
-    await waitFor(() => expect(notify.success).toHaveBeenCalledWith("Task completed", "Task 1"));
+    await waitFor(() =>
+      expect(notify.success).toHaveBeenCalledWith("Task completed", "Task 1", expect.anything()),
+    );
     expect(posts[0]).toEqual({ id: tasks[0].id, completed: true, expectedUpdatedAt: NOW });
     await waitFor(() => expect(screen.getByText("Showing 1 to 1 of 1")).toBeInTheDocument());
     expect(rows()).toHaveLength(1);

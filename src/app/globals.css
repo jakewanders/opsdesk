@@ -279,3 +279,15 @@
     transform: none;
   }
 }
+
+/* The check in a task's complete button draws itself as the row starts to leave. */
+.check-draw path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: check-draw var(--motion-base) var(--ease-out) forwards;
+}
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

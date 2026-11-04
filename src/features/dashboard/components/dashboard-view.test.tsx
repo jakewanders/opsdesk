@@ -68,6 +68,7 @@ let dash: DashboardDto;
 let overdueTasks: TaskDto[];
 let soonTasks: TaskDto[];
 let dashFail: Response | null;
+let completeFail: Response | null = null;
 let calls: Array<{ path: string; method: string; query: URLSearchParams; body?: unknown }>;
 function install() {
   calls = [];
@@ -82,6 +83,8 @@ function install() {
     });
     if (url.pathname.endsWith("/members")) return json(200, { data: [], meta: {} });
     if (url.pathname.endsWith("/dashboard")) return dashFail ?? json(200, { data: dash, meta: {} });
+    if (method === "POST" && url.pathname.endsWith("/complete") && completeFail)
+      return completeFail;
     if (method === "POST" && url.pathname.endsWith("/complete")) {
       const id = url.pathname.split("/").at(-2)!;
       overdueTasks = overdueTasks.filter((t) => t.id !== id);
@@ -120,6 +123,7 @@ beforeEach(() => {
     task("t3", "Renewal", "2026-11-02", "due_soon"),
   ];
   dashFail = null;
+  completeFail = null;
   notify.error.mockClear();
   notify.success.mockClear();
   install();
@@ -199,7 +203,11 @@ describe("DashboardView [SIT-255]", () => {
     await screen.findByText("Send revised quote");
     await user.click(screen.getByRole("button", { name: "Mark Send revised quote complete" }));
     await waitFor(() =>
-      expect(notify.success).toHaveBeenCalledWith("Task completed", "Send revised quote"),
+      expect(notify.success).toHaveBeenCalledWith(
+        "Task completed",
+        "Send revised quote",
+        expect.objectContaining({ label: "Undo" }),
+      ),
     );
     expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({
       completed: true,
@@ -209,6 +217,59 @@ describe("DashboardView [SIT-255]", () => {
     await waitFor(() =>
       expect(screen.getByRole("link", { name: /^Overdue tasks\s*2/ })).toBeInTheDocument(),
     );
+  });
+
+  describe("completion motion", () => {
+    const row = () => screen.getByText("Send revised quote").closest("li")!;
+    const posts = () => calls.filter((c) => c.method === "POST");
+
+    it("collapses the row first and sends the completion once the collapse has run", async () => {
+      const user = userEvent.setup();
+      view();
+      await screen.findByText("Send revised quote");
+      await user.click(screen.getByRole("button", { name: "Mark Send revised quote complete" }));
+      expect(row()).toHaveAttribute("data-leaving", "true");
+      expect(posts()).toHaveLength(0);
+      await waitFor(() => expect(posts()).toHaveLength(1));
+    });
+
+    it("skips the collapse when the person asked for reduced motion", async () => {
+      vi.stubGlobal("matchMedia", (q: string) => ({
+        matches: true,
+        media: q,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }));
+      const user = userEvent.setup();
+      view();
+      await screen.findByText("Send revised quote");
+      await user.click(screen.getByRole("button", { name: "Mark Send revised quote complete" }));
+      expect(document.querySelector('[data-leaving="true"]')).toBeNull();
+      await waitFor(() => expect(posts()).toHaveLength(1));
+    });
+
+    it("sends one completion however many times the button is pressed", async () => {
+      const user = userEvent.setup();
+      view();
+      await screen.findByText("Send revised quote");
+      const button = screen.getByRole("button", { name: "Mark Send revised quote complete" });
+      await user.click(button);
+      await user.click(button);
+      await waitFor(() => expect(posts()).toHaveLength(1));
+      await new Promise((r) => setTimeout(r, 300));
+      expect(posts()).toHaveLength(1);
+    });
+
+    it("puts the row back, fully open, when the completion is refused", async () => {
+      completeFail = json(500, { error: { code: "INTERNAL_ERROR", message: "Something broke" } });
+      const user = userEvent.setup();
+      view();
+      await screen.findByText("Send revised quote");
+      await user.click(screen.getByRole("button", { name: "Mark Send revised quote complete" }));
+      await waitFor(() => expect(notify.error).toHaveBeenCalled());
+      await waitFor(() => expect(row()).not.toHaveAttribute("data-leaving", "true"));
+      expect(screen.getByText("Send revised quote")).toBeInTheDocument();
+    });
   });
 
   it("quick actions: add customer / opportunity link to their forms; Add task opens the task form", async () => {

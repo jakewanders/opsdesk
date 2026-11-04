@@ -234,7 +234,9 @@ describe("customer detail: related records [SIT-243]", () => {
       CID,
     );
     await userEvent.click(screen.getByRole("button", { name: "Mark Call Acme complete" }));
-    await waitFor(() => expect(notify.success).toHaveBeenCalledWith("Task completed", "Call Acme"));
+    await waitFor(() =>
+      expect(notify.success).toHaveBeenCalledWith("Task completed", "Call Acme", expect.anything()),
+    );
     expect(bodies.find((b) => b.path.endsWith("/tasks/t1/complete"))!.body).toMatchObject({
       completed: true,
     });

@@ -261,7 +261,9 @@ describe("TasksView [SIT-237]", () => {
     );
     renderView(listed);
     await userEvent.click(screen.getByRole("button", { name: "Mark Task 1 complete" }));
-    await waitFor(() => expect(notify.success).toHaveBeenCalledWith("Task completed", "Task 1"));
+    await waitFor(() =>
+      expect(notify.success).toHaveBeenCalledWith("Task completed", "Task 1", expect.anything()),
+    );
     const call = spy.mock.calls.find(([u]) => String(u).includes("/complete"))!;
     expect(new URL(String(call[0]), "http://localhost").pathname).toContain(
       "/tasks/00000000-0000-4000-8000-000000000001/complete",

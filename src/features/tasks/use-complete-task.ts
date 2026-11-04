@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { notify } from "@/components/shared/toast";
+import { markFresh } from "@/lib/motion/fresh";
 import { isClientApiError, type ApiResponse } from "@/lib/api-client/api-fetch";
 import { useApi, useScopedKey } from "@/lib/api-client/provider";
 import type { TaskDto } from "./schema";
@@ -22,7 +23,7 @@ export function useCompleteTask(timeZone: string) {
   const tasksPrefix = useScopedKey(["tasks"]);
   const dashboardPrefix = useScopedKey(["dashboard"]);
 
-  return useMutation<ApiResponse<TaskDto>, Error, Toggle, { snapshot: Snapshot }>({
+  const mutation = useMutation<ApiResponse<TaskDto>, Error, Toggle, { snapshot: Snapshot }>({
     mutationFn: ({ task, completed }) =>
       call<TaskDto>(`/tasks/${task.id}/complete`, {
         method: "POST",
@@ -56,12 +57,23 @@ export function useCompleteTask(timeZone: string) {
         );
       }
     },
-    onSuccess: (_res, { task, completed }) =>
-      notify.success(completed ? "Task completed" : "Task reopened", task.title),
+    onSuccess: (res, { task, completed }) => {
+      if (completed) {
+        // Undo reopens with the version the server just returned.
+        notify.success("Task completed", task.title, {
+          label: "Undo",
+          onClick: () => mutation.mutate({ task: res.data, completed: false }),
+        });
+      } else {
+        markFresh(task.id);
+        notify.success("Task reopened", task.title);
+      }
+    },
     // The refetch runs in the background: the mutation (and the row's button) is settled as soon as the API has answered.
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: tasksPrefix });
       void queryClient.invalidateQueries({ queryKey: dashboardPrefix });
     },
   });
+  return mutation;
 }

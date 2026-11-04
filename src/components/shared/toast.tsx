@@ -17,7 +17,12 @@ export function ToastProvider() {
  * pressed: a "Save changes" button produces "Changes saved".
  */
 export const notify = {
-  success: (message: string, description?: string) => toast.success(message, { description }),
+  /** `action` adds one button to the toast, for example Undo. */
+  success: (
+    message: string,
+    description?: string,
+    action?: { label: string; onClick: () => void },
+  ) => toast.success(message, { description, action }),
   info: (message: string, description?: string) => toast.info(message, { description }),
   /** For recoverable problems that do not block the page. Blocking errors use ErrorAlert. */
   error: (message: string, description?: string) => toast.error(message, { description }),
