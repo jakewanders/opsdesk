@@ -80,9 +80,9 @@ The baseline for every screen (PRD 3.2, WCAG 2.2 AA). Feature issues reference t
 **Motion**
 
 - Animate only to show what changed. All animation and transitions are removed under `prefers-reduced-motion` by the global rule. No auto-playing or looping motion, with one exception: the skeleton shimmer for loading placeholders (it is frozen under reduced motion).
-- Timing comes from tokens in `globals.css`: `--motion-fast` 120ms, `--motion-base` 180ms, `--motion-slow` 280ms, and `--ease-out`, `--ease-in-out`, `--ease-settle`. Nothing runs longer than `--motion-slow`, except the one-time KPI count-up (600ms). Animate `transform` and `opacity` only.
+- Timing comes from tokens in `globals.css`: `--motion-fast` 120ms, `--motion-base` 180ms, `--motion-slow` 280ms, and `--ease-out`, `--ease-in-out`, `--ease-settle`. Nothing runs longer than `--motion-slow`, except the one-time KPI count-up (600ms). Animate `transform` and `opacity`; a highlight may also fade a colour (paint only). Never animate layout (size, position, margin), except the dashboard task-row collapse, which uses `grid-template-rows`.
 - JS-driven motion reads `usePrefersReducedMotion()` (`src/lib/motion/`). A row or card that just changed is marked with `markFresh(id)` (`src/lib/motion/fresh.ts`); `FreshRow`, the board card and `QuoteStatus` read `useIsFresh(id)` to flash or settle once.
-- `Button` takes `pending`: it locks, shows a spinner over its label and keeps its width. Use it for every submit that waits on the network.
+- `Button` takes `pending`: it locks, shows a spinner over its label and keeps its width. Use it on submit buttons that wait on the network, and keep the idle label while pending (an announcement goes in a `role="status"` line, as the auth forms do).
 - Page changes use React `<ViewTransition>` through `PageTransition` (`src/components/layout/page-transition.tsx`), wrapped in each `page.tsx`, never in a layout. Links choose the direction with `transitionTypes={["nav-forward"]}` or `["nav-back"]`; a link with no type crossfades. `Morph` (`components/shared/morph.tsx`) pairs a list row's name with its detail header.
 
 **Zoom and touch**

@@ -13,6 +13,7 @@ import type { OpportunityDto } from "@/features/opportunities/schema";
 import { DueDate, TaskPriority, TaskStatus } from "@/features/tasks/components/task-labels";
 import { TaskDrawer, type DrawerState } from "@/features/tasks/components/task-drawer";
 import type { TaskDto } from "@/features/tasks/schema";
+import { useLeaving } from "@/lib/motion/use-leaving";
 import { useCompleteTask } from "@/features/tasks/use-complete-task";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
@@ -208,6 +209,9 @@ export function RelatedTasks({
   const [page, setPage] = useState(1);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
   const complete = useCompleteTask(timeZone);
+  const { isLeaving, start } = useLeaving((task: TaskDto) =>
+    complete.mutateAsync({ task, completed: true }),
+  );
   const apiQuery = {
     customerId: customer.id,
     page,
@@ -300,7 +304,8 @@ export function RelatedTasks({
                   <FreshRow
                     key={task.id}
                     entityId={task.id}
-                    className="border-b border-border last:border-0"
+                    data-leaving={isLeaving(task.id) ? "true" : undefined}
+                    className="border-b border-border transition-opacity duration-(--motion-base) last:border-0 data-[leaving=true]:opacity-0"
                   >
                     {canWrite ? (
                       <td className="px-3 py-2">
@@ -308,9 +313,11 @@ export function RelatedTasks({
                           type="button"
                           variant="outline"
                           size="icon-sm"
-                          disabled={complete.isPending}
+                          disabled={complete.isPending || isLeaving(task.id)}
                           onClick={() =>
-                            complete.mutate({ task, completed: task.status !== "done" })
+                            task.status === "done"
+                              ? complete.mutate({ task, completed: false })
+                              : start(task)
                           }
                           aria-label={
                             task.status === "done"

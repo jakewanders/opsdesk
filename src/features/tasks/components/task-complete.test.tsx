@@ -128,7 +128,17 @@ function expectSame(now: string, original: string) {
 }
 const rows = () => screen.getAllByRole("row").slice(1);
 
+const stubMotion = (reduce: boolean) =>
+  vi.stubGlobal("matchMedia", (q: string) => ({
+    matches: reduce,
+    media: q,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+
 beforeEach(() => {
+  // These tests are about the optimistic update and its rollback, which must not wait on an exit animation.
+  stubMotion(true);
   search = "";
   tasks = [task(1), task(2), task(3, { dueDate: "2999-01-01", dueState: "later" })];
   posts = [];
@@ -138,7 +148,22 @@ beforeEach(() => {
   notify.success.mockClear();
   installApi();
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("completing fades the row out first", () => {
+  it("marks the row as leaving, and sends the completion once the fade has run", async () => {
+    stubMotion(false);
+    search = "overdue=true";
+    renderView({ ...DEFAULTS, overdue: "true" });
+    await userEvent.click(screen.getByRole("button", { name: "Mark Task 1 complete" }));
+    expect(screen.getByText("Task 1").closest("tr")).toHaveAttribute("data-leaving", "true");
+    expect(posts).toHaveLength(0);
+    await waitFor(() => expect(posts).toHaveLength(1));
+  });
+});
 
 describe("one-click complete: optimistic update and exact rollback [SIT-242]", () => {
   it("completing removes the task from Overdue and lowers the counts immediately, then keeps the server's answer", async () => {

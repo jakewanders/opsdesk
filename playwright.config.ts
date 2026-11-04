@@ -19,11 +19,11 @@ export default defineConfig({
   reporter: [["list"]],
   projects: [
     { name: "desktop", testIgnore: /mobile\.spec\.ts/ },
-    // Motion: the same accessibility and navigation checks with the system asking for reduced motion, so a view transition or
-    // count-up can never be what a check depends on.
+    // Motion: the same accessibility, navigation and dashboard checks (the dashboard compares every KPI with the API's figure)
+    // with the system asking for reduced motion, so a view transition or count-up can never be what a check depends on.
     {
       name: "desktop-reduced",
-      testMatch: /(accessibility|navigation)\.spec\.ts/,
+      testMatch: /(accessibility|navigation|dashboard)\.spec\.ts/,
       use: { reducedMotion: "reduce" },
     },
     // E2E scenario 9: a phone-sized browser (375 x 812, touch), used by e2e/mobile.spec.ts

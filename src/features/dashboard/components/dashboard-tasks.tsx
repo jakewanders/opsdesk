@@ -2,7 +2,6 @@
 
 import { AlertTriangle, Check, ListTodo } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorAlert } from "@/components/shared/error-alert";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { useCompleteTask } from "@/features/tasks/use-complete-task";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { useIsFresh } from "@/lib/motion/fresh";
-import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
+import { useLeaving } from "@/lib/motion/use-leaving";
 import { cn } from "@/lib/utils";
 import { relativeDay } from "../relative-day";
 import { Skeleton as Shimmer } from "@/components/ui/skeleton";
@@ -22,9 +21,6 @@ const SHORT = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: 
 const LIMIT = 5;
 
 type Props = { today: string; timeZone: string; canWrite: boolean };
-
-/** How long a row takes to collapse before its completion is sent. Matches --motion-base. */
-const LEAVE_MS = 180;
 
 function Section({
   title,
@@ -42,30 +38,7 @@ function Section({
   onComplete: (task: TaskDto) => Promise<unknown>;
   seeAll: string;
 }) {
-  const reduced = usePrefersReducedMotion();
-  const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
-  const started = useRef(new Set<string>());
-
-  const setLeave = (id: string, on: boolean) =>
-    setLeaving((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-
-  const complete = (task: TaskDto) => {
-    if (started.current.has(task.id)) return;
-    started.current.add(task.id);
-    const send = () =>
-      void onComplete(task).finally(() => {
-        started.current.delete(task.id);
-        setLeave(task.id, false);
-      });
-    if (reduced) return send();
-    setLeave(task.id, true);
-    setTimeout(send, LEAVE_MS);
-  };
+  const { isLeaving, start } = useLeaving(onComplete);
 
   return (
     <section aria-label={title} className="flex flex-col gap-2">
@@ -86,8 +59,8 @@ function Section({
               task={task}
               today={today}
               canWrite={canWrite}
-              leaving={leaving.has(task.id)}
-              onComplete={complete}
+              leaving={isLeaving(task.id)}
+              onComplete={start}
             />
           ))}
         </ul>

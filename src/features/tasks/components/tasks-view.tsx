@@ -30,6 +30,7 @@ import {
   type TaskListState,
 } from "../list-state";
 import { TASK_PRIORITIES, TASK_STATUSES, type TaskDto } from "../schema";
+import { useLeaving } from "@/lib/motion/use-leaving";
 import { useCompleteTask } from "../use-complete-task";
 import { TaskDrawer, type DrawerState } from "./task-drawer";
 import { DueDate, PRIORITY_LABELS, STATUS_LABELS, TaskPriority, TaskStatus } from "./task-labels";
@@ -84,6 +85,9 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
         : (members.data?.data.find((m) => m.userId === id)?.displayName ?? "Teammate");
 
   const complete = useCompleteTask(timeZone);
+  const { isLeaving, start } = useLeaving((task: TaskDto) =>
+    complete.mutateAsync({ task, completed: true }),
+  );
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
 
   const items = useMemo(() => query.data?.data ?? [], [query.data]);
@@ -410,8 +414,9 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                   {group.rows.map((task) => (
                     <Fragment key={task.id}>
                       <tr
+                        data-leaving={isLeaving(task.id) ? "true" : undefined}
                         className={cn(
-                          "border-b border-border last:border-0 hover:bg-muted/40",
+                          "border-b border-border transition-opacity duration-(--motion-base) last:border-0 hover:bg-muted/40 data-[leaving=true]:opacity-0",
                           task.status === "done" && "text-muted-foreground",
                         )}
                       >
@@ -421,9 +426,11 @@ export function TasksView({ initial, initialState, canWrite, currentUserId, time
                               type="button"
                               variant="outline"
                               size="icon-sm"
-                              disabled={complete.isPending}
+                              disabled={complete.isPending || isLeaving(task.id)}
                               onClick={() =>
-                                complete.mutate({ task, completed: task.status !== "done" })
+                                task.status === "done"
+                                  ? complete.mutate({ task, completed: false })
+                                  : start(task)
                               }
                               aria-label={
                                 task.status === "done"
