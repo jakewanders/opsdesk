@@ -9,6 +9,7 @@ import { parseUrlState } from "@/lib/api-client/url-state";
 import { stringifyQuery } from "@/lib/api/stringify-query";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -49,13 +50,15 @@ export default async function ReportsPage({
     .maybeSingle();
 
   return (
-    <ReportsView
-      initial={initial}
-      initialState={state}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      isDemo={ctx.org.kind === "demo"}
-      timeZone={ctx.org.timezone}
-      workspaceCreatedAt={org?.created_at ?? null}
-    />
+    <PageTransition>
+      <ReportsView
+        initial={initial}
+        initialState={state}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        isDemo={ctx.org.kind === "demo"}
+        timeZone={ctx.org.timezone}
+        workspaceCreatedAt={org?.created_at ?? null}
+      />
+    </PageTransition>
   );
 }

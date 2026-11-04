@@ -23,7 +23,11 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
               ) : (
                 (item.node ??
                 (item.href ? (
-                  <Link href={item.href} className="touch-link underline-offset-4 hover:underline">
+                  <Link
+                    href={item.href}
+                    transitionTypes={["nav-back"]}
+                    className="touch-link underline-offset-4 hover:underline"
+                  >
                     {item.label}
                   </Link>
                 ) : (

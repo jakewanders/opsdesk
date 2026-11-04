@@ -9,6 +9,7 @@ import { parseUrlState } from "@/lib/api-client/url-state";
 import { stringifyQuery } from "@/lib/api/stringify-query";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Tasks" };
 
@@ -44,12 +45,14 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   }
 
   return (
-    <TasksView
-      initial={initial}
-      initialState={state}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      currentUserId={ctx.user.id}
-      timeZone={ctx.org.timezone}
-    />
+    <PageTransition>
+      <TasksView
+        initial={initial}
+        initialState={state}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        currentUserId={ctx.user.id}
+        timeZone={ctx.org.timezone}
+      />
+    </PageTransition>
   );
 }

@@ -41,6 +41,7 @@ export function KpiCard({
   return (
     <Link
       href={href}
+      transitionTypes={["nav-forward"]}
       title={exact}
       className="group flex min-h-24 flex-col justify-between gap-2 rounded-lg border border-border p-4 outline-none transition-colors hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring"
     >

@@ -16,7 +16,7 @@ export function ListLink({
 }) {
   const href = useListBackUrl(list);
   return (
-    <Link href={href} className={className}>
+    <Link href={href} transitionTypes={["nav-back"]} className={className}>
       {children}
     </Link>
   );

@@ -182,6 +182,7 @@ export function CustomersView({
         cell: ({ row }) => (
           <Link
             href={`/app/customers/${row.original.id}`}
+            transitionTypes={["nav-forward"]}
             className="inline-flex items-center gap-2 rounded-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring"
           >
             {row.original.type === "company" ? (

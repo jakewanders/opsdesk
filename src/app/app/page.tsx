@@ -5,6 +5,7 @@ import { DashboardView } from "@/features/dashboard/components/dashboard-view";
 import { getDashboard } from "@/features/dashboard/service";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -20,11 +21,13 @@ export default async function DashboardPage() {
   // read on the server with the caller's own session so the numbers are in the first paint; the client takes over for refreshes
   const initial = await getDashboard(supabase, ctx).catch(() => null);
   return (
-    <DashboardView
-      initial={initial}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      currentUserId={ctx.user.id}
-      timeZone={ctx.org.timezone}
-    />
+    <PageTransition>
+      <DashboardView
+        initial={initial}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        currentUserId={ctx.user.id}
+        timeZone={ctx.org.timezone}
+      />
+    </PageTransition>
   );
 }

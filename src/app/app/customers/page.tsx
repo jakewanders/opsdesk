@@ -10,6 +10,7 @@ import { can } from "@/lib/permissions";
 import { parseUrlState } from "@/lib/api-client/url-state";
 import { stringifyQuery } from "@/lib/api/stringify-query";
 import { getPageOrgContext } from "@/lib/org/page-context";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -50,13 +51,15 @@ export default async function CustomersPage({
   }
 
   return (
-    <CustomersView
-      initial={initial}
-      initialState={state}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      canImport={getFeatureFlags().csvImport && can(ctx.role, ctx.kind, "records.write").allowed}
-      currentUserId={ctx.user.id}
-      timeZone={ctx.org.timezone}
-    />
+    <PageTransition>
+      <CustomersView
+        initial={initial}
+        initialState={state}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        canImport={getFeatureFlags().csvImport && can(ctx.role, ctx.kind, "records.write").allowed}
+        currentUserId={ctx.user.id}
+        timeZone={ctx.org.timezone}
+      />
+    </PageTransition>
   );
 }

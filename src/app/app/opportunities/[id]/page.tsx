@@ -9,6 +9,7 @@ import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Opportunity" };
 
@@ -31,10 +32,12 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
     throw error;
   }
   return (
-    <OpportunityDetail
-      initial={deal}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      quotesEnabled={quotesTabEnabled(getFeatureFlags())}
-    />
+    <PageTransition>
+      <OpportunityDetail
+        initial={deal}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        quotesEnabled={quotesTabEnabled(getFeatureFlags())}
+      />
+    </PageTransition>
   );
 }

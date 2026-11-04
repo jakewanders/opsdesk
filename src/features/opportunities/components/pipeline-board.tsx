@@ -402,6 +402,7 @@ function Card({
       <h3 className="font-medium">
         <Link
           href={`/app/opportunities/${deal.id}`}
+          transitionTypes={["nav-forward"]}
           className="outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:underline hover:underline"
         >
           {deal.title}

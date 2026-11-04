@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { OpportunitiesView } from "@/features/opportunities/components/opportunities-view";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Pipeline" };
 
@@ -14,9 +15,11 @@ export default async function OpportunitiesPage() {
   if (!page) redirect("/app/workspaces");
   const { ctx } = page;
   return (
-    <OpportunitiesView
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      currentUserId={ctx.user.id}
-    />
+    <PageTransition>
+      <OpportunitiesView
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        currentUserId={ctx.user.id}
+      />
+    </PageTransition>
   );
 }

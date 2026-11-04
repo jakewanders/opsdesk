@@ -16,6 +16,7 @@ import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Quote" };
 
@@ -49,51 +50,53 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   ]);
   const nameOf = (id: string) => members.find((m) => m.userId === id)?.displayName ?? "A teammate";
   return (
-    <div className="flex flex-col gap-5">
-      <QuoteHeader quote={quote} />
-      <div className="flex flex-wrap items-center gap-2">
-        <QuoteActions
-          quote={{
-            id: quote.id,
-            quoteNumber: quote.quoteNumber,
-            status: quote.status,
-            version: quote.version,
-          }}
-          canWrite={canWrite}
-          isDemo={ctx.kind === "demo"}
-        />
-        <QuotePdfButton quoteId={quote.id} quoteNumber={quote.quoteNumber} />
-      </div>
-      <RevisionChain quote={quote} />
-      {quote.status === "draft" && canWrite ? (
-        <QuoteEditor quote={quote} />
-      ) : (
-        <QuoteReadOnly quote={quote} canWrite={canWrite} />
-      )}
-      <section aria-labelledby="quote-history-title" className="flex flex-col gap-3">
-        <h2 id="quote-history-title" className="text-lg font-semibold">
-          History
-        </h2>
-        {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No history has been recorded for this quote yet.
-          </p>
-        ) : (
-          <ActivityTimeline
-            label="Quote history"
-            timeZone={ctx.org.timezone}
-            items={events.map((event) => ({
-              id: event.id,
-              action: event.action,
-              summary: event.summary,
-              actorName: event.actorUserId === null ? "System" : nameOf(event.actorUserId),
-              createdAt: event.createdAt,
-              changes: event.changes,
-              contentChanged: event.contentChanged,
-            }))}
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <QuoteHeader quote={quote} />
+        <div className="flex flex-wrap items-center gap-2">
+          <QuoteActions
+            quote={{
+              id: quote.id,
+              quoteNumber: quote.quoteNumber,
+              status: quote.status,
+              version: quote.version,
+            }}
+            canWrite={canWrite}
+            isDemo={ctx.kind === "demo"}
           />
+          <QuotePdfButton quoteId={quote.id} quoteNumber={quote.quoteNumber} />
+        </div>
+        <RevisionChain quote={quote} />
+        {quote.status === "draft" && canWrite ? (
+          <QuoteEditor quote={quote} />
+        ) : (
+          <QuoteReadOnly quote={quote} canWrite={canWrite} />
         )}
-      </section>
-    </div>
+        <section aria-labelledby="quote-history-title" className="flex flex-col gap-3">
+          <h2 id="quote-history-title" className="text-lg font-semibold">
+            History
+          </h2>
+          {events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No history has been recorded for this quote yet.
+            </p>
+          ) : (
+            <ActivityTimeline
+              label="Quote history"
+              timeZone={ctx.org.timezone}
+              items={events.map((event) => ({
+                id: event.id,
+                action: event.action,
+                summary: event.summary,
+                actorName: event.actorUserId === null ? "System" : nameOf(event.actorUserId),
+                createdAt: event.createdAt,
+                changes: event.changes,
+                contentChanged: event.contentChanged,
+              }))}
+            />
+          )}
+        </section>
+      </div>
+    </PageTransition>
   );
 }

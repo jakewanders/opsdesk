@@ -10,6 +10,7 @@ import { stringifyQuery } from "@/lib/api/stringify-query";
 import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Quotes" };
 
@@ -51,10 +52,12 @@ export default async function QuotesPage({
   }
 
   return (
-    <QuotesView
-      initial={initial}
-      initialState={state}
-      canWrite={can(ctx.role, ctx.kind, "quotes.write").allowed}
-    />
+    <PageTransition>
+      <QuotesView
+        initial={initial}
+        initialState={state}
+        canWrite={can(ctx.role, ctx.kind, "quotes.write").allowed}
+      />
+    </PageTransition>
   );
 }

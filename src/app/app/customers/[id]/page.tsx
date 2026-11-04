@@ -11,6 +11,7 @@ import { NotFoundError } from "@/lib/api/errors";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -39,25 +40,27 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const events = await activityFor(supabase, ctx, "customer", customer.id);
 
   return (
-    <CustomerDetail
-      customer={customer}
-      events={events}
-      canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
-      currentUserId={ctx.user.id}
-      timeZone={ctx.org.timezone}
-      quotesTab={
-        quotesTabEnabled(getFeatureFlags())
-          ? {
-              count: customer.related.quotes,
-              content: (
-                <CustomerQuotes
-                  customerId={customer.id}
-                  canWrite={can(ctx.role, ctx.kind, "quotes.write").allowed}
-                />
-              ),
-            }
-          : undefined
-      }
-    />
+    <PageTransition>
+      <CustomerDetail
+        customer={customer}
+        events={events}
+        canWrite={can(ctx.role, ctx.kind, "records.write").allowed}
+        currentUserId={ctx.user.id}
+        timeZone={ctx.org.timezone}
+        quotesTab={
+          quotesTabEnabled(getFeatureFlags())
+            ? {
+                count: customer.related.quotes,
+                content: (
+                  <CustomerQuotes
+                    customerId={customer.id}
+                    canWrite={can(ctx.role, ctx.kind, "quotes.write").allowed}
+                  />
+                ),
+              }
+            : undefined
+        }
+      />
+    </PageTransition>
   );
 }
