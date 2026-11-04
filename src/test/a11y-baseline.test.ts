@@ -106,6 +106,7 @@ describe("keyboard focus is visible", () => {
 
   it("classifies every primitive", () => {
     const files = readdirSync(UI)
+      .filter((f) => !f.includes(".test."))
       .map((f) => f.replace(/\.tsx$/, ""))
       .sort();
     expect(files).toEqual([...INTERACTIVE, ...NON_INTERACTIVE].sort());

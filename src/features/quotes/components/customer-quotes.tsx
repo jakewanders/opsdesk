@@ -100,7 +100,7 @@ export function CustomerQuotes({
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <QuoteStatus status={q.status} />
+              <QuoteStatus status={q.status} id={q.id} />
               <span className="tabular-nums font-medium">{formatUsd(q.totalCents)}</span>
             </div>
           </li>

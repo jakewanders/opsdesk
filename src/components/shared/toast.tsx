@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 
 /**
  * Mount once, near the root. sonner renders a polite live region (`aria-live="polite"`), so
- * messages are announced without stealing focus. Motion is removed by the global
- * `prefers-reduced-motion` rule in globals.css.
+ * messages are announced without stealing focus. Entrance and exit are sonner's own; its buttons use the motion tokens, and
+ * the global `prefers-reduced-motion` rule in globals.css removes all of it.
  */
 export function ToastProvider() {
   return <Toaster position="bottom-right" closeButton />;

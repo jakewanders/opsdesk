@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { notify } from "@/components/shared/toast";
+import { markFresh } from "@/lib/motion/fresh";
 import { Button } from "@/components/ui/button";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiMutation } from "@/lib/api-client/use-api-mutation";
@@ -101,6 +102,7 @@ export function QuoteActions({ quote, canWrite, isDemo }: Props) {
       );
     }
     const copy = COPY[target];
+    markFresh(quote.id);
     notify.success(
       copy.done,
       target === "sent" && isDemo

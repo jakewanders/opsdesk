@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useIsFresh } from "@/lib/motion/fresh";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
@@ -52,6 +53,19 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
+/**
+ * A plain row that flashes for a moment after `markFresh(entityId)` (see `@/lib/motion/fresh`): the row you just created, edited or
+ * restored is the one that lights up. It adds no styling of its own, so it can stand in for a `<tr>` anywhere.
+ */
+function FreshRow({
+  entityId,
+  className,
+  ...props
+}: React.ComponentProps<"tr"> & { entityId: string }) {
+  const fresh = useIsFresh(entityId);
+  return <tr data-fresh={fresh} className={cn(fresh && "animate-flash", className)} {...props} />;
+}
+
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
@@ -85,4 +99,14 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   );
 }
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  FreshRow,
+  TableCell,
+  TableCaption,
+};

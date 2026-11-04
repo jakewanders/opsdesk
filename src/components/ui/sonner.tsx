@@ -35,6 +35,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast",
+          actionButton: "transition-colors duration-(--motion-fast) ease-(--ease-out)",
+          closeButton: "transition-colors duration-(--motion-fast) ease-(--ease-out)",
         },
       }}
       {...props}

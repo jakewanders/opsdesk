@@ -10,6 +10,7 @@ import { Controller, useForm } from "react-hook-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ErrorSummary, type ErrorSummaryItem } from "@/components/shared/error-summary";
 import { FormField } from "@/components/shared/form-field";
+import { markFresh } from "@/lib/motion/fresh";
 import { notify } from "@/components/shared/toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +136,7 @@ export function CustomerForm({ customer, currentUserId }: Props) {
       setBaseline(toFormValues(res.data));
       setVersion(res.data.updatedAt);
       notify.success(editing ? "Customer saved" : "Customer added", res.data.displayName);
+      markFresh(res.data.id);
       if (warnings.length > 0) setSaved({ customer: res.data, warnings });
       else router.push(`/app/customers/${res.data.id}`);
     } catch (error) {

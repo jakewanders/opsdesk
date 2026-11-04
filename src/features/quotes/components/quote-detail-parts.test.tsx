@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiClientProvider } from "@/lib/api-client/provider";
+import { clearFreshForTests, markFresh } from "@/lib/motion/fresh";
 import { expectNoA11yViolations } from "@/test/axe";
 import type { QuoteDto, QuoteStatus as Status } from "../schema";
 import { CustomerQuotes } from "./customer-quotes";
@@ -44,6 +45,22 @@ const actions = (status: Status, over: Partial<React.ComponentProps<typeof Quote
       />
     </ApiClientProvider>,
   );
+
+describe("QuoteStatus motion", () => {
+  afterEach(() => clearFreshForTests());
+  it("settles a check only for a quote that was just approved", () => {
+    const { container, rerender } = render(<QuoteStatus status="approved" id="q1" />);
+    expect(container.querySelector(".animate-settle")).toBeNull();
+    act(() => markFresh("q1"));
+    rerender(<QuoteStatus status="approved" id="q1" />);
+    expect(container.querySelector(".animate-settle")).not.toBeNull();
+  });
+  it("does not settle for other statuses even when fresh", () => {
+    act(() => markFresh("q2"));
+    const { container } = render(<QuoteStatus status="sent" id="q2" />);
+    expect(container.querySelector(".animate-settle")).toBeNull();
+  });
+});
 
 describe("QuoteStatus", () => {
   it("shows an icon and a word for every status", () => {

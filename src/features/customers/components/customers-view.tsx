@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { FreshRow } from "@/components/ui/table";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { serializeUrlState } from "@/lib/api-client/url-state";
@@ -497,8 +498,9 @@ export function CustomersView({
               </thead>
               <tbody>
                 {table.getRowModel().rows.map((row) => (
-                  <tr
+                  <FreshRow
                     key={row.id}
+                    entityId={row.original.id}
                     className="border-b border-border last:border-0 hover:bg-muted/40"
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -506,7 +508,7 @@ export function CustomersView({
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
-                  </tr>
+                  </FreshRow>
                 ))}
               </tbody>
             </table>

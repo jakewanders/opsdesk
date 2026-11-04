@@ -12,7 +12,7 @@ type HeaderQuote = Pick<
   Partial<
     Pick<
       QuoteDetailDto,
-      "customerArchived" | "opportunityId" | "opportunityTitle" | "opportunityArchived"
+      "id" | "customerArchived" | "opportunityId" | "opportunityTitle" | "opportunityArchived"
     >
   >;
 
@@ -32,7 +32,7 @@ export function QuoteHeader({ quote }: { quote: HeaderQuote }) {
       <h1 className="text-2xl font-semibold tracking-tight">{quote.title}</h1>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
         <span className="font-medium text-foreground">{quote.quoteNumber}</span>
-        <QuoteStatus status={quote.status} />
+        <QuoteStatus status={quote.status} id={quote.id} />
         <span>
           for{" "}
           <Link

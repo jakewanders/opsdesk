@@ -291,3 +291,16 @@
     stroke-dashoffset: 0;
   }
 }
+
+/* A row whose entity just changed flashes the accent colour once, then returns to normal. */
+.animate-flash {
+  animation: flash var(--motion-slow) var(--ease-out) 2 alternate;
+}
+@keyframes flash {
+  from {
+    background-color: transparent;
+  }
+  to {
+    background-color: var(--accent);
+  }
+}

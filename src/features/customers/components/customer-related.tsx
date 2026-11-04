@@ -16,6 +16,7 @@ import type { TaskDto } from "@/features/tasks/schema";
 import { useCompleteTask } from "@/features/tasks/use-complete-task";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
+import { FreshRow } from "@/components/ui/table";
 import { formatUsd } from "@/lib/money/format";
 
 const PAGE_SIZE = 10;
@@ -296,7 +297,11 @@ export function RelatedTasks({
               </thead>
               <tbody>
                 {items.map((task) => (
-                  <tr key={task.id} className="border-b border-border last:border-0">
+                  <FreshRow
+                    key={task.id}
+                    entityId={task.id}
+                    className="border-b border-border last:border-0"
+                  >
                     {canWrite ? (
                       <td className="px-3 py-2">
                         <Button
@@ -343,7 +348,7 @@ export function RelatedTasks({
                     <td className="px-3 py-2">
                       <TaskPriority priority={task.priority} />
                     </td>
-                  </tr>
+                  </FreshRow>
                 ))}
               </tbody>
             </table>

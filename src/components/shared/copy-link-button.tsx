@@ -1,6 +1,7 @@
 "use client";
 
-import { Link2 } from "lucide-react";
+import { Check, Link2 } from "lucide-react";
+import { useState } from "react";
 import { notify } from "@/components/shared/toast";
 import { Button } from "@/components/ui/button";
 
@@ -10,11 +11,14 @@ import { Button } from "@/components/ui/button";
  * search box. Where the clipboard is not available the person is told, in words, to copy it from the address bar.
  */
 export function CopyLinkButton({ className }: { className?: string }) {
+  const [copied, setCopied] = useState(false);
   async function copy() {
     const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
       notify.success("Link copied", "Anyone in this workspace who opens it sees this view.");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch {
       notify.error(
         "The link could not be copied",
@@ -24,7 +28,11 @@ export function CopyLinkButton({ className }: { className?: string }) {
   }
   return (
     <Button type="button" variant="outline" className={className} onClick={() => void copy()}>
-      <Link2 aria-hidden="true" />
+      {copied ? (
+        <Check aria-hidden="true" data-testid="copied-icon" />
+      ) : (
+        <Link2 aria-hidden="true" />
+      )}
       Copy link
     </Button>
   );

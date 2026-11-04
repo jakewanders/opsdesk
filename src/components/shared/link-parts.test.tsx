@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rememberList } from "@/lib/api-client/list-memory";
 import { expectNoA11yViolations } from "@/test/axe";
 import { ArchivedBadge } from "./archived-badge";
@@ -56,6 +56,18 @@ describe("ListLink keeps the filters the list had", () => {
 });
 
 describe("CopyLinkButton", () => {
+  afterEach(() => vi.useRealTimers());
+  it("swaps its icon for a check for a moment after copying", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    render(<CopyLinkButton />);
+    expect(screen.queryByTestId("copied-icon")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Copy link" }));
+    expect(await screen.findByTestId("copied-icon")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(1500);
+    await waitFor(() => expect(screen.queryByTestId("copied-icon")).toBeNull());
+  });
   it("copies the address of the view as it is now and says so", async () => {
     const user = userEvent.setup(); // installs its own clipboard, which is then watched
     const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
