@@ -8,6 +8,7 @@ import { ImportWizard } from "@/features/customers/import/components/import-wiza
 import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Import customers" };
 
@@ -35,5 +36,9 @@ export default async function ImportCustomersPage() {
       />
     );
   }
-  return <ImportWizard isDemo={ctx.kind === "demo"} />;
+  return (
+    <PageTransition>
+      <ImportWizard isDemo={ctx.kind === "demo"} />
+    </PageTransition>
+  );
 }

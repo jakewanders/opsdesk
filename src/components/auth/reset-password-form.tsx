@@ -45,8 +45,13 @@ export function ResetPasswordForm({ action }: { action: Action }) {
           <Input {...control} name="confirm" type="password" autoComplete="new-password" />
         )}
       </FormField>
+      {pending ? (
+        <span role="status" className="sr-only">
+          Saving…
+        </span>
+      ) : null}
       <Button type="submit" pending={pending} className="h-10">
-        {pending ? "Saving…" : "Save new password"}
+        Save new password
       </Button>
       <p className="text-sm text-muted-foreground">
         Saving signs you out on your other devices.{" "}

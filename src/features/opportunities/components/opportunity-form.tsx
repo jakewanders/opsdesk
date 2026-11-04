@@ -349,8 +349,8 @@ export function OpportunityForm({ deal, initialCustomer, currentUserId }: Props)
         </FormField>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving..." : editing ? "Save changes" : "Add opportunity"}
+          <Button type="submit" pending={busy}>
+            {editing ? "Save changes" : "Add opportunity"}
           </Button>
           <Link
             href={editing ? `/app/opportunities/${deal.id}` : "/app/opportunities"}

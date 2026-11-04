@@ -93,8 +93,9 @@ describe("AuthForm", () => {
     await user.type(screen.getByRole("textbox", { name: /Email/ }), "a@example.com");
     await user.type(screen.getByLabelText(/Password/), "pw");
     await user.dblClick(screen.getByRole("button", { name: "Sign in" }));
-    const busy = await screen.findByRole("button", { name: "Signing in…" });
-    expect(busy).toBeDisabled();
+    const busy = await screen.findByRole("button", { name: "Sign in" });
+    await waitFor(() => expect(busy).toBeDisabled());
+    expect(busy).toHaveAttribute("aria-busy", "true");
     expect(action).toHaveBeenCalledTimes(1);
     release({ status: "error", attempt: 1, message: "x" });
     await waitFor(() => expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled());

@@ -372,8 +372,8 @@ export function CustomerForm({ customer, currentUserId }: Props) {
         </FormField>
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving..." : editing ? "Save changes" : "Add customer"}
+          <Button type="submit" pending={busy}>
+            {editing ? "Save changes" : "Add customer"}
           </Button>
           <Link
             href={editing ? `/app/customers/${customer.id}` : "/app/customers"}

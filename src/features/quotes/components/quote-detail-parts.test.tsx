@@ -47,6 +47,15 @@ const actions = (status: Status, over: Partial<React.ComponentProps<typeof Quote
   );
 
 describe("QuoteStatus motion", () => {
+  it("fades again on every later change, not only the first", () => {
+    const { container, rerender } = render(<QuoteStatus status="draft" id="q8" />);
+    rerender(<QuoteStatus status="sent" id="q8" />);
+    const afterFirst = container.firstElementChild;
+    rerender(<QuoteStatus status="approved" id="q8" />);
+    expect(container.firstElementChild).not.toBe(afterFirst);
+    expect(container.querySelector(".animate-in")).not.toBeNull();
+  });
+
   it("does not fade in on first render (a half-faded badge fails contrast checks) but does when the status changes", () => {
     const { container, rerender } = render(<QuoteStatus status="sent" id="q9" />);
     expect(container.querySelector(".animate-in")).toBeNull();

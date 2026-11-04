@@ -168,8 +168,9 @@ describe("CustomerForm: saving", () => {
     await userEvent.type(screen.getByLabelText(/Display name/), "Double Click");
     const button = screen.getByRole("button", { name: "Add customer" });
     await userEvent.click(button);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled());
-    await userEvent.click(screen.getByRole("button", { name: "Saving..." }));
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(button).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(button);
     release();
     await waitFor(() => expect(push).toHaveBeenCalled());
     expect(writes()).toHaveLength(1);

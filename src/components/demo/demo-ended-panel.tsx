@@ -32,8 +32,13 @@ export function DemoEndedPanel({ action }: { action: Action }) {
         </p>
       ) : null}
       <form action={formAction}>
+        {pending ? (
+          <span role="status" className="sr-only">
+            Starting…
+          </span>
+        ) : null}
         <Button type="submit" pending={pending} className="h-10">
-          {pending ? "Starting…" : "Start a new demo"}
+          Start a new demo
         </Button>
       </form>
       <p className="text-sm text-muted-foreground">

@@ -391,8 +391,8 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
             </FormField>
 
             <SheetFooter className="flex-row flex-wrap gap-2 p-0">
-              <Button type="submit" disabled={busy}>
-                {busy ? "Saving..." : editing ? "Save changes" : "Add task"}
+              <Button type="submit" pending={busy}>
+                {editing ? "Save changes" : "Add task"}
               </Button>
               <Button type="button" variant="outline" onClick={requestClose}>
                 Cancel

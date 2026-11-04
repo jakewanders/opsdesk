@@ -78,7 +78,10 @@ export function FormField({
       ) : null}
       {children(control)}
       {error ? (
-        <p id={errorId} className="text-sm font-medium text-destructive">
+        <p
+          id={errorId}
+          className="text-sm font-medium text-destructive duration-(--motion-base) animate-in slide-in-from-top-1"
+        >
           <span className="sr-only">Error:</span> {error}
         </p>
       ) : null}

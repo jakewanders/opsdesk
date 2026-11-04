@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CustomerForm } from "@/features/customers/components/customer-form";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Add customer" };
 
@@ -30,9 +31,11 @@ export default async function NewCustomerPage() {
     );
   }
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Add customer</h1>
-      <CustomerForm currentUserId={ctx.user.id} />
-    </div>
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Add customer</h1>
+        <CustomerForm currentUserId={ctx.user.id} />
+      </div>
+    </PageTransition>
   );
 }

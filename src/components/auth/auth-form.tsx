@@ -126,18 +126,13 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
         error={errorFor("captchaToken")}
       />
 
+      {pending ? (
+        <span role="status" className="sr-only">
+          {isForgot ? "Sending…" : isSignup ? "Creating account…" : "Signing in…"}
+        </span>
+      ) : null}
       <Button type="submit" pending={pending} disabled={!siteKey} className="h-10">
-        {pending
-          ? isForgot
-            ? "Sending…"
-            : isSignup
-              ? "Creating account…"
-              : "Signing in…"
-          : isForgot
-            ? "Send reset link"
-            : isSignup
-              ? "Create account"
-              : "Sign in"}
+        {isForgot ? "Send reset link" : isSignup ? "Create account" : "Sign in"}
       </Button>
 
       {isSignup ? (

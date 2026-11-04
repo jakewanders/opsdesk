@@ -7,6 +7,19 @@ import { expectNoA11yViolations } from "@/test/axe";
 import { ErrorSummary } from "./error-summary";
 import { FormField } from "./form-field";
 
+describe("FormField error motion", () => {
+  it("slides its error in (movement only: a half-transparent error fails contrast checks)", () => {
+    render(
+      <FormField label="Email" error="Enter a valid email.">
+        {(c) => <Input type="email" {...c} />}
+      </FormField>,
+    );
+    const message = screen.getByText("Enter a valid email.").closest("p")!;
+    expect(message).toHaveClass("animate-in", "slide-in-from-top-1");
+    expect(message).not.toHaveClass("fade-in");
+  });
+});
+
 describe("FormField", () => {
   it("gives the control an accessible name from its label", () => {
     render(<FormField label="Email">{(c) => <Input type="email" {...c} />}</FormField>);

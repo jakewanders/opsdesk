@@ -152,9 +152,9 @@ export function QuoteReadOnly({ quote, canWrite }: { quote: QuoteDetailDto; canW
               <Button
                 type="button"
                 onClick={() => void createRevision()}
-                disabled={revise.isPending}
+                pending={revise.isPending}
               >
-                {revise.isPending ? "Creating..." : "Create revision"}
+                Create revision
               </Button>
             )}
           </div>

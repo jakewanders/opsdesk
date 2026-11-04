@@ -17,23 +17,24 @@ const ICONS: Record<Status, LucideIcon> = {
 
 /**
  * A quote's status as an icon AND a word, never colour alone (PRD 9.3). It is a client component so a quote that was just
- * approved can settle its check in once (the fresh-id store), and so a change of status can fade in. It does NOT fade on first
+ * approved can settle its check in once (the fresh-id store), and so every change of status can fade in (a new element per change restarts the animation). It does NOT fade on first
  * render: a half-transparent badge fails automated contrast checks, and nothing changed yet.
  */
 export function QuoteStatusBadge({ status, id }: { status: Status; id?: string }) {
   const Icon = ICONS[status];
   const fresh = useIsFresh(id ?? "");
   const [previous, setPrevious] = useState(status);
-  const [changed, setChanged] = useState(false);
+  const [changes, setChanges] = useState(0);
   if (previous !== status) {
     setPrevious(status);
-    setChanged(true);
+    setChanges(changes + 1);
   }
   return (
     <span
+      key={changes}
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap",
-        changed && "duration-(--motion-base) animate-in fade-in",
+        changes > 0 && "duration-(--motion-base) animate-in fade-in",
       )}
     >
       <Icon

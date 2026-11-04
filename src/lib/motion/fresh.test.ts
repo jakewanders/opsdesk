@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearFreshForTests, markFresh, useIsFresh } from "./fresh";
+import { clearFresh, clearFreshForTests, markFresh, useIsFresh } from "./fresh";
 
 describe("fresh-id store", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -15,6 +15,13 @@ describe("fresh-id store", () => {
     act(() => markFresh("a"));
     expect(a.result.current).toBe(true);
     expect(b.result.current).toBe(false);
+  });
+
+  it("can be cleared at once, for a change that was refused", () => {
+    const a = renderHook(() => useIsFresh("a"));
+    act(() => markFresh("a"));
+    act(() => clearFresh("a"));
+    expect(a.result.current).toBe(false);
   });
 
   it("stops being fresh after 1600ms", () => {

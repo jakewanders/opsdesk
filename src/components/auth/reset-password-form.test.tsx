@@ -53,7 +53,9 @@ describe("ResetPasswordForm", () => {
     await user.type(screen.getByLabelText(/^New password/), "long enough pw");
     await user.type(screen.getByLabelText(/Repeat new password/), "long enough pw");
     await user.dblClick(screen.getByRole("button", { name: "Save new password" }));
-    expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
+    const busy = await screen.findByRole("button", { name: "Save new password" });
+    await waitFor(() => expect(busy).toBeDisabled());
+    expect(busy).toHaveAttribute("aria-busy", "true");
     expect(action).toHaveBeenCalledTimes(1);
     release({ status: "error", attempt: 1, message: "x" });
   });

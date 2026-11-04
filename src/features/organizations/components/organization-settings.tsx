@@ -216,8 +216,8 @@ export function OrganizationSettings({ settings, memberRole, isDemo, canEdit, zo
               )}
             </FormField>
             <div>
-              <Button type="submit" disabled={isSubmitting || !isDirty}>
-                {isSubmitting ? "Saving…" : "Save changes"}
+              <Button type="submit" pending={isSubmitting} disabled={!isDirty}>
+                Save changes
               </Button>
             </div>
           </form>

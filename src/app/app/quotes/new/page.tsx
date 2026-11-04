@@ -11,6 +11,7 @@ import { getFeatureFlags } from "@/lib/env/public";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "New quote" };
 
@@ -63,9 +64,11 @@ export default async function NewQuotePage({
       initial = { customerId: customer.id, customerName: customer.display_name };
   }
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">New quote</h1>
-      <QuoteEditor initial={initial} />
-    </div>
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <h1 className="text-2xl font-semibold tracking-tight">New quote</h1>
+        <QuoteEditor initial={initial} />
+      </div>
+    </PageTransition>
   );
 }

@@ -10,6 +10,7 @@ import { NotFoundError } from "@/lib/api/errors";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Edit opportunity" };
 
@@ -44,9 +45,11 @@ export default async function EditOpportunityPage({ params }: { params: Promise<
     throw error;
   }
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit {deal.title}</h1>
-      <OpportunityForm deal={deal} currentUserId={ctx.user.id} />
-    </div>
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Edit {deal.title}</h1>
+        <OpportunityForm deal={deal} currentUserId={ctx.user.id} />
+      </div>
+    </PageTransition>
   );
 }

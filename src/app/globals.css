@@ -292,16 +292,16 @@
   }
 }
 
-/* A row whose entity just changed flashes the accent colour once, then returns to normal. */
+/* A row whose entity just changed starts on the accent colour and fades back to normal, once. */
 .animate-flash {
-  animation: flash var(--motion-slow) var(--ease-out) 2 alternate;
+  animation: flash var(--motion-slow) var(--ease-out);
 }
 @keyframes flash {
   from {
-    background-color: transparent;
+    background-color: var(--accent);
   }
   to {
-    background-color: var(--accent);
+    background-color: transparent;
   }
 }
 
@@ -316,7 +316,8 @@
   animation: var(--motion-fast) var(--ease-out) both vt-fade reverse;
 }
 ::view-transition-new(.page-fade) {
-  animation: var(--motion-base) var(--ease-out) var(--motion-fast) both vt-fade;
+  animation: calc(var(--motion-slow) - var(--motion-fast)) var(--ease-out) var(--motion-fast) both
+    vt-fade;
 }
 ::view-transition-old(.nav-forward) {
   --slide-offset: -24px;
@@ -327,7 +328,7 @@
 ::view-transition-new(.nav-forward) {
   --slide-offset: 24px;
   animation:
-    var(--motion-base) var(--ease-out) var(--motion-fast) both vt-fade,
+    calc(var(--motion-slow) - var(--motion-fast)) var(--ease-out) var(--motion-fast) both vt-fade,
     var(--motion-slow) var(--ease-in-out) both vt-slide;
 }
 ::view-transition-old(.nav-back) {
@@ -339,7 +340,7 @@
 ::view-transition-new(.nav-back) {
   --slide-offset: -24px;
   animation:
-    var(--motion-base) var(--ease-out) var(--motion-fast) both vt-fade,
+    calc(var(--motion-slow) - var(--motion-fast)) var(--ease-out) var(--motion-fast) both vt-fade,
     var(--motion-slow) var(--ease-in-out) both vt-slide;
 }
 @keyframes vt-fade {

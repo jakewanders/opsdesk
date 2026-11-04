@@ -10,6 +10,7 @@ import { NotFoundError } from "@/lib/api/errors";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Edit customer" };
 
@@ -49,9 +50,11 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit {customer.displayName}</h1>
-      <CustomerForm customer={customer} currentUserId={ctx.user.id} />
-    </div>
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Edit {customer.displayName}</h1>
+        <CustomerForm customer={customer} currentUserId={ctx.user.id} />
+      </div>
+    </PageTransition>
   );
 }

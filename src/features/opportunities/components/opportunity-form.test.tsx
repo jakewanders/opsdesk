@@ -277,9 +277,11 @@ describe("OpportunityForm: creating", () => {
     renderForm({ initialCustomer: { id: CUSTOMERS[0].id, name: "Acme Plumbing" } });
     await userEvent.type(screen.getByLabelText(/Title/), "Will fail");
     await userEvent.type(screen.getByLabelText(/Amount/), "10");
-    await userEvent.click(screen.getByRole("button", { name: "Add opportunity" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled());
-    await userEvent.click(screen.getByRole("button", { name: "Saving..." }));
+    const button = screen.getByRole("button", { name: "Add opportunity" });
+    await userEvent.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    expect(button).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(button);
     release();
     expect(
       (await screen.findAllByRole("alert")).some((a) =>

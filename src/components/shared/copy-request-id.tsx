@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -10,14 +10,20 @@ import { Button } from "@/components/ui/button";
  */
 export function CopyRequestId({ requestId }: { requestId: string }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   async function copy() {
+    let copiedOk = false;
     try {
       await navigator.clipboard.writeText(requestId);
+      copiedOk = true;
       setState("copied");
     } catch {
       setState("failed");
     }
-    setTimeout(() => setState("idle"), 2500);
+    clearTimeout(timer.current);
+    // "Copied" is a quick confirmation; a failure message needs longer to read.
+    timer.current = setTimeout(() => setState("idle"), copiedOk ? 1500 : 2500);
   }
   return (
     <>

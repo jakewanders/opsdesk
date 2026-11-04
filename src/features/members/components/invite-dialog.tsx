@@ -192,8 +192,8 @@ export function InviteDialog({
               <Button type="button" variant="outline" onClick={() => close(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={invite.isPending}>
-                {invite.isPending ? "Creating..." : "Create invite link"}
+              <Button type="submit" pending={invite.isPending}>
+                Create invite link
               </Button>
             </DialogFooter>
           </form>

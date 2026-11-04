@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { notify } from "@/components/shared/toast";
-import { markFresh } from "@/lib/motion/fresh";
+import { clearFresh, markFresh } from "@/lib/motion/fresh";
 import { isClientApiError, type ApiResponse } from "@/lib/api-client/api-fetch";
 import { useApi, useScopedKey } from "@/lib/api-client/provider";
 import type { Stage } from "@/lib/domain/pipeline";
@@ -39,6 +39,7 @@ export function useMoveStage() {
     onMutate: async ({ deal, to, lostReason }) => {
       await queryClient.cancelQueries({ queryKey: prefix });
       const snapshot = queryClient.getQueriesData({ queryKey: prefix }) as Snapshot;
+      markFresh(deal.id); // the card is in its new column now: settle there, on the drop
       const moved = movedDeal(deal, to, { lostReason, now: new Date() });
       for (const [key, data] of snapshot) {
         const kind = key[2];
@@ -63,8 +64,8 @@ export function useMoveStage() {
       }
       return { snapshot };
     },
-    onSuccess: (_result, { deal }) => markFresh(deal.id),
-    onError: (error, _move, context) => {
+    onError: (error, { deal }, context) => {
+      clearFresh(deal.id);
       for (const [key, data] of context?.snapshot ?? []) queryClient.setQueryData(key, data);
       if (!isClientApiError(error)) {
         notify.error("The deal was not moved", "Something went wrong. Try again.");

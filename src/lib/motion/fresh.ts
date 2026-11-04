@@ -26,6 +26,13 @@ export function markFresh(id: string, ms: number = FRESH_MS): void {
   emit();
 }
 
+/** Take the highlight back at once, for a change that was refused. */
+export function clearFresh(id: string): void {
+  const running = timers.get(id);
+  if (running) clearTimeout(running);
+  if (timers.delete(id)) emit();
+}
+
 export function useIsFresh(id: string): boolean {
   return useSyncExternalStore(
     (notify) => {

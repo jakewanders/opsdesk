@@ -113,8 +113,8 @@ function RoleForm({
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="submit" disabled={change.isPending}>
-          {change.isPending ? "Saving..." : "Change role"}
+        <Button type="submit" pending={change.isPending}>
+          Change role
         </Button>
       </DialogFooter>
     </form>

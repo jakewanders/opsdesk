@@ -9,6 +9,7 @@ import { OpportunityForm } from "@/features/opportunities/components/opportunity
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/validation";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Add opportunity" };
 
@@ -45,9 +46,11 @@ export default async function NewOpportunityPage({
       initialCustomer = { id: customer.id, name: customer.display_name };
   }
   return (
-    <div className="flex flex-col gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Add opportunity</h1>
-      <OpportunityForm initialCustomer={initialCustomer} currentUserId={ctx.user.id} />
-    </div>
+    <PageTransition>
+      <div className="flex flex-col gap-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Add opportunity</h1>
+        <OpportunityForm initialCustomer={initialCustomer} currentUserId={ctx.user.id} />
+      </div>
+    </PageTransition>
   );
 }

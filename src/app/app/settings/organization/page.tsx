@@ -7,6 +7,7 @@ import { readSettings } from "@/features/organizations/service";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { isIanaTimeZone } from "@/lib/domain/timezone";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Organization settings" };
 
@@ -22,12 +23,14 @@ export default async function OrganizationSettingsPage() {
   const settings = await readSettings(supabase, ctx.org.id);
   const supported = Intl.supportedValuesOf("timeZone").filter(isIanaTimeZone);
   return (
-    <OrganizationSettings
-      settings={settings}
-      memberRole={ctx.role}
-      isDemo={ctx.kind === "demo"}
-      canEdit={can(ctx.role, ctx.kind, "org.settings.update").allowed}
-      zones={timeZoneOptions(settings.timezone, supported)}
-    />
+    <PageTransition>
+      <OrganizationSettings
+        settings={settings}
+        memberRole={ctx.role}
+        isDemo={ctx.kind === "demo"}
+        canEdit={can(ctx.role, ctx.kind, "org.settings.update").allowed}
+        zones={timeZoneOptions(settings.timezone, supported)}
+      />
+    </PageTransition>
   );
 }

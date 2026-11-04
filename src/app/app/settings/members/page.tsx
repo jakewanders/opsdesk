@@ -6,6 +6,7 @@ import { MembersView } from "@/features/members/components/members-view";
 import { listMembers } from "@/features/members/service";
 import { getPageOrgContext } from "@/lib/org/page-context";
 import { can } from "@/lib/permissions";
+import { PageTransition } from "@/components/layout/page-transition";
 
 export const metadata: Metadata = { title: "Members" };
 
@@ -41,11 +42,13 @@ export default async function MembersSettingsPage() {
     initialMembers = null; // the browser retries and shows the error with a Retry button
   }
   return (
-    <MembersView
-      initialMembers={initialMembers}
-      actorId={ctx.user.id}
-      actorRole={ctx.role}
-      canManage={can(ctx.role, ctx.kind, "members.manage").allowed}
-    />
+    <PageTransition>
+      <MembersView
+        initialMembers={initialMembers}
+        actorId={ctx.user.id}
+        actorRole={ctx.role}
+        canManage={can(ctx.role, ctx.kind, "members.manage").allowed}
+      />
+    </PageTransition>
   );
 }

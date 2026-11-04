@@ -172,7 +172,7 @@ export function CustomerDetail({
             </Button>
           ) : null}
           {canWrite && archived ? (
-            <Button type="button" onClick={() => void restoreNow()} disabled={restore.isPending}>
+            <Button type="button" onClick={() => void restoreNow()} pending={restore.isPending}>
               <ArchiveRestore aria-hidden="true" />
               Restore
             </Button>

@@ -29,3 +29,31 @@ describe("ui primitives use the motion tokens", () => {
     expect(src).not.toMatch(/duration-(100|150|200|300)\b/);
   });
 });
+
+describe("motion rules in globals.css", () => {
+  const rule = (selector: string) => {
+    const start = css.indexOf(selector);
+    return css.slice(start, css.indexOf("}", start));
+  };
+
+  it("flashes a changed row once, within the 280ms ceiling", () => {
+    expect(rule(".animate-flash {")).toMatch(
+      /animation:\s*flash var\(--motion-slow\) var\(--ease-out\);/,
+    );
+  });
+
+  it("keeps page transitions within the 280ms ceiling: the arriving page waits for the leaving one", () => {
+    for (const name of ["page-fade", "nav-forward", "nav-back"]) {
+      const block = rule(`::view-transition-new(.${name})`);
+      expect(block).toContain("calc(var(--motion-slow) - var(--motion-fast))");
+    }
+  });
+
+  it.each(["dialog", "sheet", "alert-dialog", "dropdown-menu", "select"])(
+    "%s closes faster than it opens",
+    (name) => {
+      const src = readFileSync(join(process.cwd(), `src/components/ui/${name}.tsx`), "utf8");
+      expect(src).toContain("data-closed:duration-(--motion-fast)");
+    },
+  );
+});

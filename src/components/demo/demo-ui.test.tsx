@@ -76,7 +76,9 @@ describe("DemoEndedPanel", () => {
     const action = vi.fn(() => new Promise<{ error?: string }>((resolve) => (release = resolve)));
     render(<DemoEndedPanel action={action} />);
     await user.dblClick(screen.getByRole("button", { name: "Start a new demo" }));
-    expect(await screen.findByRole("button", { name: "Starting…" })).toBeDisabled();
+    const busy = await screen.findByRole("button", { name: "Start a new demo" });
+    await waitFor(() => expect(busy).toBeDisabled());
+    expect(busy).toHaveAttribute("aria-busy", "true");
     expect(action).toHaveBeenCalledTimes(1);
     release({ error: "The demo is very busy right now. Please try again in a few minutes." });
     expect(await screen.findByRole("alert")).toHaveTextContent("very busy");

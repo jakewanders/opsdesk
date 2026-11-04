@@ -68,6 +68,20 @@ describe("CopyLinkButton", () => {
     await vi.advanceTimersByTimeAsync(1500);
     await waitFor(() => expect(screen.queryByTestId("copied-icon")).toBeNull());
   });
+  it("a second copy restarts the confirmation instead of cutting it short", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    render(<CopyLinkButton />);
+    await user.click(screen.getByRole("button", { name: "Copy link" }));
+    await screen.findByTestId("copied-icon");
+    await vi.advanceTimersByTimeAsync(1000);
+    await user.click(screen.getByRole("button", { name: "Copy link" }));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(screen.getByTestId("copied-icon")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(600);
+    await waitFor(() => expect(screen.queryByTestId("copied-icon")).toBeNull());
+  });
   it("copies the address of the view as it is now and says so", async () => {
     const user = userEvent.setup(); // installs its own clipboard, which is then watched
     const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);

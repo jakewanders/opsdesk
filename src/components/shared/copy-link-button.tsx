@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Link2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { notify } from "@/components/shared/toast";
 import { Button } from "@/components/ui/button";
 
@@ -12,13 +12,16 @@ import { Button } from "@/components/ui/button";
  */
 export function CopyLinkButton({ className }: { className?: string }) {
   const [copied, setCopied] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   async function copy() {
     const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
       notify.success("Link copied", "Anyone in this workspace who opens it sees this view.");
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       notify.error(
         "The link could not be copied",
