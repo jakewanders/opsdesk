@@ -145,10 +145,7 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
         />
       ) : data ? (
         <>
-          <section
-            aria-label="Key numbers"
-            className="grid grid-cols-2 gap-3 duration-(--motion-base) animate-in fade-in lg:grid-cols-3"
-          >
+          <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <KpiCard
               label="Active customers"
               numeric={{ amount: data.activeCustomers, format: NUMBER.format, fromZero }}

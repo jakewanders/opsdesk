@@ -47,6 +47,12 @@ const actions = (status: Status, over: Partial<React.ComponentProps<typeof Quote
   );
 
 describe("QuoteStatus motion", () => {
+  it("does not fade in on first render (a half-faded badge fails contrast checks) but does when the status changes", () => {
+    const { container, rerender } = render(<QuoteStatus status="sent" id="q9" />);
+    expect(container.querySelector(".animate-in")).toBeNull();
+    rerender(<QuoteStatus status="approved" id="q9" />);
+    expect(container.querySelector(".animate-in")).not.toBeNull();
+  });
   afterEach(() => clearFreshForTests());
   it("settles a check only for a quote that was just approved", () => {
     const { container, rerender } = render(<QuoteStatus status="approved" id="q1" />);
