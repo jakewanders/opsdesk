@@ -24,6 +24,15 @@ describe("fresh-id store", () => {
     expect(a.result.current).toBe(false);
   });
 
+  it("can stay fresh longer, for a row the person will come back to", () => {
+    const a = renderHook(() => useIsFresh("a"));
+    act(() => markFresh("a", 30_000));
+    act(() => void vi.advanceTimersByTime(29_999));
+    expect(a.result.current).toBe(true);
+    act(() => void vi.advanceTimersByTime(1));
+    expect(a.result.current).toBe(false);
+  });
+
   it("restarts the timer when marked again", () => {
     const a = renderHook(() => useIsFresh("a"));
     act(() => markFresh("a"));

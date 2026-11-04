@@ -22,8 +22,9 @@ export function Morph({
   children: ReactNode;
 }) {
   return (
+    // React names host elements only, never a bare text node, so text gets a span to carry the name.
     <ViewTransition name={morphName(entity, id)} share="morph" default="none">
-      {children}
+      {typeof children === "string" ? <span>{children}</span> : children}
     </ViewTransition>
   );
 }

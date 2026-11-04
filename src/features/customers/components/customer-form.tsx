@@ -136,7 +136,8 @@ export function CustomerForm({ customer, currentUserId }: Props) {
       setBaseline(toFormValues(res.data));
       setVersion(res.data.updatedAt);
       notify.success(editing ? "Customer saved" : "Customer added", res.data.displayName);
-      markFresh(res.data.id);
+      // the person is taken to the detail page; the list lights this row up when they come back to it
+      markFresh(res.data.id, 30_000);
       if (warnings.length > 0) setSaved({ customer: res.data, warnings });
       else router.push(`/app/customers/${res.data.id}`);
     } catch (error) {

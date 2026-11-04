@@ -11,6 +11,17 @@ describe("morphName", () => {
 });
 
 describe("Morph", () => {
+  it("gives bare text an element to carry the name (React names elements, never text)", () => {
+    const { container } = render(
+      <Morph entity="opportunity" id="d1">
+        Alpha retrofit
+      </Morph>,
+    );
+    const span = container.querySelector("span");
+    expect(span).not.toBeNull();
+    expect(span).toHaveTextContent("Alpha retrofit");
+  });
+
   it("renders its children untouched", () => {
     render(
       <Morph entity="customer" id="c1">

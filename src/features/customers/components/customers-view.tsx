@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { markFresh } from "@/lib/motion/fresh";
 import { FreshRow } from "@/components/ui/table";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
@@ -151,6 +152,7 @@ export function CustomersView({
     try {
       await restore.mutateAsync(customer);
       notify.success("Customer restored", customer.displayName);
+      markFresh(customer.id);
     } catch (error) {
       notify.error(
         "Customer not restored",

@@ -9,8 +9,11 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
-/** Say "this entity just changed": lists and boards highlight it for a moment. Calling again restarts the timer. */
-export function markFresh(id: string): void {
+/**
+ * Say "this entity just changed": lists and boards highlight it for a moment. Calling again restarts the timer. Pass `ms` for a
+ * row the person will come back to (a customer saved on another page): the highlight then plays when the list next shows it.
+ */
+export function markFresh(id: string, ms: number = FRESH_MS): void {
   const running = timers.get(id);
   if (running) clearTimeout(running);
   timers.set(
@@ -18,7 +21,7 @@ export function markFresh(id: string): void {
     setTimeout(() => {
       timers.delete(id);
       emit();
-    }, FRESH_MS),
+    }, ms),
   );
   emit();
 }

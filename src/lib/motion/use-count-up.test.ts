@@ -37,6 +37,25 @@ describe("useCountUp", () => {
     expect(result.current).toBe(15);
   });
 
+  it("keeps the target when reduced motion is switched off after mount", () => {
+    let reduce = true;
+    const listeners = new Set<() => void>();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      get matches() {
+        return reduce;
+      },
+      media: query,
+      addEventListener: (_: string, l: () => void) => listeners.add(l),
+      removeEventListener: (_: string, l: () => void) => listeners.delete(l),
+    }));
+    const { result } = renderHook(() => useCountUp(15));
+    expect(result.current).toBe(15);
+    reduce = false;
+    act(() => listeners.forEach((l) => l()));
+    advance(800);
+    expect(result.current).toBe(15);
+  });
+
   it("starts at the target when told not to count from zero", () => {
     stubMotion(false);
     expect(renderHook(() => useCountUp(15, { fromZero: false })).result.current).toBe(15);

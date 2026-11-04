@@ -21,6 +21,13 @@ export function useCountUp(target: number, { fromZero = true }: Options = {}): n
   const finite = Number.isFinite(target);
   const safe = finite ? target : 0;
   const [value, setValue] = useState(fromZero ? 0 : safe);
+  // When the preference flips, the shown value restarts from the target. Without this, switching reduced motion off after mount
+  // would bring back the stale starting 0 (the number was never animated, so nothing would ever replace it).
+  const [wasReduced, setWasReduced] = useState(reduced);
+  if (wasReduced !== reduced) {
+    setWasReduced(reduced);
+    setValue(safe);
+  }
   const shown = useRef(value);
   const first = useRef(true);
 
