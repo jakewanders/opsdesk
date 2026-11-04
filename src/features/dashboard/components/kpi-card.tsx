@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { useCountUp } from "@/lib/motion/use-count-up";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -14,13 +15,29 @@ type Props = {
   attention?: boolean;
   /** Extra words for the link's accessible name, for example "View overdue tasks". */
   action: string;
+  /**
+   * The figure behind `value`, so the number can count up on first load and tween when it changes. `format` must produce
+   * `value` for the same figure. Without it, `value` is shown as is.
+   */
+  numeric?: { amount: number; format: (n: number) => string; fromZero: boolean };
 };
 
 /**
  * One KPI: a whole-card link whose name reads "Label, value. Action". The number is the stored count or sum, nothing
  * derived or trended.
  */
-export function KpiCard({ label, value, href, icon: Icon, exact, attention, action }: Props) {
+export function KpiCard({
+  label,
+  value,
+  href,
+  icon: Icon,
+  exact,
+  attention,
+  action,
+  numeric,
+}: Props) {
+  const counted = useCountUp(numeric?.amount ?? 0, { fromZero: numeric?.fromZero ?? false });
+  const shown = numeric ? numeric.format(Math.round(counted)) : value;
   return (
     <Link
       href={href}
@@ -37,7 +54,7 @@ export function KpiCard({ label, value, href, icon: Icon, exact, attention, acti
           attention && "text-destructive",
         )}
       >
-        {value}
+        {shown}
         {attention ? <span className="sr-only">needs attention</span> : null}
       </span>
       <span className="sr-only">{action}</span>

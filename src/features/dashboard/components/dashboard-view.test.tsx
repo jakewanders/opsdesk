@@ -132,6 +132,13 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("DashboardView [SIT-255]", () => {
   it("shows the six KPIs exactly as the API returned them, each a link to its list with a clear name", async () => {
+    // This test is about the figures; motion has its own test below.
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: true,
+      media: q,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
     const { container } = view();
     const links = await screen.findAllByRole("link", { name: /Active customers/ });
     expect(links[0]).toHaveAttribute("href", "/app/customers");
@@ -216,6 +223,16 @@ describe("DashboardView [SIT-255]", () => {
     await waitFor(() => expect(screen.queryByText("Send revised quote")).toBeNull());
     await waitFor(() =>
       expect(screen.getByRole("link", { name: /^Overdue tasks\s*2/ })).toBeInTheDocument(),
+    );
+  });
+
+  it("counts the KPIs up from 0 on a client-side load and lands on the exact API figures", async () => {
+    view();
+    await screen.findAllByRole("link", { name: /Active customers/ });
+    await waitFor(() =>
+      expect(screen.getAllByRole("link", { name: /Active customers/ })[0]).toHaveTextContent(
+        /^Active customers\s*15/,
+      ),
     );
   });
 

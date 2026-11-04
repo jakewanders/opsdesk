@@ -82,6 +82,9 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
       }).format(new Date(data.generatedAt))
     : null;
 
+  // Numbers that were already in the first paint (server-rendered) are not counted up from 0; they only tween on change.
+  const fromZero = !initial;
+
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -148,6 +151,7 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
           >
             <KpiCard
               label="Active customers"
+              numeric={{ amount: data.activeCustomers, format: NUMBER.format, fromZero }}
               value={NUMBER.format(data.activeCustomers)}
               href="/app/customers"
               icon={Users}
@@ -155,6 +159,7 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
             />
             <KpiCard
               label="Open opportunities"
+              numeric={{ amount: data.openOpportunities, format: NUMBER.format, fromZero }}
               value={NUMBER.format(data.openOpportunities)}
               href="/app/opportunities"
               icon={Target}
@@ -162,6 +167,11 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
             />
             <KpiCard
               label="Pipeline"
+              numeric={{
+                amount: data.pipelineCents,
+                format: (n) => formatUsd(n, { whole: true }),
+                fromZero,
+              }}
               value={formatUsd(data.pipelineCents, { whole: true })}
               exact={formatUsd(data.pipelineCents)}
               href="/app/opportunities?view=list"
@@ -170,6 +180,11 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
             />
             <KpiCard
               label="Weighted pipeline"
+              numeric={{
+                amount: data.weightedPipelineCents,
+                format: (n) => formatUsd(n, { whole: true }),
+                fromZero,
+              }}
               value={formatUsd(data.weightedPipelineCents, { whole: true })}
               exact={formatUsd(data.weightedPipelineCents)}
               href="/app/opportunities"
@@ -178,6 +193,7 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
             />
             <KpiCard
               label="Overdue tasks"
+              numeric={{ amount: data.overdueTasks, format: NUMBER.format, fromZero }}
               value={NUMBER.format(data.overdueTasks)}
               href="/app/tasks?overdue=true"
               icon={AlertTriangle}
@@ -186,6 +202,7 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
             />
             <KpiCard
               label="Due in the next 7 days"
+              numeric={{ amount: data.tasksDueNext7Days, format: NUMBER.format, fromZero }}
               value={NUMBER.format(data.tasksDueNext7Days)}
               href="/app/tasks?soon=true"
               icon={CalendarClock}
