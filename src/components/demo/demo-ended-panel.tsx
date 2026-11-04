@@ -32,7 +32,7 @@ export function DemoEndedPanel({ action }: { action: Action }) {
         </p>
       ) : null}
       <form action={formAction}>
-        <Button type="submit" disabled={pending} className="h-10">
+        <Button type="submit" pending={pending} className="h-10">
           {pending ? "Starting…" : "Start a new demo"}
         </Button>
       </form>

@@ -1,10 +1,11 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 import { Slot } from "radix-ui";
 
 const buttonVariants = cva(
-  "group/button max-md:min-h-11 max-md:min-w-11 inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button max-md:min-h-11 max-md:min-w-11 relative inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-(--motion-fast) ease-(--ease-out) outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -45,12 +46,22 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  pending = false,
+  children,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    /**
+     * Work is running: the button locks (no double submit), says so to assistive tech, and shows a spinner over its
+     * label. The label stays in place at opacity 0, so the button keeps its width and its accessible name. Ignored
+     * with `asChild`.
+     */
+    pending?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : "button";
+  const busy = pending && !asChild;
 
   return (
     <Comp
@@ -58,8 +69,22 @@ function Button({
       data-variant={variant}
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || busy}
+      aria-busy={busy ? true : undefined}
       {...props}
-    />
+    >
+      {busy ? (
+        <>
+          <span className="inline-flex items-center gap-[inherit] opacity-0">{children}</span>
+          <Loader2
+            aria-hidden="true"
+            className="absolute size-4 animate-spin motion-reduce:animate-none"
+          />
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
   );
 }
 

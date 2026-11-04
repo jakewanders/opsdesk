@@ -126,7 +126,7 @@ export function AuthForm({ mode, action, siteKey, next, notice }: AuthFormProps)
         error={errorFor("captchaToken")}
       />
 
-      <Button type="submit" disabled={pending || !siteKey} className="h-10">
+      <Button type="submit" pending={pending} disabled={!siteKey} className="h-10">
         {pending
           ? isForgot
             ? "Sending…"

@@ -45,7 +45,7 @@ export function ResetPasswordForm({ action }: { action: Action }) {
           <Input {...control} name="confirm" type="password" autoComplete="new-password" />
         )}
       </FormField>
-      <Button type="submit" disabled={pending} className="h-10">
+      <Button type="submit" pending={pending} className="h-10">
         {pending ? "Saving…" : "Save new password"}
       </Button>
       <p className="text-sm text-muted-foreground">
