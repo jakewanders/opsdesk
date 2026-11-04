@@ -239,3 +239,30 @@
     min-width: 44px;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Loading placeholders. A single soft sweep replaces the old pulse. It is the only repeating animation in the app; the
+   reduced-motion rule in @layer base collapses it to its end state (the highlight sits off to the right, out of view).
+   --------------------------------------------------------------------------------------------- */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--foreground) 7%, transparent),
+    transparent
+  );
+  animation: shimmer 1.4s var(--ease-in-out) infinite;
+}
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}

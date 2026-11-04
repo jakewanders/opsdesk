@@ -10,6 +10,7 @@ import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion
 import { formatUsd } from "@/lib/money/format";
 import type { DashboardDto } from "../service";
 import { stageRows, type StageRow } from "./stage-data";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 // Recharts (the heaviest dependency on this page) is fetched only when the chart is about to be drawn.
 const Impl = dynamic(() => import("./stage-chart-impl"), {
@@ -17,7 +18,7 @@ const Impl = dynamic(() => import("./stage-chart-impl"), {
   loading: () => (
     <div role="status" aria-busy="true">
       <span className="sr-only">Loading the chart</span>
-      <div aria-hidden="true" className="h-72 animate-pulse rounded-lg bg-muted" />
+      <Shimmer aria-hidden="true" className="h-72 rounded-lg" />
     </div>
   ),
 });

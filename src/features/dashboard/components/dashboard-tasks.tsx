@@ -11,6 +11,7 @@ import { useCompleteTask } from "@/features/tasks/use-complete-task";
 import { isClientApiError } from "@/lib/api-client/api-fetch";
 import { useApiQuery } from "@/lib/api-client/provider";
 import { relativeDay } from "../relative-day";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 const FULL = new Intl.DateTimeFormat("en-US", { dateStyle: "full", timeZone: "UTC" });
 const SHORT = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
@@ -135,7 +136,7 @@ export function DashboardTasks({ today, timeZone, canWrite }: Props) {
       ) : overdue.isPending || soon.isPending ? (
         <div role="status" aria-busy="true">
           <span className="sr-only">Loading tasks</span>
-          <div aria-hidden="true" className="h-32 animate-pulse rounded-lg bg-muted" />
+          <Shimmer aria-hidden="true" className="h-32 rounded-lg" />
         </div>
       ) : (overdue.data?.data.length ?? 0) === 0 && (soon.data?.data.length ?? 0) === 0 ? (
         <EmptyState

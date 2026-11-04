@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
 import type { ChartKind, ChartRow, ChartSeries } from "./series-chart-impl";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 // Recharts is fetched only when a chart is about to be drawn.
 const Impl = dynamic(() => import("./series-chart-impl"), {
@@ -14,7 +15,7 @@ const Impl = dynamic(() => import("./series-chart-impl"), {
   loading: () => (
     <div role="status" aria-busy="true">
       <span className="sr-only">Loading the chart</span>
-      <div aria-hidden="true" className="h-64 animate-pulse rounded-lg bg-muted" />
+      <Shimmer aria-hidden="true" className="h-64 rounded-lg" />
     </div>
   ),
 });

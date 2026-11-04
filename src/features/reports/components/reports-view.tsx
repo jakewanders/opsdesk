@@ -28,6 +28,7 @@ import type { ReportDto } from "../service";
 import { ExportCsvButton } from "@/features/exports/export-csv-button";
 import { BasisTag, ReportChart } from "./report-chart";
 import { RangeControl } from "./range-control";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 type Props = {
   /** The report as the server read it for this request's URL, so the charts are in the first paint. Null when it could not. */
@@ -47,7 +48,7 @@ function Skeleton() {
       <span className="sr-only">Loading the reports</span>
       <div aria-hidden="true" className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-80 animate-pulse rounded-lg bg-muted" />
+          <Shimmer key={i} className="h-80 rounded-lg" />
         ))}
       </div>
     </div>

@@ -23,6 +23,7 @@ import { DashboardTasks, useDashboardTasks } from "./dashboard-tasks";
 import { KpiCard } from "./kpi-card";
 import { RecentActivity } from "./recent-activity";
 import { StageChart } from "./stage-chart";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 type Props = {
   /** The dashboard as the server read it for this request, so the numbers are in the first paint. Null when it could not. */
@@ -41,10 +42,10 @@ function Skeleton() {
       <div aria-hidden="true" className="flex flex-col gap-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
+            <Shimmer key={i} className="h-24 rounded-lg" />
           ))}
         </div>
-        <div className="h-40 animate-pulse rounded-lg bg-muted" />
+        <Shimmer className="h-40 rounded-lg" />
       </div>
     </div>
   );
@@ -141,7 +142,10 @@ export function DashboardView({ initial = null, canWrite, currentUserId, timeZon
         />
       ) : data ? (
         <>
-          <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <section
+            aria-label="Key numbers"
+            className="grid grid-cols-2 gap-3 duration-(--motion-base) animate-in fade-in lg:grid-cols-3"
+          >
             <KpiCard
               label="Active customers"
               value={NUMBER.format(data.activeCustomers)}

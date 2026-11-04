@@ -15,6 +15,7 @@ import { ACTIVITY_ACTIONS, ACTIVITY_ENTITY_TYPES } from "../schema";
 import { activityPageUrl, hasActiveFilters, PAGE_SIZES, toActivityQuery } from "../filter-state";
 import type { ActivityItemDto } from "../service";
 import { ActivityTimeline } from "./activity-timeline";
+import { Skeleton as Shimmer } from "@/components/ui/skeleton";
 
 const SELECT =
   "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring";
@@ -185,7 +186,7 @@ export function ActivityView({ currentUserId, timeZone }: Props) {
           <span className="sr-only">Loading activity</span>
           <div aria-hidden="true" className="flex flex-col gap-2">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
+              <Shimmer key={i} className="h-14 rounded-lg" />
             ))}
           </div>
         </div>
