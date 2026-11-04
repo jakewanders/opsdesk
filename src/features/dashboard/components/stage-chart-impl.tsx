@@ -1,6 +1,8 @@
 "use client";
 
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { useState } from "react";
+import { barOpacity } from "./bar-emphasis";
 import type { StageRow } from "./stage-data";
 
 /** Open stages share one token colour; won and lost differ, and every bar also carries its stage name and numbers as text. */
@@ -17,6 +19,7 @@ type Props = { rows: StageRow[]; animate: boolean; onSelect?: (stage: string) =>
  */
 export default function StageChartImpl({ rows, animate, onSelect }: Props) {
   const max = Math.max(1, ...rows.map((r) => r.count));
+  const [active, setActive] = useState<string | null>(null);
   return (
     <div className="h-72 w-full" aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%">
@@ -38,9 +41,16 @@ export default function StageChartImpl({ rows, animate, onSelect }: Props) {
             minPointSize={3}
             cursor={onSelect ? "pointer" : undefined}
             onClick={(bar: { stage?: string }) => bar.stage && onSelect?.(bar.stage)}
+            onMouseEnter={(bar: { stage?: string }) => setActive(bar.stage ?? null)}
+            onMouseLeave={() => setActive(null)}
           >
             {rows.map((r) => (
-              <Cell key={r.stage} fill={FILL[r.stage] ?? "var(--chart-1)"} />
+              <Cell
+                key={r.stage}
+                fill={FILL[r.stage] ?? "var(--chart-1)"}
+                fillOpacity={barOpacity(active, r.stage)}
+                style={{ transition: "fill-opacity var(--motion-fast) var(--ease-out)" }}
+              />
             ))}
             <LabelList
               dataKey="valueLabel"
