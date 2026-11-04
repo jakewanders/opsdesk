@@ -32,6 +32,8 @@ test("an admin renames the workspace and changes its time zone; both survive a r
   await page.getByLabel(/^Time zone/).selectOption("America/Chicago");
   await expect(save).toBeEnabled();
   await save.click();
+  // The button is disabled while the request runs (and keeps its label), so wait for the confirmation, not for disabled.
+  await expect(page.getByText("Settings saved")).toBeVisible();
   await expect(save).toBeDisabled(); // saved: the form is clean again
 
   await page.reload();
