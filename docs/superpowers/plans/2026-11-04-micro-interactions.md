@@ -32,21 +32,22 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `src/app/globals.css` | Motion tokens, `shimmer` / `settle` / `flash` keyframes |
-| `src/lib/motion/use-prefers-reduced-motion.ts` | Shared hook (moved from reports) |
-| `src/lib/motion/fresh.ts` | `markFresh(id)`, `useIsFresh(id)` store |
-| `src/lib/motion/use-count-up.ts` | Count-up hook for KPIs |
-| `src/components/ui/button.tsx` | Tokens + `pending` prop |
-| `src/components/ui/skeleton.tsx` | Shimmer skeleton |
-| `src/components/layout/page-transition.tsx` | Single `<ViewTransition>` wrapper |
+| File                                           | Responsibility                                          |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| `src/app/globals.css`                          | Motion tokens, `shimmer` / `settle` / `flash` keyframes |
+| `src/lib/motion/use-prefers-reduced-motion.ts` | Shared hook (moved from reports)                        |
+| `src/lib/motion/fresh.ts`                      | `markFresh(id)`, `useIsFresh(id)` store                 |
+| `src/lib/motion/use-count-up.ts`               | Count-up hook for KPIs                                  |
+| `src/components/ui/button.tsx`                 | Tokens + `pending` prop                                 |
+| `src/components/ui/skeleton.tsx`               | Shimmer skeleton                                        |
+| `src/components/layout/page-transition.tsx`    | Single `<ViewTransition>` wrapper                       |
 
 ---
 
 ### Task 1: Motion tokens and shared reduced-motion hook
 
 **Files:**
+
 - Modify: `src/app/globals.css` (add tokens to `:root`, expose in `@theme inline`)
 - Create: `src/lib/motion/use-prefers-reduced-motion.ts`, `src/lib/motion/use-prefers-reduced-motion.test.ts`
 - Modify: `src/features/dashboard/components/stage-chart.tsx:24-33` (delete inline copy, import shared), `src/features/reports/components/report-chart.tsx:8` (import path), `src/features/opportunities/components/board-dnd.tsx:89-100` (delete `useReducedMotion`, import shared)
@@ -54,6 +55,7 @@
 - Test: `src/lib/design/motion-tokens.test.ts`
 
 **Interfaces:**
+
 - Produces: `usePrefersReducedMotion(): boolean` exported from `@/lib/motion/use-prefers-reduced-motion`. Server snapshot returns `true`. CSS vars `--motion-fast: 120ms`, `--motion-base: 180ms`, `--motion-slow: 280ms`, `--ease-out: cubic-bezier(0.22, 1, 0.36, 1)`, `--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1)`, `--ease-settle: cubic-bezier(0.34, 1.4, 0.64, 1)`. Tailwind usage: `duration-(--motion-base)`, `ease-(--ease-out)`.
 
 - [ ] **Step 1: Write failing tests.** `motion-tokens.test.ts` reads `src/app/globals.css` with `fs` and asserts each of the six variables above is declared with exactly the values listed. `use-prefers-reduced-motion.test.ts` stubs `window.matchMedia` to `matches: true`, renders a probe with `renderHook`, expects `true`; then `matches: false`, expects `false`.
@@ -68,9 +70,11 @@
 ### Task 2: Fresh-id store
 
 **Files:**
+
 - Create: `src/lib/motion/fresh.ts`, `src/lib/motion/fresh.test.ts`
 
 **Interfaces:**
+
 - Produces: `markFresh(id: string): void` (id stays fresh for 1600ms, calling again restarts the timer); `useIsFresh(id: string): boolean` (via `useSyncExternalStore`, server snapshot `false`); `clearFreshForTests(): void`.
 
 - [ ] **Step 1: Write failing tests** with fake timers: after `markFresh("a")`, `useIsFresh("a")` is `true` and `useIsFresh("b")` is `false`; after `vi.advanceTimersByTime(1600)` it is `false`; a second `markFresh("a")` at 1000ms keeps it `true` until 2600ms.
@@ -84,11 +88,13 @@
 ### Task 3: Button tokens and pending state
 
 **Files:**
+
 - Modify: `src/components/ui/button.tsx` (base class `transition-all` → `transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-(--motion-fast) ease-(--ease-out)`; add `pending` prop)
 - Modify: `src/components/demo/demo-entry.tsx:117,123` (use `pending`), and the primary submit buttons of `src/app/(auth)/login/page.tsx` forms if they use a local pending flag (search `isPending`/`pending` in `src/app/(auth)` and `src/components/auth`)
 - Test: `src/components/ui/button.test.tsx` (create)
 
 **Interfaces:**
+
 - Produces: `Button` accepts `pending?: boolean`. When true: sets `aria-busy="true"` and `disabled`, ignores clicks, keeps the children rendered but `invisible`, and shows a `Loader2` (`aria-hidden`, `motion-reduce:animate-none`) absolutely centered, so width is unchanged. The `Button` root gets `relative`.
 
 - [ ] **Step 1: Write failing tests:** (a) `pending` button is `disabled`, has `aria-busy="true"`, onClick not called when clicked via `userEvent`; (b) its text content is still present (`getByText("Save changes")` exists) so accessible name is unchanged; (c) non-pending button has no `aria-busy`.
@@ -103,10 +109,12 @@
 ### Task 4: Inputs and overlays
 
 **Files:**
+
 - Modify: `src/components/ui/input.tsx` (transition list uses `duration-(--motion-fast)`), `dialog.tsx`, `sheet.tsx`, `drawer.tsx`, `dropdown-menu.tsx`, `select.tsx`, `alert-dialog.tsx` (every `duration-*` / `animate-in` / `animate-out` class set to `duration-(--motion-base) ease-(--ease-out)`; exit uses `duration-(--motion-fast)`)
 - Test: `src/lib/design/motion-tokens.test.ts` (extend)
 
 **Interfaces:**
+
 - Consumes: tokens from Task 1.
 
 - [ ] **Step 1: Extend the token test:** for each of the seven `ui/*.tsx` files above, assert the source contains `--motion-` and contains no literal `duration-100`, `duration-150`, `duration-200`, `duration-300` classes.
@@ -120,11 +128,13 @@
 ### Task 5: Shimmer skeleton and reveal
 
 **Files:**
+
 - Modify: `src/app/globals.css` (`@keyframes shimmer`, `.skeleton-shimmer` class), `src/components/ui/skeleton.tsx`
 - Modify: `src/features/dashboard/components/dashboard-tasks.tsx:138`, `dashboard-view.tsx:44,47`, `stage-chart.tsx:19`, `src/features/activity/components/activity-view.tsx:188` (replace inline `animate-pulse` divs with `<Skeleton className="...same sizes..." />`)
 - Test: `src/components/ui/skeleton.test.tsx` (create)
 
 **Interfaces:**
+
 - Produces: `Skeleton` (same props) renders `data-slot="skeleton"` with class `skeleton-shimmer` and no `animate-pulse`. Shimmer is a `transform: translateX` sweep on a `::after`, 1.4s, ease-in-out. Content that replaces a skeleton gets class `animate-in fade-in duration-(--motion-base)` on its wrapper in the same four files.
 
 - [ ] **Step 1: Write failing tests:** `Skeleton` has class `skeleton-shimmer` and not `animate-pulse`; `grep`-style test in `skeleton.test.tsx` that no file under `src/features` or `src/components` (excluding tests) contains `animate-pulse`.
@@ -138,10 +148,12 @@
 ### Task 6: Pipeline board feedback
 
 **Files:**
+
 - Modify: `src/app/globals.css` (`@keyframes settle`: from `translateY(-6px) scale(1.02)` to identity, `--motion-slow`, `--ease-settle`; `.animate-settle`), `src/features/opportunities/use-move-stage.ts` (call `markFresh(deal.id)` in `onMutate`; on `onError` call nothing extra — rollback already restores), `src/features/opportunities/components/pipeline-board.tsx` (card gets `animate-settle` when `useIsFresh(deal.id)`; column tint uses `duration-(--motion-fast)`)
 - Test: `src/features/opportunities/components/pipeline-board.test.tsx` (extend)
 
 **Interfaces:**
+
 - Consumes: `markFresh`, `useIsFresh` (Task 2). `usePrefersReducedMotion` not needed (CSS-only; global rule covers it).
 
 - [ ] **Step 1: Write failing tests:** after a successful `useMoveStage` mutation, the moved card in the destination column has class `animate-settle`; after the mutation fails (mock 409), the card is back in its original column and has no `animate-settle` (call `clearFreshForTests`-aware: `markFresh` is only called after `onSuccess`, so move the `markFresh` call to `onSuccess`, not `onMutate`).
@@ -155,10 +167,12 @@
 ### Task 7: Task completion
 
 **Files:**
+
 - Modify: `src/features/dashboard/components/dashboard-tasks.tsx` (`Section`), `src/app/app/tasks/page.tsx` list component if it renders the same row (search `useCompleteTask`), `src/app/globals.css` (`.row-collapse` using `grid-template-rows: 1fr → 0fr` and `opacity`)
 - Test: `src/features/dashboard/components/dashboard-view.test.tsx` (extend)
 
 **Interfaces:**
+
 - Produces: in `Section`, local state `leavingId: string | null`. Clicking complete sets `leavingId`, then calls `onComplete(task)` after `--motion-base` (180ms) via `setTimeout`, or immediately when `usePrefersReducedMotion()` is true. The check icon in the button uses a `stroke-dashoffset` draw (`.check-draw`) only while leaving. A success toast gets an "Undo" action calling `complete.mutate({ task, completed: false })`; the reopened row mounts with `animate-in fade-in duration-(--motion-base)`.
 
 - [ ] **Step 1: Write failing tests:** with reduced motion stubbed `true`, clicking "Mark X complete" calls the mutation synchronously; with reduced motion `false` and fake timers, the mutation is not called until 180ms pass and the `li` has the `row-collapse` class meanwhile; a second click on another task during the collapse does not call the mutation twice for the first; if the mutation rejects, the row is present again with no `row-collapse` class.
@@ -172,10 +186,12 @@
 ### Task 8: KPI count-up
 
 **Files:**
+
 - Create: `src/lib/motion/use-count-up.ts`, `src/lib/motion/use-count-up.test.ts`
 - Modify: `src/features/dashboard/components/kpi-card.tsx`, and its caller in `dashboard-view.tsx` to pass `numeric?: { value: number; format: (n: number) => string }`
 
 **Interfaces:**
+
 - Produces: `useCountUp(target: number, opts?: { duration?: number }): number` — returns the displayed value. First mount animates from 0 to `target` over `duration` (default 600ms, `requestAnimationFrame`, ease-out); later target changes tween from the current value over 280ms. Returns `target` immediately when `usePrefersReducedMotion()` is true or when `target` is not finite. `KpiCard` gains optional `numeric`; when absent it renders `value` as today. The `title` / sr-only text always carries the final formatted value, never the in-between one.
 
 - [ ] **Step 1: Write failing tests** (fake `requestAnimationFrame`): reduced motion → returns target on first render; normal → first render returns `0`, after full duration returns target; target change `10 → 20` mid-animation never returns `NaN` and ends at `20`; `NaN` target returns `NaN`-free `0`... specifically `useCountUp(Number.NaN)` returns `0` and starts no animation.
@@ -189,10 +205,12 @@
 ### Task 9: Chart hover emphasis
 
 **Files:**
+
 - Modify: `src/features/dashboard/components/stage-chart-impl.tsx` (Recharts `Bar` `onMouseEnter` / `onMouseLeave` set `activeStage`; each `Cell` gets `fillOpacity` 1 for active or none active, `0.45` otherwise, with `style={{ transition: "fill-opacity var(--motion-fast)" }}`), `src/features/reports/components/report-chart.tsx` (same for its bars)
 - Test: `src/features/dashboard/components/stage-chart.test.tsx` (extend)
 
 **Interfaces:**
+
 - Note: the spec said "hovering a table row highlights its chart segment", but the table is only an alternative view of the chart and never shown beside it, so emphasis happens on the chart itself.
 
 - [ ] **Step 1: Write failing test:** mouse-entering a bar's cell dims the other cells (`fill-opacity` 0.45) and leaving restores all to 1.
@@ -206,6 +224,7 @@
 ### Task 10: Fresh-row highlight, toasts, quote status, copy feedback
 
 **Files:**
+
 - Modify: `src/app/globals.css` (`@keyframes flash`: background from `var(--accent)` to transparent, `--motion-slow`; `.animate-flash`), `src/components/ui/table.tsx` (`TableRow` accepts `data-fresh` styling: `data-[fresh=true]:animate-flash`), customer and quote list/table views (search `useApiMutation` `onSuccess` in `src/features/customers` and `src/features/quotes` and call `markFresh(result.id)`; rows pass `data-fresh={useIsFresh(id)}` through a small `FreshRow` wrapper in `src/components/ui/table.tsx`)
 - Modify: `src/components/ui/sonner.tsx` and `src/components/shared/toast.tsx` (`toastOptions.classNames.actionButton` gets token transitions; remove the now-wrong comment claim that motion is only removed globally, keep accurate wording)
 - Modify: `src/features/quotes/components/quote-status.tsx` (wrap in `key={status}` span with `animate-in fade-in duration-(--motion-base)`), `quote-actions.tsx` (after a transition to `approved` call `markFresh(quote.id)`; `QuoteStatus` shows a one-time `animate-settle` check when fresh and `status === "approved"`)
@@ -213,6 +232,7 @@
 - Test: `src/components/shared/link-parts.test.tsx`, `src/features/quotes/components/quote-detail-parts.test.tsx` (extend)
 
 **Interfaces:**
+
 - Consumes: `markFresh`, `useIsFresh` (Task 2); `animate-settle` (Task 6).
 - Produces: `FreshRow({ id, ...TableRowProps })` exported from `@/components/ui/table`.
 
@@ -227,11 +247,13 @@
 ### Task 11: Page transition wrapper and route crossfade
 
 **Files:**
+
 - Create: `src/components/layout/page-transition.tsx`, `src/components/layout/page-transition.test.tsx`
 - Modify: `src/app/app/layout.tsx` (wrap `children` inside `DynamicShell` content area), `src/app/globals.css` (`::view-transition-old(root)` / `::view-transition-new(root)` fade rules and the `nav-forward` / `nav-back` slide classes, all duration `--motion-base`; wrapped in `@media (prefers-reduced-motion: no-preference)`)
 - Modify: `next.config.ts` only if the installed docs say a flag is required (they state none; verify first)
 
 **Interfaces:**
+
 - Produces: `PageTransition({ children }: { children: ReactNode })` — renders `<ViewTransition default="none" enter={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }} exit={...} >`. Forward vs back is set by `addTransitionType("nav-forward" | "nav-back")` in `nav-list.tsx` link `onClick` (forward) and detail pages' back links (back). Keep the mapping in this one file; if `ViewTransition` or the API names differ from the installed docs, follow the docs and keep the same wrapper signature.
 
 - [ ] **Step 1:** Re-read `node_modules/next/dist/docs/01-app/02-guides/view-transitions.md` (route transitions and same-route sections).
@@ -246,10 +268,12 @@
 ### Task 12: Shared-element morph and Suspense reveal
 
 **Files:**
+
 - Modify: `src/features/customers/components/*` list row name and `src/app/app/customers/[id]/page.tsx` header name; `src/features/opportunities/components/pipeline-board.tsx` card title and `src/app/app/opportunities/[id]/page.tsx` header title; dashboard Suspense boundaries in `src/features/dashboard/components/dashboard-view.tsx`
 - Test: `src/features/customers/components/*.test.tsx`, `src/features/opportunities/components/pipeline-board.test.tsx` (extend)
 
 **Interfaces:**
+
 - Produces: `<ViewTransition name={`customer-${id}`}>` around the name element in list row and detail header; same for `opportunity-${id}`; `<ViewTransition>` around Suspense fallback/content pairs so skeleton → content cross-fades (`default="none"`, `update="auto"` per docs). Names are unique per entity id so list pages with many rows never share a name.
 
 - [ ] **Step 1: Write failing tests:** rendering a list of two customers yields no duplicate `view-transition-name` values; the detail header has the name matching the row for the same id. (jsdom does not run transitions; assert via the `name` prop captured from a mocked `ViewTransition`.)
@@ -263,6 +287,7 @@
 ### Task 13: End-to-end, reduced motion and docs
 
 **Files:**
+
 - Modify: `playwright.config.ts` (add projects `desktop-reduced` and `mobile-reduced` with `use: { contextOptions: { reducedMotion: "reduce" } }`, or an equivalent supported option for the installed Playwright), `e2e/accessibility.spec.ts`, `e2e/mobile.spec.ts` (run in the reduced projects too), `e2e/dashboard.spec.ts` (assert KPI shows final value under reduced motion)
 - Modify: `docs/ARCHITECTURE.md` Motion section (name the tokens, the fresh-id store, `PageTransition`, and that the skeleton shimmer is the single repeating animation)
 - Modify: `docs/DECISIONS.md` (one row: no animation dependency; chart emphasis on-chart not table; "Approved" not "Accepted")

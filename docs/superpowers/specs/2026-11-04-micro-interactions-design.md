@@ -26,16 +26,16 @@ Make OpsDesk feel responsive and polished with small, fast motion that confirms 
 
 ## Tier 2: Feedback moments
 
-| Surface | Interaction | Files |
-|---|---|---|
-| Pipeline board | Card settles into its column after a drop (`--ease-settle`); a failed move eases back; drop-target column tint | `features/opportunities/components/pipeline-board.tsx`, `board-dnd.tsx`, `use-move-stage.ts` |
-| Task completion | Check draws, row dims, row collapses out; undo restores in place | `features/dashboard/components/dashboard-tasks.tsx`, tasks page |
-| Dashboard KPIs | Count up once on first load; tween on value change | `features/dashboard/components/kpi-card.tsx` |
-| Charts | Keep existing animation; hovering a table row highlights its chart segment | `stage-chart.tsx`, `report-chart.tsx` |
-| Tables and lists | New or edited row gets a one-time highlight fade | `components/ui/table.tsx`, list views |
-| Toasts | Tune slide and fade; action buttons confirm visibly | `components/ui/sonner.tsx`, `components/shared/toast.tsx` |
-| Quote status | Badge crossfade between states; one-time check flourish on Accepted | `features/quotes/components/quote-actions.tsx` |
-| Copy and save buttons | Icon swaps to a checkmark for 1.5s, then back | shared button usage |
+| Surface               | Interaction                                                                                                    | Files                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Pipeline board        | Card settles into its column after a drop (`--ease-settle`); a failed move eases back; drop-target column tint | `features/opportunities/components/pipeline-board.tsx`, `board-dnd.tsx`, `use-move-stage.ts` |
+| Task completion       | Check draws, row dims, row collapses out; undo restores in place                                               | `features/dashboard/components/dashboard-tasks.tsx`, tasks page                              |
+| Dashboard KPIs        | Count up once on first load; tween on value change                                                             | `features/dashboard/components/kpi-card.tsx`                                                 |
+| Charts                | Keep existing animation; hovering a table row highlights its chart segment                                     | `stage-chart.tsx`, `report-chart.tsx`                                                        |
+| Tables and lists      | New or edited row gets a one-time highlight fade                                                               | `components/ui/table.tsx`, list views                                                        |
+| Toasts                | Tune slide and fade; action buttons confirm visibly                                                            | `components/ui/sonner.tsx`, `components/shared/toast.tsx`                                    |
+| Quote status          | Badge crossfade between states; one-time check flourish on Accepted                                            | `features/quotes/components/quote-actions.tsx`                                               |
+| Copy and save buttons | Icon swaps to a checkmark for 1.5s, then back                                                                  | shared button usage                                                                          |
 
 ## Tier 3: Navigation with `<ViewTransition>`
 

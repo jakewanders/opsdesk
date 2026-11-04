@@ -19,6 +19,13 @@ export default defineConfig({
   reporter: [["list"]],
   projects: [
     { name: "desktop", testIgnore: /mobile\.spec\.ts/ },
+    // Motion: the same accessibility and navigation checks with the system asking for reduced motion, so a view transition or
+    // count-up can never be what a check depends on.
+    {
+      name: "desktop-reduced",
+      testMatch: /(accessibility|navigation)\.spec\.ts/,
+      use: { reducedMotion: "reduce" },
+    },
     // E2E scenario 9: a phone-sized browser (375 x 812, touch), used by e2e/mobile.spec.ts
     {
       name: "mobile",
@@ -28,6 +35,17 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
         deviceScaleFactor: 2,
+      },
+    },
+    {
+      name: "mobile-reduced",
+      testMatch: /mobile\.spec\.ts/,
+      use: {
+        viewport: { width: 375, height: 812 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+        reducedMotion: "reduce",
       },
     },
   ],
