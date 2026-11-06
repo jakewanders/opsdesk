@@ -12,6 +12,8 @@ import type { OpportunityDto } from "./schema";
 
 /** Board queries live under one prefix: `["opportunities-board", "summary" | "column", ...]`. */
 export const BOARD_KEY = ["opportunities-board"] as const;
+/** Cards a pipeline column asks for at first, and each time "Show more" is pressed. */
+export const BOARD_PAGE_SIZE = 10;
 
 export type Move = { deal: OpportunityDto; to: Stage; lostReason?: string | null };
 type Cached = ApiResponse<OpportunityDto[]> | undefined;

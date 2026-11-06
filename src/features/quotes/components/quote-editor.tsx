@@ -46,7 +46,7 @@ type Props = {
 const TEXTAREA_CLASS =
   "min-h-24 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 disabled:opacity-50 dark:bg-input/30";
 const SELECT_CLASS =
-  "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 disabled:opacity-50 dark:bg-input/30";
+  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 disabled:opacity-50 dark:bg-input/30";
 const LABELS: Record<HeaderField, string> = {
   customerId: "Customer",
   opportunityId: "Opportunity",
@@ -352,7 +352,7 @@ export function QuoteEditor({ quote, initial }: Props) {
               id={fieldId("opportunityId")}
               label="Opportunity"
               error={err("opportunityId")}
-              hint="Optional. Only this customer's opportunities are listed."
+              hint="Optional: only this customer's opportunities are listed."
             >
               {(c) => (
                 <select

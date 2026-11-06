@@ -99,6 +99,10 @@ The baseline for every screen (PRD 3.2, WCAG 2.2 AA). Feature issues reference t
 - Before a milestone ends: a keyboard-only pass, a screen reader pass on the main journey, and Lighthouse accessibility of at least 90 on key pages (record real scores in `docs/PROGRESS.md`).
 - Lint: `jsx-a11y` recommended rules run as errors (`eslint.config.mjs`) and are tested in `src/test/a11y-baseline.test.ts`.
 
+## Startup prefetch and tab switches
+
+When the signed-in app opens, `PrefetchAppData` (`src/lib/api-client/prefetch-app-data.tsx`) reads the unfiltered first view of every tab into the query cache (dashboard, members, tasks, customers, opportunity list and board, activity, and quotes while they are on), three requests at a time, skipping anything already cached. The keys and queries are built with each view's own helpers, so a tab opened later finds its data and shows it at once. Data is fresh for 30 seconds; after that the cached rows are shown and refreshed in the background, so only the changes need loading. `useApiQuery` passes an option on only when it was given: an explicit `undefined` would override the client's 30 second default. `src/app/app/loading.tsx` answers a click at once while the next page's server read finishes. Do not turn on `experimental.staleTimes.dynamic`: the client router cache would show a page's old server payload after a mutation made through the API (an edited customer kept its old phone number).
+
 ## Supabase clients and sessions (SIT-169)
 
 Files in `src/lib/supabase/`:

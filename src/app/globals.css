@@ -207,6 +207,18 @@
   position: relative;
 }
 
+/* Native dropdowns: draw our own chevron so it sits 0.75rem from the edge (the browser's arrow is flush right) and
+   reserve room for it so long option text never runs underneath. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 @media (max-width: 767px) {
   /* Touch targets are at least 44 x 44 CSS px. */
   button,

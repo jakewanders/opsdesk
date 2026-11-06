@@ -16,6 +16,7 @@ import { cookies } from "next/headers";
 import { BackendUnavailable } from "@/components/shared/backend-unavailable";
 import { getRepoUrl } from "@/lib/env/links";
 import { ApiClientProvider } from "@/lib/api-client/provider";
+import { PrefetchAppData } from "@/lib/api-client/prefetch-app-data";
 import { OrgSelector } from "@/components/org/org-selector";
 import { ACTIVE_ORG_COOKIE, resolveActiveWorkspace } from "@/lib/org/active-org";
 import { selectWorkspaceAction } from "@/lib/org/actions";
@@ -90,6 +91,7 @@ async function DynamicShell({ children }: { children: ReactNode }) {
       key={`${user?.id ?? "anon"}:${activeOrgId ?? "none"}`}
       organizationId={activeOrgId}
     >
+      <PrefetchAppData quotes={getFeatureFlags().quotes} />
       <AppShell
         items={getNavItems(getFeatureFlags())}
         user={user ? { email: user.email, name: displayName, isGuest: user.isAnonymous } : null}

@@ -343,7 +343,7 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
               id={fieldId("customerId")}
               label="Customer"
               error={err("customerId")}
-              hint="Optional."
+              hint="Optional"
             >
               {(c) => (
                 <Controller
@@ -368,7 +368,7 @@ function TaskDrawerBody({ state, onClose, currentUserId }: Props) {
               id={fieldId("opportunityId")}
               label="Opportunity"
               error={err("opportunityId")}
-              hint="Optional."
+              hint="Optional"
             >
               {(c) => (
                 <Controller
