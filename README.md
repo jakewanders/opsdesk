@@ -162,7 +162,7 @@ Follows PRD section 10: `src/app/(marketing)`, `(auth)`, `app/`, `api/v1/`; `src
 - **Branch names:** `<type>/<issue>-<short-slug>`, for example `feat/sit-178-tenancy-tables`. Linear's suggested branch names also work.
 - **Commits:** Conventional Commits with the issue id in the subject, for example `feat(db): create tenancy tables (SIT-178)`. Types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`. Do not commit `.env*` files (only `.env.example`), exports, or test credentials.
 - **Before pushing:** `npm run check`.
-- **GitHub repository:** `jakewanders/opsdesk` (private). The app reads its public source link from `NEXT_PUBLIC_GITHUB_REPO_URL`; nothing hard-codes it. Recommended repository settings, not applied by tooling: squash merge only, delete branch on merge, and the CI workflow as a required check once SIT-166 lands.
+- **GitHub repository:** `jakewanders/opsdesk` (public). The app reads its public source link from `NEXT_PUBLIC_GITHUB_REPO_URL`; nothing hard-codes it. Recommended repository settings, not applied by tooling: squash merge only, delete branch on merge, and the CI workflow as a required check once SIT-166 lands.
 
 ## Continuous integration
 
