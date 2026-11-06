@@ -2,7 +2,7 @@
 
 A multi-tenant business operations SaaS (customers, sales pipeline, tasks, quotes, reports) built as an engineering portfolio project: Next.js and Supabase, with the security model (row level security, roles, an isolated public demo) and the test suites as the point of the exercise.
 
-**Status, stated plainly:** every P0 and P1 feature below is built and tested on a local stack. **Nothing is deployed yet.** The intended production origin is `https://opsdesk.sitelaunch.dev`; the Netlify site, the DNS record and the hosted Supabase project need the owner (see [`docs/PROGRESS.md`](docs/PROGRESS.md), "Waiting on Jake"). There is no live link and no deployment to verify, so none is claimed.
+**Live demo:** <https://opsdesk.sitelaunch.dev>. Click **Try Live Demo** to get an isolated, fictional workspace with no sign-up; it expires after 24 hours. Every P0 and P1 feature below is built and tested, and the app runs on Netlify with a hosted Supabase project. Progress and decisions are in [`docs/PROGRESS.md`](docs/PROGRESS.md) and [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## What it does
 
