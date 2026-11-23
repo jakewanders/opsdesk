@@ -125,7 +125,7 @@ export function WorkspaceSetupForm({ action }: { action: Action }) {
         label="Industry"
         id={IDS.industry}
         error={first("industry")}
-        hint="Optional. For example Plumbing or Landscaping."
+        hint="Optional: for example Plumbing or Landscaping."
       >
         {(control) => (
           <Input

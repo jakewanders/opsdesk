@@ -13,10 +13,11 @@ import {
   useSensors,
   type Announcements,
   type DragEndEvent,
+  type DropAnimation,
   type KeyboardCoordinateGetter,
 } from "@dnd-kit/core";
 import { GripVertical } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { STAGES, STAGE_LABELS, isStage, type Stage } from "@/lib/domain/pipeline";
 import { usePrefersReducedMotion } from "@/lib/motion/use-prefers-reduced-motion";
 import { formatUsd } from "@/lib/money/format";
@@ -87,6 +88,44 @@ export const announcements: Announcements = {
   },
 };
 
+/**
+ * Where a dropped card lands: the top of the destination column, just under its header (a moved deal is put first in its
+ * new column). Returns the point the overlay's top-left corner should travel to, or null when the column is not on the page.
+ */
+export function landingPoint(column: Element | null): { x: number; y: number } | null {
+  if (!column) return null;
+  const box = column.getBoundingClientRect();
+  const header = column.querySelector("header")?.getBoundingClientRect();
+  const GAP = 8; // the column's padding and the gap between its cards
+  return { x: box.left + GAP, y: (header ? header.bottom : box.top) + GAP };
+}
+
+/**
+ * dnd-kit's own drop animation flies the overlay to the card's SOURCE node, which is still in the old column when the
+ * drop happens, so the card appeared to go back before jumping to the new column. This one flies it to where the card
+ * is about to appear: the top of the column it was dropped on.
+ */
+const flyToColumn =
+  (to: Stage): DropAnimation =>
+  ({ dragOverlay, transform }) => {
+    const node = dragOverlay.node;
+    const target = landingPoint(document.querySelector(`[data-stage="${to}"]`) ?? null);
+    if (!target || typeof node.animate !== "function") return;
+    const now = node.getBoundingClientRect();
+    const dx = target.x - now.left;
+    const dy = target.y - now.top;
+    const at = (x: number, y: number) => `translate3d(${x}px, ${y}px, 0)`;
+    const animation = node.animate(
+      [
+        { transform: at(transform.x, transform.y), opacity: 1 },
+        { transform: at(transform.x + dx, transform.y + dy), opacity: 1, offset: 0.85 },
+        { transform: at(transform.x + dx, transform.y + dy), opacity: 0 },
+      ],
+      { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" },
+    );
+    return animation.finished.then(() => undefined);
+  };
+
 type ProviderProps = {
   children: ReactNode;
   /** Whether cards can be picked up (writers, and not while a move is running). */
@@ -97,6 +136,12 @@ type ProviderProps = {
 export function BoardDnd({ children, enabled, onDrop }: ProviderProps) {
   const [active, setActive] = useState<OpportunityDto | null>(null);
   const reduced = usePrefersReducedMotion();
+  // the stage a card was just dropped on (null when it was not moved): the drop animation flies there
+  const [droppedOn, setDroppedOn] = useState<Stage | null>(null);
+  const dropAnimation = useMemo(
+    () => (droppedOn ? flyToColumn(droppedOn) : undefined),
+    [droppedOn],
+  );
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -104,10 +149,11 @@ export function BoardDnd({ children, enabled, onDrop }: ProviderProps) {
   );
 
   const end = ({ active: a, over }: DragEndEvent) => {
-    setActive(null);
     const deal = dealOf(a.data);
-    if (deal && enabled && over && isStage(over.id) && over.id !== deal.stage)
-      onDrop(deal, over.id);
+    const moved = !!deal && enabled && !!over && isStage(over.id) && over.id !== deal.stage;
+    setDroppedOn(moved && over && isStage(over.id) ? over.id : null);
+    setActive(null);
+    if (moved && deal && over && isStage(over.id)) onDrop(deal, over.id);
   };
 
   return (
@@ -127,7 +173,7 @@ export function BoardDnd({ children, enabled, onDrop }: ProviderProps) {
       onDragCancel={() => setActive(null)}
     >
       {children}
-      <DragOverlay dropAnimation={reduced ? null : undefined}>
+      <DragOverlay dropAnimation={reduced ? null : dropAnimation}>
         {active ? (
           <div className="rounded-lg border border-border bg-background p-3 text-sm shadow-lg">
             <p className="text-muted-foreground">{active.customerName ?? "Customer"}</p>

@@ -22,13 +22,13 @@ import type { MemberDto } from "@/features/members/service";
 import { opportunityPageUrl } from "../filter-state";
 import type { PipelineTotals } from "../pipeline-model";
 import type { OpportunityDto } from "../schema";
-import { BOARD_KEY, useMoveStage, type Move } from "../use-move-stage";
+import { BOARD_KEY, BOARD_PAGE_SIZE, useMoveStage, type Move } from "../use-move-stage";
 import { BoardDnd, DragHandle, useStageDrop } from "./board-dnd";
 import { LostReasonDialog } from "./lost-reason-dialog";
 import { ViewToggle } from "./view-toggle";
 import { Morph } from "@/components/shared/morph";
 
-const PAGE = 10;
+const PAGE = BOARD_PAGE_SIZE;
 const SELECT =
   "h-8 w-full rounded-lg border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50";
 

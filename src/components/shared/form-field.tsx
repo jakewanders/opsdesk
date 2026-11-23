@@ -16,6 +16,8 @@ type FormFieldProps = {
   label: string;
   /** Visible helper text under the label, for example the allowed format. */
   hint?: string;
+  /** Put the hint under the control instead of between label and control, so controls in a row of fields line up. */
+  hintBelow?: boolean;
   /** Error message for this field. Linked to the control and announced with the summary. */
   error?: string;
   required?: boolean;
@@ -39,6 +41,7 @@ type FormFieldProps = {
 export function FormField({
   label,
   hint,
+  hintBelow,
   error,
   required,
   id: idProp,
@@ -58,6 +61,12 @@ export function FormField({
     ...(describedBy ? { "aria-describedby": describedBy } : {}),
   };
 
+  const hintLine = (
+    <p id={hintId} className="text-sm text-muted-foreground">
+      {hint}
+    </p>
+  );
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={id}>
@@ -71,12 +80,9 @@ export function FormField({
           </>
         ) : null}
       </Label>
-      {hint ? (
-        <p id={hintId} className="text-sm text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
+      {hint && !hintBelow ? hintLine : null}
       {children(control)}
+      {hint && hintBelow ? hintLine : null}
       {error ? (
         <p
           id={errorId}

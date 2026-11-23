@@ -85,9 +85,11 @@ export function useApiQuery<T>(key: QueryKey, path: string, options: QueryOption
   return useQuery<ApiResponse<T>>({
     queryKey: scoped,
     queryFn: ({ signal }) => call<T>(path, { query: options.query, signal }),
-    enabled: options.enabled,
-    staleTime: options.staleTime,
-    initialData: options.initialData,
-    placeholderData: options.keepPrevious ? keepPreviousData : undefined,
+    // Only options that were given: an explicit `undefined` would override the client's defaults (the 30 second freshness
+    // window), and every tab switch would read its list again.
+    ...(options.enabled !== undefined ? { enabled: options.enabled } : {}),
+    ...(options.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
+    ...(options.initialData !== undefined ? { initialData: options.initialData } : {}),
+    ...(options.keepPrevious ? { placeholderData: keepPreviousData } : {}),
   });
 }

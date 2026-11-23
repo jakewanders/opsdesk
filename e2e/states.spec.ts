@@ -97,7 +97,8 @@ test.describe("demo bootstrap failures", () => {
   test("a slow bootstrap shows progress, then succeeds", async ({ page }) => {
     await page.route("**/api/v1/demo/bootstrap", async (r) => {
       await new Promise((res) => setTimeout(res, 3000));
-      await r.continue();
+      // a request the page cancelled by navigating away (a background prefetch) cannot be continued: that is fine
+      await r.continue().catch(() => undefined);
     });
     await page.goto("/");
     await page.getByRole("link", { name: "Try Live Demo" }).first().click();
@@ -140,7 +141,8 @@ test.describe("loading and error states on the P0 pages", () => {
     // a slow network: the activity feed and the opportunity list show their loading state first
     await page.route("**/api/v1/activity**", async (r) => {
       await new Promise((res) => setTimeout(res, 2000));
-      await r.continue();
+      // a request the page cancelled by navigating away (a background prefetch) cannot be continued: that is fine
+      await r.continue().catch(() => undefined);
     });
     await page.goto("/app/activity");
     await expect(page.getByRole("status").filter({ hasText: "Loading activity" })).toBeVisible();
@@ -148,7 +150,8 @@ test.describe("loading and error states on the P0 pages", () => {
     await page.unroute("**/api/v1/activity**");
     await page.route("**/api/v1/opportunities?**", async (r) => {
       await new Promise((res) => setTimeout(res, 2000));
-      await r.continue();
+      // a request the page cancelled by navigating away (a background prefetch) cannot be continued: that is fine
+      await r.continue().catch(() => undefined);
     });
     await page.goto("/app/opportunities?view=list");
     await expect(

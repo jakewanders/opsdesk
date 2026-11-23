@@ -170,4 +170,4 @@ Follows PRD section 10: `src/app/(marketing)`, `(auth)`, `app/`, `api/v1/`; `src
 
 ## License
 
-The source is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may read, study and use it for noncommercial purposes; commercial use is not permitted. Required notice: Copyright 2026 Jacob Nelson. Third-party packages keep their own licenses.
+Copyright © 2026 Jacob Nelson. All rights reserved. The source is published for viewing only; no license is granted to copy, modify, deploy, redistribute or otherwise use it (see [LICENSE](LICENSE)). Third-party packages keep their own licenses.
